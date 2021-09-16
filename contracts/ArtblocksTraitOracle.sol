@@ -154,8 +154,20 @@ contract ArtblocksTraitOracle is ITraitOracle {
         emit TraitMembershipExpanded({traitId: _traitId, newSize: _newSize});
     }
 
-    function hasProjectTrait(uint256 _tokenId, uint256 _traitId)
+    function hasTrait(uint256 _tokenId, uint256 _traitId)
         external
+        view
+        returns (bool)
+    {
+        // Check project traits first, since this only requires a single
+        // storage lookup if `_traitId` represents a feature trait.
+        return
+            _hasProjectTrait(_tokenId, _traitId) ||
+            _hasFeatureTrait(_tokenId, _traitId);
+    }
+
+    function _hasProjectTrait(uint256 _tokenId, uint256 _traitId)
+        internal
         view
         returns (bool)
     {
@@ -172,8 +184,8 @@ contract ArtblocksTraitOracle is ITraitOracle {
         return true;
     }
 
-    function hasFeatureTrait(uint256 _tokenId, uint256 _traitId)
-        external
+    function _hasFeatureTrait(uint256 _tokenId, uint256 _traitId)
+        internal
         view
         returns (bool)
     {

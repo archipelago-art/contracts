@@ -128,21 +128,20 @@ describe("ArtblocksTraitOracle", () => {
       expect(batch1.length + batch2.length).to.equal(size);
       const otherTokenId = baseTokenId + 555;
       expect(!tokenIds.includes(otherTokenId));
-      const hasTrait = (tokenId) => oracle.hasFeatureTrait(tokenId, traitId);
 
       await expect(oracle.addTraitMemberships(traitId, batch1))
         .to.emit(oracle, "TraitMembershipExpanded")
         .withArgs(traitId, batch1.length);
-      expect(await hasTrait(batch1[0])).to.equal(false);
-      expect(await hasTrait(batch2[0])).to.equal(false);
-      expect(await hasTrait(otherTokenId)).to.equal(false);
+      expect(await oracle.hasTrait(batch1[0], traitId)).to.equal(false);
+      expect(await oracle.hasTrait(batch2[0], traitId)).to.equal(false);
+      expect(await oracle.hasTrait(otherTokenId, traitId)).to.equal(false);
 
       await expect(oracle.addTraitMemberships(traitId, batch2))
         .to.emit(oracle, "TraitMembershipExpanded")
         .withArgs(traitId, batch1.length + batch2.length);
-      expect(await hasTrait(batch1[0])).to.equal(true);
-      expect(await hasTrait(batch2[0])).to.equal(true);
-      expect(await hasTrait(otherTokenId)).to.equal(false);
+      expect(await oracle.hasTrait(batch1[0], traitId)).to.equal(true);
+      expect(await oracle.hasTrait(batch2[0], traitId)).to.equal(true);
+      expect(await oracle.hasTrait(otherTokenId, traitId)).to.equal(false);
     });
 
     it("forbids adding too many members", async () => {
@@ -166,11 +165,11 @@ describe("ArtblocksTraitOracle", () => {
       await expect(oracle.addTraitMemberships(traitId, [1, 2, 1]))
         .to.emit(oracle, "TraitMembershipExpanded")
         .withArgs(traitId, 2);
-      expect(await oracle.hasFeatureTrait(1, traitId)).to.be.false;
+      expect(await oracle.hasTrait(1, traitId)).to.be.false;
       await expect(oracle.addTraitMemberships(traitId, [2, 3, 2]))
         .to.emit(oracle, "TraitMembershipExpanded")
         .withArgs(traitId, 3);
-      expect(await oracle.hasFeatureTrait(1, traitId)).to.be.true;
+      expect(await oracle.hasTrait(1, traitId)).to.be.true;
     });
   });
 
@@ -199,25 +198,25 @@ describe("ArtblocksTraitOracle", () => {
     });
 
     it("includes actual members", async () => {
-      expect(await oracle.hasProjectTrait(baseId, traitIdV0)).to.be.true;
-      expect(await oracle.hasProjectTrait(baseId, traitIdV1)).to.be.true;
-      expect(await oracle.hasProjectTrait(baseId + 1, traitIdV0)).to.be.true;
-      expect(await oracle.hasProjectTrait(baseId + 1, traitIdV1)).to.be.true;
+      expect(await oracle.hasTrait(baseId, traitIdV0)).to.be.true;
+      expect(await oracle.hasTrait(baseId, traitIdV1)).to.be.true;
+      expect(await oracle.hasTrait(baseId + 1, traitIdV0)).to.be.true;
+      expect(await oracle.hasTrait(baseId + 1, traitIdV1)).to.be.true;
     });
 
     it("excludes members that are out of range", async () => {
-      expect(await oracle.hasProjectTrait(baseId + 777, traitIdV0)).to.be.false;
-      expect(await oracle.hasProjectTrait(baseId + 777, traitIdV1)).to.be.false;
+      expect(await oracle.hasTrait(baseId + 777, traitIdV0)).to.be.false;
+      expect(await oracle.hasTrait(baseId + 777, traitIdV1)).to.be.false;
     });
 
     it("determines project size from the correct version", async () => {
-      expect(await oracle.hasProjectTrait(baseId + 250, traitIdV0)).to.be.false;
-      expect(await oracle.hasProjectTrait(baseId + 250, traitIdV1)).to.be.true;
+      expect(await oracle.hasTrait(baseId + 250, traitIdV0)).to.be.false;
+      expect(await oracle.hasTrait(baseId + 250, traitIdV1)).to.be.true;
     });
 
     it("excludes all members from a nonexistent version", async () => {
-      expect(await oracle.hasProjectTrait(baseId + 250, traitIdV2)).to.be.false;
-      expect(await oracle.hasProjectTrait(baseId, traitIdV2)).to.be.false;
+      expect(await oracle.hasTrait(baseId + 250, traitIdV2)).to.be.false;
+      expect(await oracle.hasTrait(baseId, traitIdV2)).to.be.false;
     });
   });
 });
