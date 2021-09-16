@@ -12,6 +12,8 @@ const Errors = Object.freeze({
   UNAUTHORIZED: "ArtblocksTraitOracle: UNAUTHORIZED",
 });
 
+const TOKENS_PER_PROJECT = 10 ** 6;
+
 function projectTraitId(projectId, version) {
   const blob = ethers.utils.defaultAbiCoder.encode(
     ["uint256", "uint256", "uint256"],
@@ -169,6 +171,53 @@ describe("ArtblocksTraitOracle", () => {
         .to.emit(oracle, "TraitMembershipExpanded")
         .withArgs(traitId, 3);
       expect(await oracle.hasFeatureTrait(1, traitId)).to.be.true;
+    });
+  });
+
+  describe("project trait membership testing", async () => {
+    let oracle;
+
+    const projectId = 23;
+    const v0 = 0;
+    const v1 = 1;
+    const v2 = 2;
+    const size0 = 3; // whoops!
+    const size1 = 600;
+    const projectName = "Archetype";
+    const traitIdV0 = projectTraitId(projectId, v0);
+    const traitIdV1 = projectTraitId(projectId, v1);
+    const traitIdV2 = projectTraitId(projectId, v2);
+
+    const baseId = projectId * TOKENS_PER_PROJECT;
+
+    before(async () => {
+      oracle = await ArtblocksTraitOracle.deploy();
+      await oracle.deployed();
+
+      await oracle.setProjectInfo(projectId, v0, projectName, size0);
+      await oracle.setProjectInfo(projectId, v1, projectName, size1);
+    });
+
+    it("includes actual members", async () => {
+      expect(await oracle.hasProjectTrait(baseId, traitIdV0)).to.be.true;
+      expect(await oracle.hasProjectTrait(baseId, traitIdV1)).to.be.true;
+      expect(await oracle.hasProjectTrait(baseId + 1, traitIdV0)).to.be.true;
+      expect(await oracle.hasProjectTrait(baseId + 1, traitIdV1)).to.be.true;
+    });
+
+    it("excludes members that are out of range", async () => {
+      expect(await oracle.hasProjectTrait(baseId + 777, traitIdV0)).to.be.false;
+      expect(await oracle.hasProjectTrait(baseId + 777, traitIdV1)).to.be.false;
+    });
+
+    it("determines project size from the correct version", async () => {
+      expect(await oracle.hasProjectTrait(baseId + 250, traitIdV0)).to.be.false;
+      expect(await oracle.hasProjectTrait(baseId + 250, traitIdV1)).to.be.true;
+    });
+
+    it("excludes all members from a nonexistent version", async () => {
+      expect(await oracle.hasProjectTrait(baseId + 250, traitIdV2)).to.be.false;
+      expect(await oracle.hasProjectTrait(baseId, traitIdV2)).to.be.false;
     });
   });
 });

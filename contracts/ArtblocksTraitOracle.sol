@@ -58,6 +58,8 @@ contract ArtblocksTraitOracle is ITraitOracle {
         "ArtblocksTraitOracle: INVALID_ARGUMENT";
     string constant ERR_UNAUTHORIZED = "ArtblocksTraitOracle: UNAUTHORIZED";
 
+    uint256 constant TOKENS_PER_PROJECT = 10**6;
+
     address admin;
 
     mapping(uint256 => ProjectInfo) public projectTraitInfo;
@@ -150,6 +152,24 @@ contract ArtblocksTraitOracle is ITraitOracle {
         if (_newSize == _originalSize) return;
         traitMembersCount[_traitId] = _newSize;
         emit TraitMembershipExpanded({traitId: _traitId, newSize: _newSize});
+    }
+
+    function hasProjectTrait(uint256 _tokenId, uint256 _traitId)
+        external
+        view
+        returns (bool)
+    {
+        uint256 _projectSize = projectTraitInfo[_traitId].size;
+        if (_projectSize == 0) return false; // gas
+
+        uint256 _tokenProjectId = _tokenId / TOKENS_PER_PROJECT;
+        uint256 _traitProjectId = projectTraitInfo[_traitId].projectId;
+        if (_tokenProjectId != _traitProjectId) return false;
+
+        uint256 _tokenIndexInProject = _tokenId % TOKENS_PER_PROJECT;
+        if (_tokenIndexInProject >= _projectSize) return false;
+
+        return true;
     }
 
     function hasFeatureTrait(uint256 _tokenId, uint256 _traitId)
