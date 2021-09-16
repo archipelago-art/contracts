@@ -72,7 +72,7 @@ contract ArtblocksTraitOracle is ITraitOracle {
         _;
     }
 
-    function populateProjectInfo(
+    function setProjectInfo(
         uint256 _projectId,
         uint256 _version,
         string memory _projectName,
@@ -97,7 +97,7 @@ contract ArtblocksTraitOracle is ITraitOracle {
         });
     }
 
-    function populateFeatureInfo(
+    function setFeatureInfo(
         uint256 _projectId,
         string memory _featureName,
         uint256 _version,

@@ -55,7 +55,7 @@ describe("ArtblocksTraitOracle", () => {
     });
   });
 
-  describe("populates trait info", () => {
+  describe("sets trait info", () => {
     it("for projects", async () => {
       const oracle = await ArtblocksTraitOracle.deploy();
       await oracle.deployed();
@@ -64,9 +64,7 @@ describe("ArtblocksTraitOracle", () => {
       const size = 600;
       const projectName = "Archetype";
       const traitId = projectTraitId(projectId, version);
-      await expect(
-        oracle.populateProjectInfo(projectId, version, projectName, size)
-      )
+      await expect(oracle.setProjectInfo(projectId, version, projectName, size))
         .to.emit(oracle, "ProjectInfoSet")
         .withArgs(traitId, projectId, version, size);
       expect(await oracle.projectTraitInfo(traitId)).to.deep.equal([
@@ -84,9 +82,7 @@ describe("ArtblocksTraitOracle", () => {
       const version = 0;
       const size = 12;
       const traitId = featureTraitId(projectId, featureName, version);
-      await expect(
-        oracle.populateFeatureInfo(projectId, featureName, version, size)
-      )
+      await expect(oracle.setFeatureInfo(projectId, featureName, version, size))
         .to.emit(oracle, "FeatureInfoSet")
         .withArgs(traitId, projectId, featureName, version, size);
       expect(await oracle.featureTraitInfo(traitId)).to.deep.equal([
