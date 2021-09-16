@@ -10,6 +10,10 @@ enum BidType {
 
 struct Bid {
     uint256 nonce;
+    /// Timestamp at which this bid was created. Affects time-based
+    /// cancellations.
+    uint256 created;
+    /// Timestamp past which this bid is no longer valid.
     uint256 deadline;
     uint256 price;
     BidType bidType;
@@ -25,6 +29,10 @@ struct Bid {
 
 struct Ask {
     uint256 nonce;
+    /// Timestamp at which this ask was created. Affects time-based
+    /// cancellations.
+    uint256 created;
+    /// Timestamp past which this ask is no longer valid.
     uint256 deadline;
     uint256 price;
     uint256 tokenId;
