@@ -15,6 +15,7 @@ struct Bid {
     uint256 created;
     /// Timestamp past which this bid is no longer valid.
     uint256 deadline;
+    /// Offer price, in wei.
     uint256 price;
     BidType bidType;
     /// For `SINGLE_TOKEN` bids, this is the token that the bid applies to. For
@@ -34,6 +35,7 @@ struct Ask {
     uint256 created;
     /// Timestamp past which this ask is no longer valid.
     uint256 deadline;
+    /// List price, in wei.
     uint256 price;
     uint256 tokenId;
 }
