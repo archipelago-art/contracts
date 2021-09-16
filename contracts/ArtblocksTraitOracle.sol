@@ -51,6 +51,7 @@ contract ArtblocksTraitOracle is ITraitOracle {
         uint256 version,
         uint256 size
     );
+    event TraitMembershipExpanded(uint256 indexed traitId, uint256 newSize);
 
     string constant ERR_ALREADY_EXISTS = "ArtblocksTraitOracle: ALREADY_EXISTS";
     string constant ERR_INVALID_ARGUMENT =
@@ -61,6 +62,14 @@ contract ArtblocksTraitOracle is ITraitOracle {
 
     mapping(uint256 => ProjectInfo) public projectTraitInfo;
     mapping(uint256 => FeatureInfo) public featureTraitInfo;
+
+    /// Append-only relation on `TraitId * TokenId`, for feature traits only.
+    /// (Project trait membership is tracked implicitly through Art Blocks
+    /// token IDs.)
+    mapping(uint256 => mapping(uint256 => bool)) traitMembers;
+    /// `traitMembersCount[_traitId]` is the number of distinct `_tokenId`s
+    /// such that `traitMembers[_traitId][_tokenId]` is true.
+    mapping(uint256 => uint256) traitMembersCount;
 
     constructor() {
         admin = msg.sender;
@@ -121,6 +130,39 @@ contract ArtblocksTraitOracle is ITraitOracle {
             version: _version,
             size: _size
         });
+    }
+
+    /// Adds tokens as members of a feature trait.
+    function addTraitMemberships(uint256 _traitId, uint256[] memory _tokenIds)
+        external
+        onlyAdmin
+    {
+        uint256 _finalSize = featureTraitInfo[_traitId].size;
+        uint256 _originalSize = traitMembersCount[_traitId];
+        uint256 _newSize = _originalSize;
+        for (uint256 _i = 0; _i < _tokenIds.length; _i++) {
+            uint256 _tokenId = _tokenIds[_i];
+            if (traitMembers[_traitId][_tokenId]) continue;
+            traitMembers[_traitId][_tokenId] = true;
+            _newSize++;
+            if (_newSize > _finalSize) revert(ERR_INVALID_ARGUMENT);
+        }
+        if (_newSize == _originalSize) return;
+        traitMembersCount[_traitId] = _newSize;
+        emit TraitMembershipExpanded({traitId: _traitId, newSize: _newSize});
+    }
+
+    function hasFeatureTrait(uint256 _tokenId, uint256 _traitId)
+        external
+        view
+        returns (bool)
+    {
+        uint256 _finalSize = featureTraitInfo[_traitId].size;
+        uint256 _currentSize = traitMembersCount[_traitId];
+        // Before a trait's membership is finalized, we don't affirm any
+        // memberships.
+        if (_currentSize < _finalSize) return false;
+        return traitMembers[_traitId][_tokenId];
     }
 
     function projectTraitId(uint256 _projectId, uint256 _version)

@@ -104,4 +104,71 @@ describe("ArtblocksTraitOracle", () => {
       ).to.be.revertedWith(Errors.ALREADY_EXISTS);
     });
   });
+
+  describe("setting trait memberships", () => {
+    const projectId = 23;
+    const featureName = "Palette: Paddle";
+    const version = 0;
+    const traitId = featureTraitId(projectId, featureName, version);
+
+    it("updates internal state incrementally", async () => {
+      const oracle = await ArtblocksTraitOracle.deploy();
+      await oracle.deployed();
+      const size = 12;
+      await oracle.setFeatureInfo(projectId, featureName, version, size);
+
+      const baseTokenId = 23000000;
+      const tokenIds = [
+        467, 36, 45, 3, 70, 237, 449, 491, 135, 54, 250, 314,
+      ].map((x) => x + baseTokenId);
+      const batch1 = tokenIds.slice(0, 9);
+      const batch2 = tokenIds.slice(9);
+      expect(batch1.length + batch2.length).to.equal(size);
+      const otherTokenId = baseTokenId + 555;
+      expect(!tokenIds.includes(otherTokenId));
+      const hasTrait = (tokenId) => oracle.hasFeatureTrait(tokenId, traitId);
+
+      await expect(oracle.addTraitMemberships(traitId, batch1))
+        .to.emit(oracle, "TraitMembershipExpanded")
+        .withArgs(traitId, batch1.length);
+      expect(await hasTrait(batch1[0])).to.equal(false);
+      expect(await hasTrait(batch2[0])).to.equal(false);
+      expect(await hasTrait(otherTokenId)).to.equal(false);
+
+      await expect(oracle.addTraitMemberships(traitId, batch2))
+        .to.emit(oracle, "TraitMembershipExpanded")
+        .withArgs(traitId, batch1.length + batch2.length);
+      expect(await hasTrait(batch1[0])).to.equal(true);
+      expect(await hasTrait(batch2[0])).to.equal(true);
+      expect(await hasTrait(otherTokenId)).to.equal(false);
+    });
+
+    it("forbids adding too many members", async () => {
+      const oracle = await ArtblocksTraitOracle.deploy();
+      await oracle.deployed();
+      const size = 3;
+      await oracle.setFeatureInfo(projectId, featureName, version, size);
+
+      await oracle.addTraitMemberships(traitId, [1, 2]);
+      await expect(
+        oracle.addTraitMemberships(traitId, [3, 4])
+      ).to.be.revertedWith(Errors.INVALID_ARGUMENT);
+    });
+
+    it("keeps track of members that were added multiple times", async () => {
+      const oracle = await ArtblocksTraitOracle.deploy();
+      await oracle.deployed();
+      const size = 3;
+      await oracle.setFeatureInfo(projectId, featureName, version, size);
+
+      await expect(oracle.addTraitMemberships(traitId, [1, 2, 1]))
+        .to.emit(oracle, "TraitMembershipExpanded")
+        .withArgs(traitId, 2);
+      expect(await oracle.hasFeatureTrait(1, traitId)).to.be.false;
+      await expect(oracle.addTraitMemberships(traitId, [2, 3, 2]))
+        .to.emit(oracle, "TraitMembershipExpanded")
+        .withArgs(traitId, 3);
+      expect(await oracle.hasFeatureTrait(1, traitId)).to.be.true;
+    });
+  });
 });
