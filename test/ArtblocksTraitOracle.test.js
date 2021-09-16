@@ -6,6 +6,12 @@ const TraitType = Object.freeze({
   FEATURE: 1,
 });
 
+const Errors = Object.freeze({
+  ALREADY_EXISTS: "ArtblocksTraitOracle: ALREADY_EXISTS",
+  INVALID_ARGUMENT: "ArtblocksTraitOracle: INVALID_ARGUMENT",
+  UNAUTHORIZED: "ArtblocksTraitOracle: UNAUTHORIZED",
+});
+
 function projectTraitId(projectId, version) {
   const blob = ethers.utils.defaultAbiCoder.encode(
     ["uint256", "uint256", "uint256"],
@@ -55,7 +61,7 @@ describe("ArtblocksTraitOracle", () => {
     });
   });
 
-  describe("sets trait info", () => {
+  describe("sets trait info exactly once", () => {
     it("for projects", async () => {
       const oracle = await ArtblocksTraitOracle.deploy();
       await oracle.deployed();
@@ -72,6 +78,9 @@ describe("ArtblocksTraitOracle", () => {
         projectName,
         ethers.BigNumber.from(size),
       ]);
+      await expect(
+        oracle.setProjectInfo(projectId, version, projectName, size + 1)
+      ).to.be.revertedWith(Errors.ALREADY_EXISTS);
     });
 
     it("for features", async () => {
@@ -90,6 +99,9 @@ describe("ArtblocksTraitOracle", () => {
         featureName,
         ethers.BigNumber.from(size),
       ]);
+      await expect(
+        oracle.setFeatureInfo(projectId, featureName, version, size + 1)
+      ).to.be.revertedWith(Errors.ALREADY_EXISTS);
     });
   });
 });
