@@ -54,4 +54,46 @@ describe("ArtblocksTraitOracle", () => {
       );
     });
   });
+
+  describe("populates trait info", () => {
+    it("for projects", async () => {
+      const oracle = await ArtblocksTraitOracle.deploy();
+      await oracle.deployed();
+      const projectId = 23;
+      const version = 0;
+      const size = 600;
+      const projectName = "Archetype";
+      const traitId = projectTraitId(projectId, version);
+      await expect(
+        oracle.populateProjectInfo(projectId, version, projectName, size)
+      )
+        .to.emit(oracle, "ProjectInfoSet")
+        .withArgs(traitId, projectId, version, size);
+      expect(await oracle.projectTraitInfo(traitId)).to.deep.equal([
+        ethers.BigNumber.from(projectId),
+        projectName,
+        ethers.BigNumber.from(size),
+      ]);
+    });
+
+    it("for features", async () => {
+      const oracle = await ArtblocksTraitOracle.deploy();
+      await oracle.deployed();
+      const projectId = 23;
+      const featureName = "Palette: Paddle";
+      const version = 0;
+      const size = 12;
+      const traitId = featureTraitId(projectId, featureName, version);
+      await expect(
+        oracle.populateFeatureInfo(projectId, featureName, version, size)
+      )
+        .to.emit(oracle, "FeatureInfoSet")
+        .withArgs(traitId, projectId, featureName, version, size);
+      expect(await oracle.featureTraitInfo(traitId)).to.deep.equal([
+        ethers.BigNumber.from(projectId),
+        featureName,
+        ethers.BigNumber.from(size),
+      ]);
+    });
+  });
 });
