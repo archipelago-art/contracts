@@ -98,27 +98,25 @@ contract ArtblocksTraitOracle is ITraitOracle {
         emit OracleSignerChanged(_oracleSigner);
     }
 
-    function _requireSignature(
+    function _requireOracleSignature(
         bytes32 _typeHash,
         bytes memory _message,
-        bytes memory _signature,
-        address _expectedSigner
-    ) internal pure {
+        bytes memory _signature
+    ) internal view {
         bytes32 _rawHash = keccak256(abi.encodePacked(_typeHash, _message));
         bytes32 _ethMessageHash = ECDSA.toEthSignedMessageHash(_rawHash);
         address _signer = ECDSA.recover(_ethMessageHash, _signature);
-        require(_signer == _expectedSigner, ERR_UNAUTHORIZED);
+        require(_signer == oracleSigner, ERR_UNAUTHORIZED);
     }
 
     function setProjectInfo(
         SetProjectInfoMessage memory _msg,
         bytes memory _signature
     ) external {
-        _requireSignature(
+        _requireOracleSignature(
             ArtblocksTraitOracleMessages.TYPEHASH_SET_PROJECT_INFO,
             abi.encode(_msg),
-            _signature,
-            oracleSigner
+            _signature
         );
         _setProjectInfo(
             _msg.projectId,
@@ -157,11 +155,10 @@ contract ArtblocksTraitOracle is ITraitOracle {
         SetFeatureInfoMessage memory _msg,
         bytes memory _signature
     ) external {
-        _requireSignature(
+        _requireOracleSignature(
             ArtblocksTraitOracleMessages.TYPEHASH_SET_FEATURE_INFO,
             abi.encode(_msg),
-            _signature,
-            oracleSigner
+            _signature
         );
         _setFeatureInfo(
             _msg.projectId,
@@ -202,11 +199,10 @@ contract ArtblocksTraitOracle is ITraitOracle {
         AddTraitMembershipsMessage memory _msg,
         bytes memory _signature
     ) external {
-        _requireSignature(
+        _requireOracleSignature(
             ArtblocksTraitOracleMessages.TYPEHASH_ADD_TRAIT_MEMBERSHIPS,
             abi.encode(_msg),
-            _signature,
-            oracleSigner
+            _signature
         );
         _addTraitMemberships(_msg.traitId, _msg.tokenIds);
     }
