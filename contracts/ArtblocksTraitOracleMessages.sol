@@ -33,4 +33,29 @@ library ArtblocksTraitOracleMessages {
         keccak256(
             "AddTraitMembershipsMessage(uint256 traitId,uint256[] tokenIds)"
         );
+
+    function serialize(SetProjectInfoMessage memory _self)
+        internal
+        pure
+        returns (bytes memory)
+    {
+        return abi.encodePacked(TYPEHASH_SET_PROJECT_INFO, abi.encode(_self));
+    }
+
+    function serialize(SetFeatureInfoMessage memory _self)
+        internal
+        pure
+        returns (bytes memory)
+    {
+        return abi.encodePacked(TYPEHASH_SET_FEATURE_INFO, abi.encode(_self));
+    }
+
+    function serialize(AddTraitMembershipsMessage memory _self)
+        internal
+        pure
+        returns (bytes memory)
+    {
+        return
+            abi.encodePacked(TYPEHASH_ADD_TRAIT_MEMBERSHIPS, abi.encode(_self));
+    }
 }

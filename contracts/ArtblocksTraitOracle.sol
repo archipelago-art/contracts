@@ -40,6 +40,10 @@ struct FeatureInfo {
 }
 
 contract ArtblocksTraitOracle is ITraitOracle {
+    using ArtblocksTraitOracleMessages for SetProjectInfoMessage;
+    using ArtblocksTraitOracleMessages for SetFeatureInfoMessage;
+    using ArtblocksTraitOracleMessages for AddTraitMembershipsMessage;
+
     event AdminChanged(address indexed admin);
     event OracleSignerChanged(address indexed oracleSigner);
     event ProjectInfoSet(
@@ -99,11 +103,10 @@ contract ArtblocksTraitOracle is ITraitOracle {
     }
 
     function _requireOracleSignature(
-        bytes32 _typeHash,
         bytes memory _message,
         bytes memory _signature
     ) internal view {
-        bytes32 _rawHash = keccak256(abi.encodePacked(_typeHash, _message));
+        bytes32 _rawHash = keccak256(_message);
         bytes32 _ethMessageHash = ECDSA.toEthSignedMessageHash(_rawHash);
         address _signer = ECDSA.recover(_ethMessageHash, _signature);
         require(_signer == oracleSigner, ERR_UNAUTHORIZED);
@@ -113,11 +116,7 @@ contract ArtblocksTraitOracle is ITraitOracle {
         SetProjectInfoMessage memory _msg,
         bytes memory _signature
     ) external {
-        _requireOracleSignature(
-            ArtblocksTraitOracleMessages.TYPEHASH_SET_PROJECT_INFO,
-            abi.encode(_msg),
-            _signature
-        );
+        _requireOracleSignature(_msg.serialize(), _signature);
         _setProjectInfo(
             _msg.projectId,
             _msg.version,
@@ -155,11 +154,7 @@ contract ArtblocksTraitOracle is ITraitOracle {
         SetFeatureInfoMessage memory _msg,
         bytes memory _signature
     ) external {
-        _requireOracleSignature(
-            ArtblocksTraitOracleMessages.TYPEHASH_SET_FEATURE_INFO,
-            abi.encode(_msg),
-            _signature
-        );
+        _requireOracleSignature(_msg.serialize(), _signature);
         _setFeatureInfo(
             _msg.projectId,
             _msg.featureName,
@@ -199,11 +194,7 @@ contract ArtblocksTraitOracle is ITraitOracle {
         AddTraitMembershipsMessage memory _msg,
         bytes memory _signature
     ) external {
-        _requireOracleSignature(
-            ArtblocksTraitOracleMessages.TYPEHASH_ADD_TRAIT_MEMBERSHIPS,
-            abi.encode(_msg),
-            _signature
-        );
+        _requireOracleSignature(_msg.serialize(), _signature);
         _addTraitMemberships(_msg.traitId, _msg.tokenIds);
     }
 
