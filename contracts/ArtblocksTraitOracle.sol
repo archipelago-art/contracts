@@ -146,12 +146,10 @@ contract ArtblocksTraitOracle is ITraitOracle {
         string memory _projectName,
         uint256 _size
     ) internal {
+        require(_size > 0, ERR_INVALID_ARGUMENT);
         require(!_stringEmpty(_projectName), ERR_INVALID_ARGUMENT);
         uint256 _traitId = projectTraitId(_projectId, _version);
-        require(
-            _stringEmpty(projectTraitInfo[_traitId].name),
-            ERR_ALREADY_EXISTS
-        );
+        require(projectTraitInfo[_traitId].size == 0, ERR_ALREADY_EXISTS);
         projectTraitInfo[_traitId] = ProjectInfo({
             projectId: _projectId,
             name: _projectName,
@@ -184,12 +182,10 @@ contract ArtblocksTraitOracle is ITraitOracle {
         uint256 _version,
         uint256 _size
     ) internal {
+        require(_size > 0, ERR_INVALID_ARGUMENT);
         require(!_stringEmpty(_featureName), ERR_INVALID_ARGUMENT);
         uint256 _traitId = featureTraitId(_projectId, _featureName, _version);
-        require(
-            _stringEmpty(featureTraitInfo[_traitId].name),
-            ERR_ALREADY_EXISTS
-        );
+        require(featureTraitInfo[_traitId].size == 0, ERR_ALREADY_EXISTS);
         featureTraitInfo[_traitId] = FeatureInfo({
             projectId: _projectId,
             name: _featureName,

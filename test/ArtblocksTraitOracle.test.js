@@ -198,6 +198,40 @@ describe("ArtblocksTraitOracle", () => {
     });
   });
 
+  describe("forbids setting empty trait info", () => {
+    it("for projects", async () => {
+      const oracle = await ArtblocksTraitOracle.deploy();
+      await oracle.deployed();
+      await oracle.setOracleSigner(signers[1].address);
+      const msg = {
+        projectId: 23,
+        version: 0,
+        projectName: "Archetype",
+        size: 0,
+      };
+      const sig = await signSetProjectInfoMessage(signers[1], msg);
+      await expect(oracle.setProjectInfo(msg, sig)).to.be.revertedWith(
+        Errors.INVALID_ARGUMENT
+      );
+    });
+
+    it("for features", async () => {
+      const oracle = await ArtblocksTraitOracle.deploy();
+      await oracle.deployed();
+      await oracle.setOracleSigner(signers[1].address);
+      const msg = {
+        projectId: 23,
+        featureName: "Palette: Paddle",
+        version: 0,
+        size: 0,
+      };
+      const sig = await signSetFeatureInfoMessage(signers[1], msg);
+      await expect(oracle.setFeatureInfo(msg, sig)).to.be.revertedWith(
+        Errors.INVALID_ARGUMENT
+      );
+    });
+  });
+
   describe("setting trait memberships", () => {
     const projectId = 23;
     const featureName = "Palette: Paddle";
