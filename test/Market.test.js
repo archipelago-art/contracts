@@ -107,50 +107,7 @@ describe("Market", () => {
 
   async function signBid(bid, signer) {
     const blob = ethers.utils.defaultAbiCoder.encode(
-      [
-        {
-          components: [
-            {
-              internalType: "uint256",
-              name: "nonce",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "created",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "deadline",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "price",
-              type: "uint256",
-            },
-            {
-              internalType: "enum BidType",
-              name: "bidType",
-              type: "uint8",
-            },
-            {
-              internalType: "uint256",
-              name: "tokenId",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256[]",
-              name: "traitset",
-              type: "uint256[]",
-            },
-          ],
-          internalType: "struct Bid",
-          name: "bid",
-          type: "tuple",
-        },
-      ],
+      ["(uint256,uint256,uint256,uint256,uint8,uint256,uint256[])"],
       [
         [
           bid.nonce,
@@ -168,40 +125,7 @@ describe("Market", () => {
 
   async function signAsk(ask, signer) {
     const blob = ethers.utils.defaultAbiCoder.encode(
-      [
-        {
-          components: [
-            {
-              internalType: "uint256",
-              name: "nonce",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "created",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "deadline",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "price",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "tokenId",
-              type: "uint256",
-            },
-          ],
-          internalType: "struct Ask",
-          name: "ask",
-          type: "tuple",
-        },
-      ],
+      ["(uint256,uint256,uint256,uint256,uint256)"],
       [[ask.nonce, ask.created, ask.deadline, ask.price, ask.tokenId]]
     );
     return signBlob(blob, signer);
