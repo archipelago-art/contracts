@@ -12,7 +12,6 @@ struct SetFeatureInfoMessage {
     uint256 projectId;
     string featureName;
     uint256 version;
-    uint256 size;
 }
 
 struct AddTraitMembershipsMessage {
@@ -27,7 +26,7 @@ library ArtblocksTraitOracleMessages {
         );
     bytes32 internal constant TYPEHASH_SET_FEATURE_INFO =
         keccak256(
-            "SetFeatureInfoMessage(uint256 projectId,string featureName,uint256 version,uint256 size)"
+            "SetFeatureInfoMessage(uint256 projectId,string featureName,uint256 version)"
         );
     bytes32 internal constant TYPEHASH_ADD_TRAIT_MEMBERSHIPS =
         keccak256(
@@ -59,8 +58,7 @@ library ArtblocksTraitOracleMessages {
                 TYPEHASH_SET_FEATURE_INFO,
                 _self.projectId,
                 keccak256(abi.encodePacked(_self.featureName)),
-                _self.version,
-                _self.size
+                _self.version
             );
     }
 

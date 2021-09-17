@@ -61,7 +61,6 @@ async function signSetFeatureInfoMessage(signer, msg) {
         { type: "uint256", name: "projectId" },
         { type: "string", name: "featureName" },
         { type: "uint256", name: "version" },
-        { type: "uint256", name: "size" },
       ],
     },
     msg
@@ -176,30 +175,26 @@ describe("ArtblocksTraitOracle", () => {
       const projectId = 23;
       const featureName = "Palette: Paddle";
       const version = 0;
-      const size = 12;
       const traitId = featureTraitId(projectId, featureName, version);
 
-      const msg1 = { projectId, featureName, version, size };
-      const sig1 = await signSetFeatureInfoMessage(signers[1], msg1);
-      await expect(oracle.setFeatureInfo(msg1, sig1))
+      const msg = { projectId, featureName, version };
+      const sig = await signSetFeatureInfoMessage(signers[1], msg);
+      await expect(oracle.setFeatureInfo(msg, sig))
         .to.emit(oracle, "FeatureInfoSet")
-        .withArgs(traitId, projectId, featureName, featureName, version, size);
+        .withArgs(traitId, projectId, featureName, featureName, version);
       expect(await oracle.featureTraitInfo(traitId)).to.deep.equal([
         ethers.BigNumber.from(projectId),
         featureName,
-        ethers.BigNumber.from(size),
       ]);
 
-      const msg2 = { projectId, featureName, version, size: size + 1 };
-      const sig2 = await signSetFeatureInfoMessage(signers[1], msg2);
-      await expect(oracle.setFeatureInfo(msg2, sig2)).to.be.revertedWith(
+      await expect(oracle.setFeatureInfo(msg, sig)).to.be.revertedWith(
         Errors.ALREADY_EXISTS
       );
     });
   });
 
   describe("forbids setting empty trait info", () => {
-    it("for projects", async () => {
+    it("for zero-sized projects", async () => {
       const oracle = await ArtblocksTraitOracle.deploy();
       await oracle.deployed();
       await oracle.setOracleSigner(signers[1].address);
@@ -215,15 +210,30 @@ describe("ArtblocksTraitOracle", () => {
       );
     });
 
-    it("for features", async () => {
+    it("for empty-named projects", async () => {
       const oracle = await ArtblocksTraitOracle.deploy();
       await oracle.deployed();
       await oracle.setOracleSigner(signers[1].address);
       const msg = {
         projectId: 23,
-        featureName: "Palette: Paddle",
         version: 0,
-        size: 0,
+        projectName: "",
+        size: 600,
+      };
+      const sig = await signSetProjectInfoMessage(signers[1], msg);
+      await expect(oracle.setProjectInfo(msg, sig)).to.be.revertedWith(
+        Errors.INVALID_ARGUMENT
+      );
+    });
+
+    it("for empty-named features", async () => {
+      const oracle = await ArtblocksTraitOracle.deploy();
+      await oracle.deployed();
+      await oracle.setOracleSigner(signers[1].address);
+      const msg = {
+        projectId: 23,
+        featureName: "",
+        version: 0,
       };
       const sig = await signSetFeatureInfoMessage(signers[1], msg);
       await expect(oracle.setFeatureInfo(msg, sig)).to.be.revertedWith(
@@ -248,12 +258,11 @@ describe("ArtblocksTraitOracle", () => {
 
     it("updates internal state incrementally", async () => {
       const { oracle, signer } = await setUp();
-      const size = 12;
-      const msg = { projectId, featureName, version, size };
+      const msg = { projectId, featureName, version };
       const sig = await signSetFeatureInfoMessage(signer, msg);
-      expect(await oracle.isFeatureFinalized(traitId)).to.equal(false);
+      expect(await oracle.featureMembers(traitId)).to.equal(0);
       await oracle.setFeatureInfo(msg, sig);
-      expect(await oracle.isFeatureFinalized(traitId)).to.equal(false);
+      expect(await oracle.featureMembers(traitId)).to.equal(0);
 
       const baseTokenId = 23000000;
       const tokenIds = [
@@ -261,7 +270,6 @@ describe("ArtblocksTraitOracle", () => {
       ].map((x) => x + baseTokenId);
       const batch1 = tokenIds.slice(0, 9);
       const batch2 = tokenIds.slice(9);
-      expect(batch1.length + batch2.length).to.equal(size);
       const otherTokenId = baseTokenId + 555;
       expect(!tokenIds.includes(otherTokenId));
 
@@ -269,45 +277,26 @@ describe("ArtblocksTraitOracle", () => {
       const sig1 = await signAddTraitMembershipsMessage(signer, msg1);
       await expect(oracle.addTraitMemberships(msg1, sig1))
         .to.emit(oracle, "TraitMembershipExpanded")
-        .withArgs(traitId, batch1.length, tokenIds.length, false);
+        .withArgs(traitId, batch1.length);
       expect(await oracle.hasTrait(batch1[0], traitId)).to.equal(true);
       expect(await oracle.hasTrait(batch2[0], traitId)).to.equal(false);
       expect(await oracle.hasTrait(otherTokenId, traitId)).to.equal(false);
-      expect(await oracle.isFeatureFinalized(traitId)).to.equal(false);
+      expect(await oracle.featureMembers(traitId)).to.equal(batch1.length);
 
       const msg2 = { traitId, tokenIds: batch2 };
       const sig2 = await signAddTraitMembershipsMessage(signer, msg2);
       await expect(oracle.addTraitMemberships(msg2, sig2))
         .to.emit(oracle, "TraitMembershipExpanded")
-        .withArgs(traitId, tokenIds.length, tokenIds.length, true);
+        .withArgs(traitId, tokenIds.length);
       expect(await oracle.hasTrait(batch1[0], traitId)).to.equal(true);
       expect(await oracle.hasTrait(batch2[0], traitId)).to.equal(true);
       expect(await oracle.hasTrait(otherTokenId, traitId)).to.equal(false);
-      expect(await oracle.isFeatureFinalized(traitId)).to.equal(true);
-    });
-
-    it("forbids adding too many members", async () => {
-      const { oracle, signer } = await setUp();
-      const size = 3;
-      const msg = { projectId, featureName, version, size };
-      const sig = await signSetFeatureInfoMessage(signer, msg);
-      await oracle.setFeatureInfo(msg, sig);
-
-      const msg1 = { traitId, tokenIds: [1, 2] };
-      const sig1 = await signAddTraitMembershipsMessage(signer, msg1);
-      await oracle.addTraitMemberships(msg1, sig1);
-
-      const msg2 = { traitId, tokenIds: [3, 4] };
-      const sig2 = await signAddTraitMembershipsMessage(signer, msg2);
-      await expect(oracle.addTraitMemberships(msg2, sig2)).to.be.revertedWith(
-        Errors.INVALID_ARGUMENT
-      );
+      expect(await oracle.featureMembers(traitId)).to.equal(tokenIds.length);
     });
 
     it("keeps track of members that were added multiple times", async () => {
       const { oracle, signer } = await setUp();
-      const size = 3;
-      const msg = { projectId, featureName, version, size };
+      const msg = { projectId, featureName, version };
       const sig = await signSetFeatureInfoMessage(signer, msg);
       await oracle.setFeatureInfo(msg, sig);
 
@@ -315,26 +304,26 @@ describe("ArtblocksTraitOracle", () => {
       const sig1 = await signAddTraitMembershipsMessage(signer, msg1);
       await expect(oracle.addTraitMemberships(msg1, sig1))
         .to.emit(oracle, "TraitMembershipExpanded")
-        .withArgs(traitId, 2, 3, false);
+        .withArgs(traitId, 2);
       expect(await oracle.hasTrait(1, traitId)).to.be.true;
       expect(await oracle.hasTrait(2, traitId)).to.be.true;
       expect(await oracle.hasTrait(3, traitId)).to.be.false;
-      expect(await oracle.isFeatureFinalized(traitId)).to.be.false;
+      expect(await oracle.featureMembers(traitId)).to.equal(2);
 
       const msg2 = { traitId, tokenIds: [2, 3, 2] };
       const sig2 = await signAddTraitMembershipsMessage(signer, msg2);
       await expect(oracle.addTraitMemberships(msg2, sig2))
         .to.emit(oracle, "TraitMembershipExpanded")
-        .withArgs(traitId, 3, 3, true);
+        .withArgs(traitId, 3);
       expect(await oracle.hasTrait(1, traitId)).to.be.true;
       expect(await oracle.hasTrait(2, traitId)).to.be.true;
       expect(await oracle.hasTrait(3, traitId)).to.be.true;
-      expect(await oracle.isFeatureFinalized(traitId)).to.be.true;
+      expect(await oracle.featureMembers(traitId)).to.equal(3);
     });
 
     it("rejects signatures from unauthorized accounts", async () => {
       const { oracle, signer, nonSigner } = await setUp();
-      const msg = { projectId, featureName, version, size: 600 };
+      const msg = { projectId, featureName, version };
       const sig = await signSetFeatureInfoMessage(signer, msg);
       await oracle.setFeatureInfo(msg, sig);
 
@@ -347,7 +336,7 @@ describe("ArtblocksTraitOracle", () => {
 
     it("rejects signatures for other valid messages", async () => {
       const { oracle, signer } = await setUp();
-      const msg = { projectId, featureName, version, size: 600 };
+      const msg = { projectId, featureName, version };
       const sig = await signSetFeatureInfoMessage(signer, msg);
       await oracle.setFeatureInfo(msg, sig);
 

@@ -35,8 +35,6 @@ struct FeatureInfo {
     uint256 projectId;
     /// The human-readable name of this feature, like "Palette: Paddle".
     string name;
-    /// The number of tokens that have this feature, like `12`.
-    uint256 size;
 }
 
 contract ArtblocksTraitOracle is ITraitOracle {
@@ -58,15 +56,9 @@ contract ArtblocksTraitOracle is ITraitOracle {
         uint256 indexed projectId,
         string indexed name,
         string fullName,
-        uint256 version,
-        uint256 size
+        uint256 version
     );
-    event TraitMembershipExpanded(
-        uint256 indexed traitId,
-        uint256 newSize,
-        uint256 finalSize,
-        bool finalized
-    );
+    event TraitMembershipExpanded(uint256 indexed traitId, uint256 newSize);
 
     string constant ERR_ALREADY_EXISTS = "ArtblocksTraitOracle: ALREADY_EXISTS";
     string constant ERR_INVALID_ARGUMENT =
@@ -176,36 +168,30 @@ contract ArtblocksTraitOracle is ITraitOracle {
         bytes memory _signature
     ) external {
         _requireOracleSignature(_msg.serialize(), _signature);
-        _setFeatureInfo(
-            _msg.projectId,
-            _msg.featureName,
-            _msg.version,
-            _msg.size
-        );
+        _setFeatureInfo(_msg.projectId, _msg.featureName, _msg.version);
     }
 
     function _setFeatureInfo(
         uint256 _projectId,
         string memory _featureName,
-        uint256 _version,
-        uint256 _size
+        uint256 _version
     ) internal {
-        require(_size > 0, ERR_INVALID_ARGUMENT);
         require(!_stringEmpty(_featureName), ERR_INVALID_ARGUMENT);
         uint256 _traitId = featureTraitId(_projectId, _featureName, _version);
-        require(featureTraitInfo[_traitId].size == 0, ERR_ALREADY_EXISTS);
+        require(
+            _stringEmpty(featureTraitInfo[_traitId].name),
+            ERR_ALREADY_EXISTS
+        );
         featureTraitInfo[_traitId] = FeatureInfo({
             projectId: _projectId,
-            name: _featureName,
-            size: _size
+            name: _featureName
         });
         emit FeatureInfoSet({
             traitId: _traitId,
             projectId: _projectId,
             name: _featureName,
             fullName: _featureName,
-            version: _version,
-            size: _size
+            version: _version
         });
     }
 
@@ -221,7 +207,6 @@ contract ArtblocksTraitOracle is ITraitOracle {
     function _addTraitMemberships(uint256 _traitId, uint256[] memory _tokenIds)
         internal
     {
-        uint256 _finalSize = featureTraitInfo[_traitId].size;
         uint256 _originalSize = traitMembersCount[_traitId];
         uint256 _newSize = _originalSize;
         for (uint256 _i = 0; _i < _tokenIds.length; _i++) {
@@ -229,16 +214,10 @@ contract ArtblocksTraitOracle is ITraitOracle {
             if (traitMembers[_traitId][_tokenId]) continue;
             traitMembers[_traitId][_tokenId] = true;
             _newSize++;
-            if (_newSize > _finalSize) revert(ERR_INVALID_ARGUMENT);
         }
         if (_newSize == _originalSize) return;
         traitMembersCount[_traitId] = _newSize;
-        emit TraitMembershipExpanded({
-            traitId: _traitId,
-            newSize: _newSize,
-            finalSize: _finalSize,
-            finalized: _newSize == _finalSize
-        });
+        emit TraitMembershipExpanded({traitId: _traitId, newSize: _newSize});
     }
 
     function hasTrait(uint256 _tokenId, uint256 _traitId)
@@ -310,21 +289,14 @@ contract ArtblocksTraitOracle is ITraitOracle {
         return uint256(keccak256(_blob));
     }
 
-    /// Checks whether the feature trait by the given ID has been finalized:
-    /// i.e., whether it's guaranteed that no new tokens will be added to that
-    /// trait.
-    ///
-    /// A trait that has not been initialized (with `setFeatureInfo`) is not
-    /// finalized.
-    function isFeatureFinalized(uint256 _featureTraitId)
+    /// Returns the number of tokens that are currently known to have the given
+    /// feature trait.
+    function featureMembers(uint256 _featureTraitId)
         external
         view
-        returns (bool)
+        returns (uint256)
     {
-        uint256 _finalSize = featureTraitInfo[_featureTraitId].size;
-        if (_finalSize == 0) return false;
-        uint256 _currentSize = traitMembersCount[_featureTraitId];
-        return _currentSize == _finalSize;
+        return traitMembersCount[_featureTraitId];
     }
 
     /// Dumb helper to test whether a string is empty, because Solidity doesn't
