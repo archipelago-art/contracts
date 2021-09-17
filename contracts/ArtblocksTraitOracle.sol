@@ -86,31 +86,28 @@ contract ArtblocksTraitOracle is ITraitOracle {
         _;
     }
 
-    modifier requireSignature(
+    function _requireSignature(
         bytes32 _typeHash,
         bytes memory _message,
         bytes memory _signature,
         address _expectedSigner
-    ) {
+    ) internal pure {
         bytes32 _rawHash = keccak256(abi.encodePacked(_typeHash, _message));
         bytes32 _ethMessageHash = ECDSA.toEthSignedMessageHash(_rawHash);
         address _signer = ECDSA.recover(_ethMessageHash, _signature);
         require(_signer == _expectedSigner, ERR_UNAUTHORIZED);
-        _;
     }
 
     function setProjectInfo(
         SetProjectInfoMessage memory _msg,
         bytes memory _signature
-    )
-        external
-        requireSignature(
+    ) external {
+        _requireSignature(
             ArtblocksTraitOracleMessages.TYPEHASH_SET_PROJECT_INFO,
             abi.encode(_msg),
             _signature,
             admin
-        )
-    {
+        );
         _setProjectInfo(
             _msg.projectId,
             _msg.version,
@@ -147,15 +144,13 @@ contract ArtblocksTraitOracle is ITraitOracle {
     function setFeatureInfo(
         SetFeatureInfoMessage memory _msg,
         bytes memory _signature
-    )
-        external
-        requireSignature(
+    ) external {
+        _requireSignature(
             ArtblocksTraitOracleMessages.TYPEHASH_SET_FEATURE_INFO,
             abi.encode(_msg),
             _signature,
             admin
-        )
-    {
+        );
         _setFeatureInfo(
             _msg.projectId,
             _msg.featureName,
@@ -194,15 +189,13 @@ contract ArtblocksTraitOracle is ITraitOracle {
     function addTraitMemberships(
         AddTraitMembershipsMessage memory _msg,
         bytes memory _signature
-    )
-        external
-        requireSignature(
+    ) external {
+        _requireSignature(
             ArtblocksTraitOracleMessages.TYPEHASH_ADD_TRAIT_MEMBERSHIPS,
             abi.encode(_msg),
             _signature,
             admin
-        )
-    {
+        );
         _addTraitMemberships(_msg.traitId, _msg.tokenIds);
     }
 
