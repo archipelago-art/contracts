@@ -269,7 +269,7 @@ describe("ArtblocksTraitOracle", () => {
       const sig1 = await signAddTraitMembershipsMessage(signer, msg1);
       await expect(oracle.addTraitMemberships(msg1, sig1))
         .to.emit(oracle, "TraitMembershipExpanded")
-        .withArgs(traitId, batch1.length);
+        .withArgs(traitId, batch1.length, tokenIds.length, false);
       expect(await oracle.hasTrait(batch1[0], traitId)).to.equal(true);
       expect(await oracle.hasTrait(batch2[0], traitId)).to.equal(false);
       expect(await oracle.hasTrait(otherTokenId, traitId)).to.equal(false);
@@ -279,7 +279,7 @@ describe("ArtblocksTraitOracle", () => {
       const sig2 = await signAddTraitMembershipsMessage(signer, msg2);
       await expect(oracle.addTraitMemberships(msg2, sig2))
         .to.emit(oracle, "TraitMembershipExpanded")
-        .withArgs(traitId, batch1.length + batch2.length);
+        .withArgs(traitId, tokenIds.length, tokenIds.length, true);
       expect(await oracle.hasTrait(batch1[0], traitId)).to.equal(true);
       expect(await oracle.hasTrait(batch2[0], traitId)).to.equal(true);
       expect(await oracle.hasTrait(otherTokenId, traitId)).to.equal(false);
@@ -315,7 +315,7 @@ describe("ArtblocksTraitOracle", () => {
       const sig1 = await signAddTraitMembershipsMessage(signer, msg1);
       await expect(oracle.addTraitMemberships(msg1, sig1))
         .to.emit(oracle, "TraitMembershipExpanded")
-        .withArgs(traitId, 2);
+        .withArgs(traitId, 2, 3, false);
       expect(await oracle.hasTrait(1, traitId)).to.be.true;
       expect(await oracle.hasTrait(2, traitId)).to.be.true;
       expect(await oracle.hasTrait(3, traitId)).to.be.false;
@@ -325,7 +325,7 @@ describe("ArtblocksTraitOracle", () => {
       const sig2 = await signAddTraitMembershipsMessage(signer, msg2);
       await expect(oracle.addTraitMemberships(msg2, sig2))
         .to.emit(oracle, "TraitMembershipExpanded")
-        .withArgs(traitId, 3);
+        .withArgs(traitId, 3, 3, true);
       expect(await oracle.hasTrait(1, traitId)).to.be.true;
       expect(await oracle.hasTrait(2, traitId)).to.be.true;
       expect(await oracle.hasTrait(3, traitId)).to.be.true;

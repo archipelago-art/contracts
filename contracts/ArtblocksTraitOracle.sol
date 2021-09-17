@@ -59,7 +59,12 @@ contract ArtblocksTraitOracle is ITraitOracle {
         uint256 version,
         uint256 size
     );
-    event TraitMembershipExpanded(uint256 indexed traitId, uint256 newSize);
+    event TraitMembershipExpanded(
+        uint256 indexed traitId,
+        uint256 newSize,
+        uint256 finalSize,
+        bool finalized
+    );
 
     string constant ERR_ALREADY_EXISTS = "ArtblocksTraitOracle: ALREADY_EXISTS";
     string constant ERR_INVALID_ARGUMENT =
@@ -224,7 +229,12 @@ contract ArtblocksTraitOracle is ITraitOracle {
         }
         if (_newSize == _originalSize) return;
         traitMembersCount[_traitId] = _newSize;
-        emit TraitMembershipExpanded({traitId: _traitId, newSize: _newSize});
+        emit TraitMembershipExpanded({
+            traitId: _traitId,
+            newSize: _newSize,
+            finalSize: _finalSize,
+            finalized: _newSize == _finalSize
+        });
     }
 
     function hasTrait(uint256 _tokenId, uint256 _traitId)
