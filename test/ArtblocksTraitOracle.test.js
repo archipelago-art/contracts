@@ -217,7 +217,9 @@ describe("ArtblocksTraitOracle", () => {
       const size = 12;
       const msg = { projectId, featureName, version, size };
       const sig = await signSetFeatureInfoMessage(signer, msg);
+      expect(await oracle.isFeatureFinalized(traitId)).to.equal(false);
       await oracle.setFeatureInfo(msg, sig);
+      expect(await oracle.isFeatureFinalized(traitId)).to.equal(false);
 
       const baseTokenId = 23000000;
       const tokenIds = [
@@ -234,9 +236,10 @@ describe("ArtblocksTraitOracle", () => {
       await expect(oracle.addTraitMemberships(msg1, sig1))
         .to.emit(oracle, "TraitMembershipExpanded")
         .withArgs(traitId, batch1.length);
-      expect(await oracle.hasTrait(batch1[0], traitId)).to.equal(false);
+      expect(await oracle.hasTrait(batch1[0], traitId)).to.equal(true);
       expect(await oracle.hasTrait(batch2[0], traitId)).to.equal(false);
       expect(await oracle.hasTrait(otherTokenId, traitId)).to.equal(false);
+      expect(await oracle.isFeatureFinalized(traitId)).to.equal(false);
 
       const msg2 = { traitId, tokenIds: batch2 };
       const sig2 = await signAddTraitMembershipsMessage(signer, msg2);
@@ -246,6 +249,7 @@ describe("ArtblocksTraitOracle", () => {
       expect(await oracle.hasTrait(batch1[0], traitId)).to.equal(true);
       expect(await oracle.hasTrait(batch2[0], traitId)).to.equal(true);
       expect(await oracle.hasTrait(otherTokenId, traitId)).to.equal(false);
+      expect(await oracle.isFeatureFinalized(traitId)).to.equal(true);
     });
 
     it("forbids adding too many members", async () => {
@@ -278,14 +282,20 @@ describe("ArtblocksTraitOracle", () => {
       await expect(oracle.addTraitMemberships(msg1, sig1))
         .to.emit(oracle, "TraitMembershipExpanded")
         .withArgs(traitId, 2);
+      expect(await oracle.hasTrait(1, traitId)).to.be.true;
+      expect(await oracle.hasTrait(2, traitId)).to.be.true;
+      expect(await oracle.hasTrait(3, traitId)).to.be.false;
+      expect(await oracle.isFeatureFinalized(traitId)).to.be.false;
 
       const msg2 = { traitId, tokenIds: [2, 3, 2] };
       const sig2 = await signAddTraitMembershipsMessage(signer, msg2);
-      expect(await oracle.hasTrait(1, traitId)).to.be.false;
       await expect(oracle.addTraitMemberships(msg2, sig2))
         .to.emit(oracle, "TraitMembershipExpanded")
         .withArgs(traitId, 3);
       expect(await oracle.hasTrait(1, traitId)).to.be.true;
+      expect(await oracle.hasTrait(2, traitId)).to.be.true;
+      expect(await oracle.hasTrait(3, traitId)).to.be.true;
+      expect(await oracle.isFeatureFinalized(traitId)).to.be.true;
     });
 
     it("rejects signatures from unauthorized accounts", async () => {

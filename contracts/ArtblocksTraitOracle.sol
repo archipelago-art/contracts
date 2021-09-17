@@ -267,11 +267,9 @@ contract ArtblocksTraitOracle is ITraitOracle {
         view
         returns (bool)
     {
-        uint256 _finalSize = featureTraitInfo[_traitId].size;
-        uint256 _currentSize = traitMembersCount[_traitId];
-        // Before a trait's membership is finalized, we don't affirm any
-        // memberships.
-        if (_currentSize < _finalSize) return false;
+        // This affirms memberships even for traits that aren't finalized; it's
+        // the responsibility of a conscientious frontend to discourage users
+        // from making bids on such traits.
         return traitMembers[_traitId][_tokenId];
     }
 
@@ -300,6 +298,23 @@ contract ArtblocksTraitOracle is ITraitOracle {
             _version
         );
         return uint256(keccak256(_blob));
+    }
+
+    /// Checks whether the feature trait by the given ID has been finalized:
+    /// i.e., whether it's guaranteed that no new tokens will be added to that
+    /// trait.
+    ///
+    /// A trait that has not been initialized (with `setFeatureInfo`) is not
+    /// finalized.
+    function isFeatureFinalized(uint256 _featureTraitId)
+        external
+        view
+        returns (bool)
+    {
+        uint256 _finalSize = featureTraitInfo[_featureTraitId].size;
+        if (_finalSize == 0) return false;
+        uint256 _currentSize = traitMembersCount[_featureTraitId];
+        return _currentSize == _finalSize;
     }
 
     /// Dumb helper to test whether a string is empty, because Solidity doesn't
