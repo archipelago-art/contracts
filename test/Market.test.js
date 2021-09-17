@@ -14,22 +14,29 @@ describe("Market", () => {
   let TestERC20;
   let TestERC721;
   before(async () => {
-    [Market, TestERC20, TestERC721] = await Promise.all([
+    [Market, TestERC20, TestERC721, TestTraitOracle] = await Promise.all([
       ethers.getContractFactory("Market"),
       ethers.getContractFactory("TestERC20"),
       ethers.getContractFactory("TestERC721"),
+      ethers.getContractFactory("TestTraitOracle"),
     ]);
   });
 
   async function setup() {
     const signers = await ethers.getSigners();
-    const [market, weth, nft] = await Promise.all([
+    const [market, weth, nft, oracle] = await Promise.all([
       Market.deploy(),
       TestERC20.deploy(),
       TestERC721.deploy(),
+      TestTraitOracle.deploy(),
     ]);
-    await Promise.all([market.deployed(), weth.deployed(), nft.deployed()]);
-    await market.initialize(nft.address, weth.address);
+    await Promise.all([
+      market.deployed(),
+      weth.deployed(),
+      nft.deployed(),
+      oracle.deployed(),
+    ]);
+    await market.initialize(nft.address, weth.address, oracle.address);
     const bidder = signers[1];
     const asker = signers[2];
     await weth.mint(bidder.address, exa); // give bidder 1 full weth
@@ -40,7 +47,7 @@ describe("Market", () => {
     await nft.mint(asker.address, 0);
     await nft.mint(asker.address, 1);
     await nft.connect(asker).setApprovalForAll(market.address, true);
-    return { signers, market, weth, nft, bidder, asker };
+    return { signers, market, weth, nft, bidder, asker, oracle };
   }
 
   it("deploys", async () => {
@@ -148,6 +155,46 @@ describe("Market", () => {
       expect(await nft.ownerOf(0)).to.equal(bidder.address);
       expect(await weth.balanceOf(bidder.address)).to.equal(0);
       expect(await weth.balanceOf(asker.address)).to.equal(exa); // TODO: fix when we add royalties
+    });
+
+    describe("traits and oracle", () => {
+      it("any nft can match if the traitset is empty", async () => {
+        const { market, bidder, asker } = await setup();
+        const bid = traitsetBid();
+        const ask = newAsk();
+        await fillOrder(market, bid, bidder, ask, asker);
+      });
+      it("a nft can match a single trait", async () => {
+        const { market, bidder, asker, oracle } = await setup();
+        const bid = traitsetBid({ traitset: [42] });
+        const ask = newAsk();
+        await oracle.setTrait(0, 42);
+        await fillOrder(market, bid, bidder, ask, asker);
+      });
+      it("a nft can match a trait intersection", async () => {
+        const { market, bidder, asker, oracle } = await setup();
+        const bid = traitsetBid({ traitset: [42, 69] });
+        const ask = newAsk();
+        await oracle.setTrait(0, 42);
+        await oracle.setTrait(0, 69);
+        await fillOrder(market, bid, bidder, ask, asker);
+      });
+      it("a nft can fail to match a single trait", async () => {
+        const { market, bidder, asker, oracle } = await setup();
+        const bid = traitsetBid({ traitset: [42] });
+        const ask = newAsk();
+        await oracle.setTrait(0, 69);
+        const fail = fillOrder(market, bid, bidder, ask, asker);
+        await expect(fail).to.be.revertedWith("missing trait");
+      });
+      it("a nft can fail to match an intersection", async () => {
+        const { market, bidder, asker, oracle } = await setup();
+        const bid = traitsetBid({ traitset: [42, 69] });
+        const ask = newAsk();
+        await oracle.setTrait(0, 69); // it has one trait but not both
+        const fail = fillOrder(market, bid, bidder, ask, asker);
+        await expect(fail).to.be.revertedWith("missing trait");
+      });
     });
 
     describe("failure cases", () => {

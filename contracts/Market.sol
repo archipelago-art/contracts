@@ -5,6 +5,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
+import "./ITraitOracle.sol";
+
 enum BidType {
     /// A bid for a specific token, keyed by token ID.
     SINGLE_TOKEN,
@@ -51,6 +53,7 @@ contract Market {
 
     IERC721 token;
     IERC20 weth;
+    ITraitOracle traitOracle;
     mapping(address => uint256) public bidTimestampCancellation;
     mapping(address => uint256) public askTimestampCancellation;
     mapping(address => mapping(uint256 => bool)) public nonceCancellation;
@@ -60,13 +63,20 @@ contract Market {
     string constant ORDER_CANCELLED_OR_EXPIRED =
         "Market: order cancelled or expired";
 
-    function initialize(IERC721 _token, IERC20 _weth) external {
+    function initialize(
+        IERC721 _token,
+        IERC20 _weth,
+        ITraitOracle _traitOracle
+    ) external {
         require(
-            address(token) == address(0) && address(weth) == address(0),
+            address(token) == address(0) &&
+                address(weth) == address(0) &&
+                address(traitOracle) == address(0),
             "already initialized"
         );
         token = _token;
         weth = _weth;
+        traitOracle = _traitOracle;
     }
 
     function _verify(bytes memory _message, bytes memory _signature)
@@ -163,10 +173,14 @@ contract Market {
         require(bid.price == ask.price, "price mismatch");
 
         if (bid.bidType == BidType.SINGLE_TOKEN) {
-            require(bid.tokenId == ask.tokenId, "tokenid mismatch");
+            require(bid.tokenId == tokenId, "tokenid mismatch");
         } else {
-            revert("not yet supported");
-            // TODO: Consult trait oracle and verify tokenid is included in trait.
+            for (uint256 _i = 0; _i < bid.traitset.length; _i++) {
+                require(
+                    traitOracle.hasTrait(tokenId, bid.traitset[_i]),
+                    "missing trait"
+                );
+            }
         }
 
         token.safeTransferFrom(tokenOwner, bidder, tokenId);
