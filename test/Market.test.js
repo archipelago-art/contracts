@@ -138,7 +138,7 @@ describe("Market", () => {
   }
 
   describe("order filling", () => {
-    it("works in a basic case", async () => {
+    it("works in a basic tokenId specified case", async () => {
       const { market, signers, weth, nft, asker, bidder } = await setup();
       expect(await nft.ownerOf(0)).to.equal(asker.address);
       const bid = tokenIdBid();
@@ -148,6 +148,45 @@ describe("Market", () => {
       expect(await nft.ownerOf(0)).to.equal(bidder.address);
       expect(await weth.balanceOf(bidder.address)).to.equal(0);
       expect(await weth.balanceOf(asker.address)).to.equal(exa); // TODO: fix when we add royalties
+    });
+
+    describe("failure cases", () => {
+      // nb: failrues due to cancellation are handled in a separate describe block.
+      it("rejects expired bids", async () => {
+        const { market, signers, weth, nft, asker, bidder } = await setup();
+        const bid = tokenIdBid({ deadline: 0 });
+        const ask = newAsk();
+        await expect(
+          fillOrder(market, bid, bidder, ask, asker)
+        ).to.be.revertedWith("cancelled or expired");
+      });
+
+      it("rejects expired asks", async () => {
+        const { market, signers, weth, nft, asker, bidder } = await setup();
+        const bid = tokenIdBid();
+        const ask = newAsk({ deadline: 0 });
+        await expect(
+          fillOrder(market, bid, bidder, ask, asker)
+        ).to.be.revertedWith("cancelled or expired");
+      });
+
+      it("rejects if bid and ask disagree about price", async () => {
+        const { market, signers, asker, bidder } = await setup();
+        const bid = tokenIdBid({ price: exa.div(2) });
+        const ask = newAsk({ price: exa });
+        await expect(
+          fillOrder(market, bid, bidder, ask, asker)
+        ).to.be.revertedWith("price mismatch");
+      });
+
+      it("rejects if bid and ask disagree about tokenId", async () => {
+        const { market, signers, asker, bidder } = await setup();
+        const bid = tokenIdBid({ tokenId: 0 });
+        const ask = newAsk({ tokenId: 1 });
+        await expect(
+          fillOrder(market, bid, bidder, ask, asker)
+        ).to.be.revertedWith("tokenid mismatch");
+      });
     });
 
     describe("approvals", () => {
