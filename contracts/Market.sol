@@ -160,8 +160,8 @@ contract Market {
             // TODO: Consult trait oracle and verify tokenid is included in trait.
         }
 
-        token.safeTransferFrom(asker, bidder, tokenId);
-        weth.transferFrom(bidder, asker, bid.price);
+        token.safeTransferFrom(tokenOwner, bidder, tokenId);
+        weth.transferFrom(bidder, tokenOwner, bid.price);
         // TODO: royalties
 
         // bids and asks are cancelled on execution, to prevent replays

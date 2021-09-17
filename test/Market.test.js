@@ -150,21 +150,73 @@ describe("Market", () => {
       expect(await weth.balanceOf(asker.address)).to.equal(exa); // TODO: fix when we add royalties
     });
 
-    describe.skip("token approvals", () => {
+    describe("approvals", () => {
       it("rejects if asker lacks approvals", async () => {
         const { market, signers, weth, nft, bidder } = await setup();
+        const operator = signers[3];
         const bid = tokenIdBid();
         const ask = newAsk();
-        // tbc
+        await expect(
+          fillOrder(market, bid, bidder, ask, operator)
+        ).to.be.revertedWith("asker is not owner or approved");
       });
       it("works if asker is owner", async () => {
-        //
+        const { market, signers, weth, nft, bidder, asker } = await setup();
+        const bid = tokenIdBid();
+        const ask = newAsk();
+        await fillOrder(market, bid, bidder, ask, asker);
+        expect(await nft.ownerOf(0)).to.equal(bidder.address);
+        expect(await weth.balanceOf(asker.address)).to.equal(exa); // Owner got proceeds
       });
       it("works if asker is approved for all", async () => {
-        //
+        const { market, signers, weth, nft, bidder, asker } = await setup();
+        const operator = signers[3];
+        await nft.connect(asker).setApprovalForAll(operator.address, true);
+        const bid = tokenIdBid();
+        const ask = newAsk();
+        await fillOrder(market, bid, bidder, ask, operator);
+        expect(await weth.balanceOf(asker.address)).to.equal(exa); // Owner got proceeds (not operator)
+        expect(await nft.ownerOf(0)).to.equal(bidder.address);
       });
       it("works if asker has token approval", async () => {
-        //
+        const { market, signers, weth, nft, bidder, asker } = await setup();
+        const operator = signers[3];
+        await nft.connect(asker).approve(operator.address, 0);
+        const bid = tokenIdBid();
+        const ask = newAsk();
+        await fillOrder(market, bid, bidder, ask, operator);
+        expect(await weth.balanceOf(asker.address)).to.equal(exa); // Owner got proceeds (not operator)
+      });
+      it("fails if asker has not approved the market (for NFT)", async () => {
+        const { market, signers, weth, nft, asker, bidder } = await setup();
+        nft.connect(asker).setApprovalForAll(market.address, false);
+        const bid = tokenIdBid();
+        const ask = newAsk();
+
+        const fail = fillOrder(market, bid, bidder, ask, asker);
+        await expect(fail).to.be.revertedWith(
+          "ERC721: transfer caller is not owner nor approved"
+        );
+      });
+      it("fails if bidder has not approved the market (for WETH)", async () => {
+        const { market, signers, weth, nft, asker, bidder } = await setup();
+        weth.connect(bidder).approve(market.address, 0);
+        const bid = tokenIdBid();
+        const ask = newAsk();
+
+        const fail = fillOrder(market, bid, bidder, ask, asker);
+        await expect(fail).to.be.revertedWith(
+          "ERC20: transfer amount exceeds allowance"
+        );
+      });
+      it("succeeds if asker has approved only the token in question", async () => {
+        const { market, signers, weth, nft, asker, bidder } = await setup();
+        nft.connect(asker).setApprovalForAll(market.address, false);
+        nft.connect(asker).approve(market.address, 0);
+        const bid = tokenIdBid();
+        const ask = newAsk();
+        await fillOrder(market, bid, bidder, ask, asker);
+        expect(await nft.ownerOf(0)).to.equal(bidder.address);
       });
     });
   });
