@@ -49,6 +49,7 @@ contract ArtblocksTraitOracle is ITraitOracle {
     event ProjectInfoSet(
         uint256 indexed traitId,
         uint256 indexed projectId,
+        string name,
         uint256 version,
         uint256 size
     );
@@ -56,6 +57,7 @@ contract ArtblocksTraitOracle is ITraitOracle {
         uint256 indexed traitId,
         uint256 indexed projectId,
         string indexed name,
+        string fullName,
         uint256 version,
         uint256 size
     );
@@ -163,6 +165,7 @@ contract ArtblocksTraitOracle is ITraitOracle {
         emit ProjectInfoSet({
             traitId: _traitId,
             projectId: _projectId,
+            name: _projectName,
             version: _version,
             size: _size
         });
@@ -200,6 +203,7 @@ contract ArtblocksTraitOracle is ITraitOracle {
             traitId: _traitId,
             projectId: _projectId,
             name: _featureName,
+            fullName: _featureName,
             version: _version,
             size: _size
         });

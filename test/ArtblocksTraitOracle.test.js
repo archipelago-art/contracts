@@ -155,7 +155,7 @@ describe("ArtblocksTraitOracle", () => {
       const sig1 = await signSetProjectInfoMessage(signers[1], msg1);
       await expect(oracle.setProjectInfo(msg1, sig1))
         .to.emit(oracle, "ProjectInfoSet")
-        .withArgs(traitId, projectId, version, size);
+        .withArgs(traitId, projectId, projectName, version, size);
       expect(await oracle.projectTraitInfo(traitId)).to.deep.equal([
         ethers.BigNumber.from(projectId),
         projectName,
@@ -183,7 +183,7 @@ describe("ArtblocksTraitOracle", () => {
       const sig1 = await signSetFeatureInfoMessage(signers[1], msg1);
       await expect(oracle.setFeatureInfo(msg1, sig1))
         .to.emit(oracle, "FeatureInfoSet")
-        .withArgs(traitId, projectId, featureName, version, size);
+        .withArgs(traitId, projectId, featureName, featureName, version, size);
       expect(await oracle.featureTraitInfo(traitId)).to.deep.equal([
         ethers.BigNumber.from(projectId),
         featureName,
