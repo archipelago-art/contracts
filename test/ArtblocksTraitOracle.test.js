@@ -14,14 +14,7 @@ const Errors = Object.freeze({
 
 const TOKENS_PER_PROJECT = 10 ** 6;
 
-const DOMAIN_SEPARATOR = ethers.utils.keccak256(
-  ethers.utils.concat([
-    ethers.utils.keccak256(
-      ethers.utils.toUtf8Bytes("EIP712Domain(string name)")
-    ),
-    ethers.utils.keccak256(ethers.utils.toUtf8Bytes("ArtblocksTraitOracle")),
-  ])
-);
+const DOMAIN_SEPARATOR = Object.freeze({ name: "ArtblocksTraitOracle" });
 
 function projectTraitId(projectId, version) {
   const blob = ethers.utils.defaultAbiCoder.encode(
@@ -46,57 +39,46 @@ async function signBlob(signer, typeHash, blob) {
 }
 
 async function signSetProjectInfoMessage(signer, msg) {
-  const typeHash = ethers.utils.keccak256(
-    ethers.utils.toUtf8Bytes(
-      "SetProjectInfoMessage(uint256 projectId,uint256 version,string projectName,uint256 size)"
-    )
+  return signer._signTypedData(
+    DOMAIN_SEPARATOR,
+    {
+      SetProjectInfoMessage: [
+        { type: "uint256", name: "projectId" },
+        { type: "uint256", name: "version" },
+        { type: "string", name: "projectName" },
+        { type: "uint256", name: "size" },
+      ],
+    },
+    msg
   );
-  const blob = ethers.utils.defaultAbiCoder.encode(
-    ["uint256", "uint256", "bytes32", "uint256"],
-    [
-      msg.projectId,
-      msg.version,
-      ethers.utils.keccak256(ethers.utils.toUtf8Bytes(msg.projectName)),
-      msg.size,
-    ]
-  );
-  return await signBlob(signer, typeHash, blob);
 }
 
 async function signSetFeatureInfoMessage(signer, msg) {
-  const typeHash = ethers.utils.keccak256(
-    ethers.utils.toUtf8Bytes(
-      "SetFeatureInfoMessage(uint256 projectId,string featureName,uint256 version,uint256 size)"
-    )
+  return signer._signTypedData(
+    DOMAIN_SEPARATOR,
+    {
+      SetFeatureInfoMessage: [
+        { type: "uint256", name: "projectId" },
+        { type: "string", name: "featureName" },
+        { type: "uint256", name: "version" },
+        { type: "uint256", name: "size" },
+      ],
+    },
+    msg
   );
-  const blob = ethers.utils.defaultAbiCoder.encode(
-    ["uint256", "bytes32", "uint256", "uint256"],
-    [
-      msg.projectId,
-      ethers.utils.keccak256(ethers.utils.toUtf8Bytes(msg.featureName)),
-      msg.version,
-      msg.size,
-    ]
-  );
-  return await signBlob(signer, typeHash, blob);
 }
 
 async function signAddTraitMembershipsMessage(signer, msg) {
-  const typeHash = ethers.utils.keccak256(
-    ethers.utils.toUtf8Bytes(
-      "AddTraitMembershipsMessage(uint256 traitId,uint256[] tokenIds)"
-    )
+  return signer._signTypedData(
+    DOMAIN_SEPARATOR,
+    {
+      AddTraitMembershipsMessage: [
+        { type: "uint256", name: "traitId" },
+        { type: "uint256[]", name: "tokenIds" },
+      ],
+    },
+    msg
   );
-  const blob = ethers.utils.defaultAbiCoder.encode(
-    ["uint256", "bytes32"],
-    [
-      msg.traitId,
-      ethers.utils.keccak256(
-        ethers.utils.solidityPack(["uint256[]"], [msg.tokenIds])
-      ),
-    ]
-  );
-  return await signBlob(signer, typeHash, blob);
 }
 
 describe("ArtblocksTraitOracle", () => {

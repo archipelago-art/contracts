@@ -114,8 +114,11 @@ contract ArtblocksTraitOracle is ITraitOracle {
         bytes memory _message,
         bytes memory _signature
     ) internal view {
-        bytes32 _rawHash = keccak256(abi.encodePacked(DOMAIN_SEPARATOR, _message));
-        bytes32 _ethMessageHash = ECDSA.toEthSignedMessageHash(_rawHash);
+        bytes32 _structHash = keccak256(_message);
+        bytes32 _ethMessageHash = ECDSA.toTypedDataHash(
+            DOMAIN_SEPARATOR,
+            _structHash
+        );
         address _signer = ECDSA.recover(_ethMessageHash, _signature);
         require(_signer == oracleSigner, ERR_UNAUTHORIZED);
     }
