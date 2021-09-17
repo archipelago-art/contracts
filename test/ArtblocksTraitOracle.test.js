@@ -89,6 +89,31 @@ describe("ArtblocksTraitOracle", () => {
     await oracle.deployed();
   });
 
+  it("permits changing admin", async () => {
+    const oracle = await ArtblocksTraitOracle.deploy();
+    await oracle.deployed();
+
+    expect(await oracle.admin()).to.equal(signers[0].address);
+
+    await expect(
+      oracle.connect(signers[1]).transferAdmin(signers[1].address)
+    ).to.be.revertedWith(Errors.UNAUTHORIZED);
+
+    await expect(oracle.connect(signers[0]).transferAdmin(signers[1].address))
+      .to.emit(oracle, "AdminChanged")
+      .withArgs(signers[1].address);
+    expect(await oracle.admin()).to.equal(signers[1].address);
+
+    await expect(
+      oracle.connect(signers[0]).transferAdmin(signers[0].address)
+    ).to.be.revertedWith(Errors.UNAUTHORIZED);
+
+    await expect(oracle.connect(signers[1]).transferAdmin(signers[0].address))
+      .to.emit(oracle, "AdminChanged")
+      .withArgs(signers[0].address);
+    expect(await oracle.admin()).to.equal(signers[0].address);
+  });
+
   describe("computes trait IDs", () => {
     let oracle;
     before(async () => {

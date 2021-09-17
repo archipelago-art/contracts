@@ -63,7 +63,7 @@ contract ArtblocksTraitOracle is ITraitOracle {
 
     uint256 constant TOKENS_PER_PROJECT = 10**6;
 
-    address admin;
+    address public admin;
 
     mapping(uint256 => ProjectInfo) public projectTraitInfo;
     mapping(uint256 => FeatureInfo) public featureTraitInfo;
@@ -84,6 +84,11 @@ contract ArtblocksTraitOracle is ITraitOracle {
     modifier onlyAdmin() {
         require(msg.sender == admin, ERR_UNAUTHORIZED);
         _;
+    }
+
+    function transferAdmin(address _admin) external onlyAdmin {
+        admin = _admin;
+        emit AdminChanged(_admin);
     }
 
     function _requireSignature(
