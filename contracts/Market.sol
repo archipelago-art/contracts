@@ -44,38 +44,21 @@ struct Ask {
     uint256 tokenId;
 }
 
-/// A cancellation matches all orders that occur at or before a given timestamp
-/// and fall under a given scope.
-struct Cancellation {
-    CancellationScope scope;
-    uint256 timestamp;
-}
-
-struct CancellationScope {
-    CancellationType type_;
-    /// A parameter whose interpretation depends on the `type_` of this scope;
-    /// see docs on `CancellationType` members for details.
-    uint256 parameter;
-}
-
-enum CancellationType {
-    /// Matches all asks. The associated `parameter` must be zero.
-    ASKS_ALL,
-    /// Matches asks with a specific nonce.
-    ASKS_BY_NONCE,
-    /// Matches all bids. The associated `parameter` must be zero.
-    BIDS_ALL,
-    /// Matches bids with a specific nonce.
-    BIDS_BY_NONCE
-}
-
 contract Market {
+    event BidCancellation(address indexed participant, uint256 timestamp);
+    event AskCancellation(address indexed participant, uint256 timestamp);
+    event NonceCancellation(address indexed participant, uint256 indexed nonce);
+
     IERC721 token;
     IERC20 weth;
     mapping(address => uint256) public bidTimestampCancellation;
-    mapping(address => mapping(uint256 => bool)) public bidNonceCancellation;
     mapping(address => uint256) public askTimestampCancellation;
-    mapping(address => mapping(uint256 => bool)) public askNonceCancellation;
+    mapping(address => mapping(uint256 => bool)) public nonceCancellation;
+
+    string constant INVALID_ARGS = "Market: invalid args";
+
+    string constant ORDER_CANCELLED_OR_EXPIRED =
+        "Market: order cancelled or expired";
 
     function initialize(IERC721 _token, IERC20 _weth) external {
         require(
@@ -94,6 +77,32 @@ contract Market {
         bytes32 _rawHash = keccak256(_message);
         bytes32 _ethMessageHash = ECDSA.toEthSignedMessageHash(_rawHash);
         return ECDSA.recover(_ethMessageHash, _signature);
+    }
+
+    function cancelBids(uint256 _cancellationTimestamp) external {
+        require(
+            _cancellationTimestamp > bidTimestampCancellation[msg.sender],
+            INVALID_ARGS
+        );
+        bidTimestampCancellation[msg.sender] = _cancellationTimestamp;
+        emit BidCancellation(msg.sender, _cancellationTimestamp);
+    }
+
+    function cancelAsks(uint256 _cancellationTimestamp) external {
+        require(
+            _cancellationTimestamp > askTimestampCancellation[msg.sender],
+            INVALID_ARGS
+        );
+        askTimestampCancellation[msg.sender] = _cancellationTimestamp;
+        emit AskCancellation(msg.sender, _cancellationTimestamp);
+    }
+
+    function cancelNonces(uint256[] memory _nonces) external {
+        for (uint256 _i; _i < _nonces.length; _i++) {
+            uint256 _nonce = _nonces[_i];
+            nonceCancellation[msg.sender][_nonce] = true;
+            emit NonceCancellation(msg.sender, _nonce);
+        }
     }
 
     function fillOrder(
@@ -131,24 +140,24 @@ contract Market {
         }
         require(ownerOrApproved, "asker is not owner or approved");
 
-        require(block.timestamp <= bid.deadline, "bid expired");
-        require(block.timestamp <= ask.deadline, "ask expired");
+        require(block.timestamp <= bid.deadline, ORDER_CANCELLED_OR_EXPIRED);
+        require(block.timestamp <= ask.deadline, ORDER_CANCELLED_OR_EXPIRED);
 
         require(
             bidTimestampCancellation[bidder] < bid.created,
-            "bid cancelled (timestamp)"
+            ORDER_CANCELLED_OR_EXPIRED
         );
         require(
-            !bidNonceCancellation[bidder][bid.nonce],
-            "bid cancelled (nonce)"
+            !nonceCancellation[bidder][bid.nonce],
+            ORDER_CANCELLED_OR_EXPIRED
         );
         require(
             askTimestampCancellation[asker] < ask.created,
-            "ask cancelled (timestamp)"
+            ORDER_CANCELLED_OR_EXPIRED
         );
         require(
-            !askNonceCancellation[asker][ask.nonce],
-            "ask cancelled (nonce)"
+            !nonceCancellation[asker][ask.nonce],
+            ORDER_CANCELLED_OR_EXPIRED
         );
 
         require(bid.price == ask.price, "price mismatch");
@@ -165,7 +174,7 @@ contract Market {
         // TODO: royalties
 
         // bids and asks are cancelled on execution, to prevent replays
-        bidNonceCancellation[bidder][bid.nonce] = true;
-        askNonceCancellation[asker][ask.nonce] = true;
+        nonceCancellation[bidder][bid.nonce] = true;
+        nonceCancellation[asker][ask.nonce] = true;
     }
 }

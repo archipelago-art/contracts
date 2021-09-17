@@ -209,7 +209,7 @@ describe("Market", () => {
           "ERC20: transfer amount exceeds allowance"
         );
       });
-      it("succeeds if asker has approved only the token in question", async () => {
+      it("succeeds if asker has approved the token specifically", async () => {
         const { market, signers, weth, nft, asker, bidder } = await setup();
         nft.connect(asker).setApprovalForAll(market.address, false);
         nft.connect(asker).approve(market.address, 0);
@@ -218,6 +218,100 @@ describe("Market", () => {
         await fillOrder(market, bid, bidder, ask, asker);
         expect(await nft.ownerOf(0)).to.equal(bidder.address);
       });
+    });
+  });
+  describe("cancellation mechanics", () => {
+    it("orders may fail due to bid timestamp cancellation", async () => {
+      const { market, signers, weth, nft, asker, bidder } = await setup();
+      const bid = tokenIdBid();
+      const ask = newAsk();
+      await market.connect(bidder).cancelBids(bid.created);
+      await expect(
+        fillOrder(market, bid, bidder, ask, asker)
+      ).to.be.revertedWith("cancelled");
+    });
+    it("orders may fail due to ask timestamp cancellation", async () => {
+      const { market, signers, weth, nft, asker, bidder } = await setup();
+      const bid = tokenIdBid();
+      const ask = newAsk();
+      await market.connect(asker).cancelAsks(ask.created);
+      await expect(
+        fillOrder(market, bid, bidder, ask, asker)
+      ).to.be.revertedWith("cancelled");
+    });
+    it("orders may fail due to bid nonce cancellation", async () => {
+      const { market, signers, weth, nft, asker, bidder } = await setup();
+      const bid = tokenIdBid();
+      const ask = newAsk();
+      await market.connect(bidder).cancelNonces([bid.nonce]);
+      expect(
+        await market.nonceCancellation(bidder.address, bid.nonce)
+      ).to.equal(true);
+      await expect(
+        fillOrder(market, bid, bidder, ask, asker)
+      ).to.be.revertedWith("cancelled");
+    });
+    it("orders may fail due to ask nonce cancellation", async () => {
+      const { market, signers, weth, nft, asker, bidder } = await setup();
+      const bid = tokenIdBid();
+      const ask = newAsk();
+      await market.connect(asker).cancelNonces([ask.nonce]);
+      expect(await market.nonceCancellation(asker.address, ask.nonce)).to.equal(
+        true
+      );
+      await expect(
+        fillOrder(market, bid, bidder, ask, asker)
+      ).to.be.revertedWith("cancelled");
+    });
+    it("multiple nonces may be cancelled in a single tx", async () => {
+      const { market, signers } = await setup();
+      const operator = signers[0];
+      await market.cancelNonces([420, 69]);
+      expect(await market.nonceCancellation(operator.address, 420)).to.equal(
+        true
+      );
+      expect(await market.nonceCancellation(operator.address, 69)).to.equal(
+        true
+      );
+    });
+    it("fills result in cancellation of any other bids/asks with same nonce", async () => {
+      const { market, signers, weth, nft, asker, bidder } = await setup();
+      const bid = tokenIdBid();
+      const ask = newAsk();
+      await fillOrder(market, bid, bidder, ask, asker);
+      expect(
+        await market.nonceCancellation(bidder.address, bid.nonce)
+      ).to.equal(true);
+      expect(await market.nonceCancellation(asker.address, ask.nonce)).to.equal(
+        true
+      );
+    });
+    it("events are emitted on all cancellation types", async () => {
+      const { market, signers } = await setup();
+      const address = signers[0].address;
+      const cancelBids = market.cancelBids(100);
+      await expect(cancelBids)
+        .to.emit(market, "BidCancellation")
+        .withArgs(address, 100);
+      const cancelAsks = market.cancelAsks(101);
+      await expect(cancelAsks)
+        .to.emit(market, "AskCancellation")
+        .withArgs(address, 101);
+      const cancelNonces = market.cancelNonces([102, 103]);
+      await expect(cancelNonces)
+        .to.emit(market, "NonceCancellation")
+        .withArgs(address, 102)
+        .to.emit(market, "NonceCancellation")
+        .withArgs(address, 103);
+    });
+    it("cancellation timestamps must be increasing", async () => {
+      const { market } = await setup();
+      await market.cancelBids(1);
+      await market.cancelAsks(1);
+      await expect(market.cancelBids(0)).to.be.revertedWith("invalid args");
+      await expect(market.cancelBids(1)).to.be.revertedWith("invalid args");
+      await expect(market.cancelAsks(0)).to.be.revertedWith("invalid args");
+      await expect(market.cancelAsks(1)).to.be.revertedWith("invalid args");
     });
   });
 });
