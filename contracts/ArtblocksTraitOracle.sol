@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+
+import "./ArtblocksTraitOracleMessages.sol";
 import "./ITraitOracle.sol";
 
 enum TraitType {
@@ -83,12 +86,37 @@ contract ArtblocksTraitOracle is ITraitOracle {
         _;
     }
 
+    modifier requireSignature(
+        bytes memory _message,
+        bytes memory _signature,
+        address _expectedSigner
+    ) {
+        bytes32 _rawHash = keccak256(_message);
+        // TODO: Use an EIP-712 `typeHash` here to avoid cross-type collisions.
+        bytes32 _ethMessageHash = ECDSA.toEthSignedMessageHash(_rawHash);
+        address _signer = ECDSA.recover(_ethMessageHash, _signature);
+        require(_signer == _expectedSigner, ERR_UNAUTHORIZED);
+        _;
+    }
+
     function setProjectInfo(
+        SetProjectInfoMessage memory _msg,
+        bytes memory _signature
+    ) external requireSignature(abi.encode(_msg), _signature, admin) {
+        _setProjectInfo(
+            _msg.projectId,
+            _msg.version,
+            _msg.projectName,
+            _msg.size
+        );
+    }
+
+    function _setProjectInfo(
         uint256 _projectId,
         uint256 _version,
         string memory _projectName,
         uint256 _size
-    ) external onlyAdmin {
+    ) internal {
         require(!_stringEmpty(_projectName), ERR_INVALID_ARGUMENT);
         uint256 _traitId = projectTraitId(_projectId, _version);
         require(
@@ -109,11 +137,23 @@ contract ArtblocksTraitOracle is ITraitOracle {
     }
 
     function setFeatureInfo(
+        SetFeatureInfoMessage memory _msg,
+        bytes memory _signature
+    ) external requireSignature(abi.encode(_msg), _signature, admin) {
+        _setFeatureInfo(
+            _msg.projectId,
+            _msg.featureName,
+            _msg.version,
+            _msg.size
+        );
+    }
+
+    function _setFeatureInfo(
         uint256 _projectId,
         string memory _featureName,
         uint256 _version,
         uint256 _size
-    ) external onlyAdmin {
+    ) internal {
         require(!_stringEmpty(_featureName), ERR_INVALID_ARGUMENT);
         uint256 _traitId = featureTraitId(_projectId, _featureName, _version);
         require(
@@ -135,9 +175,15 @@ contract ArtblocksTraitOracle is ITraitOracle {
     }
 
     /// Adds tokens as members of a feature trait.
-    function addTraitMemberships(uint256 _traitId, uint256[] memory _tokenIds)
-        external
-        onlyAdmin
+    function addTraitMemberships(
+        AddTraitMembershipsMessage memory _msg,
+        bytes memory _signature
+    ) external requireSignature(abi.encode(_msg), _signature, admin) {
+        _addTraitMemberships(_msg.traitId, _msg.tokenIds);
+    }
+
+    function _addTraitMemberships(uint256 _traitId, uint256[] memory _tokenIds)
+        internal
     {
         uint256 _finalSize = featureTraitInfo[_traitId].size;
         uint256 _originalSize = traitMembersCount[_traitId];
