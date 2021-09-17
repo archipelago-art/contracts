@@ -156,8 +156,8 @@ contract ArtblocksTraitOracle is ITraitOracle {
 
     function hasTrait(uint256 _tokenId, uint256 _traitId)
         external
-        override
         view
+        override
         returns (bool)
     {
         // Check project traits first, since this only requires a single
