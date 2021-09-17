@@ -43,8 +43,13 @@ async function signSetProjectInfoMessage(signer, msg) {
     )
   );
   const blob = ethers.utils.defaultAbiCoder.encode(
-    ["(uint256,uint256,string,uint256)"],
-    [[msg.projectId, msg.version, msg.projectName, msg.size]]
+    ["uint256", "uint256", "bytes32", "uint256"],
+    [
+      msg.projectId,
+      msg.version,
+      ethers.utils.keccak256(ethers.utils.toUtf8Bytes(msg.projectName)),
+      msg.size,
+    ]
   );
   return await signBlob(signer, typeHash, blob);
 }
@@ -56,8 +61,13 @@ async function signSetFeatureInfoMessage(signer, msg) {
     )
   );
   const blob = ethers.utils.defaultAbiCoder.encode(
-    ["(uint256,string,uint256,uint256)"],
-    [[msg.projectId, msg.featureName, msg.version, msg.size]]
+    ["uint256", "bytes32", "uint256", "uint256"],
+    [
+      msg.projectId,
+      ethers.utils.keccak256(ethers.utils.toUtf8Bytes(msg.featureName)),
+      msg.version,
+      msg.size,
+    ]
   );
   return await signBlob(signer, typeHash, blob);
 }
@@ -69,8 +79,13 @@ async function signAddTraitMembershipsMessage(signer, msg) {
     )
   );
   const blob = ethers.utils.defaultAbiCoder.encode(
-    ["(uint256,uint256[])"],
-    [[msg.traitId, msg.tokenIds]]
+    ["uint256", "bytes32"],
+    [
+      msg.traitId,
+      ethers.utils.keccak256(
+        ethers.utils.solidityPack(["uint256[]"], [msg.tokenIds])
+      ),
+    ]
   );
   return await signBlob(signer, typeHash, blob);
 }

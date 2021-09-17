@@ -39,7 +39,14 @@ library ArtblocksTraitOracleMessages {
         pure
         returns (bytes memory)
     {
-        return abi.encodePacked(TYPEHASH_SET_PROJECT_INFO, abi.encode(_self));
+        return
+            abi.encodePacked(
+                TYPEHASH_SET_PROJECT_INFO,
+                _self.projectId,
+                _self.version,
+                keccak256(abi.encodePacked(_self.projectName)),
+                _self.size
+            );
     }
 
     function serialize(SetFeatureInfoMessage memory _self)
@@ -47,7 +54,14 @@ library ArtblocksTraitOracleMessages {
         pure
         returns (bytes memory)
     {
-        return abi.encodePacked(TYPEHASH_SET_FEATURE_INFO, abi.encode(_self));
+        return
+            abi.encodePacked(
+                TYPEHASH_SET_FEATURE_INFO,
+                _self.projectId,
+                keccak256(abi.encodePacked(_self.featureName)),
+                _self.version,
+                _self.size
+            );
     }
 
     function serialize(AddTraitMembershipsMessage memory _self)
@@ -56,6 +70,10 @@ library ArtblocksTraitOracleMessages {
         returns (bytes memory)
     {
         return
-            abi.encodePacked(TYPEHASH_ADD_TRAIT_MEMBERSHIPS, abi.encode(_self));
+            abi.encodePacked(
+                TYPEHASH_ADD_TRAIT_MEMBERSHIPS,
+                _self.traitId,
+                keccak256(abi.encodePacked(_self.tokenIds))
+            );
     }
 }
