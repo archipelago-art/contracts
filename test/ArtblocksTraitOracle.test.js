@@ -14,6 +14,15 @@ const Errors = Object.freeze({
 
 const TOKENS_PER_PROJECT = 10 ** 6;
 
+const DOMAIN_SEPARATOR = ethers.utils.keccak256(
+  ethers.utils.concat([
+    ethers.utils.keccak256(
+      ethers.utils.toUtf8Bytes("EIP712Domain(string name)")
+    ),
+    ethers.utils.keccak256(ethers.utils.toUtf8Bytes("ArtblocksTraitOracle")),
+  ])
+);
+
 function projectTraitId(projectId, version) {
   const blob = ethers.utils.defaultAbiCoder.encode(
     ["uint256", "uint256", "uint256"],
@@ -31,7 +40,7 @@ function featureTraitId(projectId, featureName, version) {
 }
 
 async function signBlob(signer, typeHash, blob) {
-  const message = ethers.utils.concat([typeHash, blob]);
+  const message = ethers.utils.concat([DOMAIN_SEPARATOR, typeHash, blob]);
   const rawHash = ethers.utils.arrayify(ethers.utils.keccak256(message));
   return await signer.signMessage(rawHash); // implicit EIP-191 prefix
 }

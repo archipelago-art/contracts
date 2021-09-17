@@ -66,6 +66,14 @@ contract ArtblocksTraitOracle is ITraitOracle {
         "ArtblocksTraitOracle: INVALID_ARGUMENT";
     string constant ERR_UNAUTHORIZED = "ArtblocksTraitOracle: UNAUTHORIZED";
 
+    bytes32 constant DOMAIN_SEPARATOR =
+        keccak256(
+            abi.encodePacked(
+                keccak256(abi.encodePacked("EIP712Domain(string name)")),
+                keccak256(abi.encodePacked("ArtblocksTraitOracle"))
+            )
+        );
+
     uint256 constant TOKENS_PER_PROJECT = 10**6;
 
     address public admin;
@@ -106,7 +114,7 @@ contract ArtblocksTraitOracle is ITraitOracle {
         bytes memory _message,
         bytes memory _signature
     ) internal view {
-        bytes32 _rawHash = keccak256(_message);
+        bytes32 _rawHash = keccak256(abi.encodePacked(DOMAIN_SEPARATOR, _message));
         bytes32 _ethMessageHash = ECDSA.toEthSignedMessageHash(_rawHash);
         address _signer = ECDSA.recover(_ethMessageHash, _signature);
         require(_signer == oracleSigner, ERR_UNAUTHORIZED);
