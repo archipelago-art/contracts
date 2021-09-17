@@ -226,9 +226,7 @@ contract ArtblocksTraitOracle is ITraitOracle {
     }
 
     /// Dumb helper to test whether a string is empty, because Solidity doesn't
-    /// expose `_s.length` for a string `_s`. Could be replaced by inline
-    /// assembly (basically like `_len := mload(_s); return _len == 0`), which
-    /// might(?) avoid expensive copies but is obnoxious.
+    /// expose `_s.length` for a string `_s`.
     function _stringEmpty(string memory _s) internal pure returns (bool) {
         return bytes(_s).length == 0;
     }
