@@ -41,6 +41,7 @@ struct FeatureInfo {
 
 contract ArtblocksTraitOracle is ITraitOracle {
     event AdminChanged(address indexed admin);
+    event OracleSignerChanged(address indexed oracleSigner);
     event ProjectInfoSet(
         uint256 indexed traitId,
         uint256 indexed projectId,
@@ -64,6 +65,7 @@ contract ArtblocksTraitOracle is ITraitOracle {
     uint256 constant TOKENS_PER_PROJECT = 10**6;
 
     address public admin;
+    address public oracleSigner;
 
     mapping(uint256 => ProjectInfo) public projectTraitInfo;
     mapping(uint256 => FeatureInfo) public featureTraitInfo;
@@ -91,6 +93,11 @@ contract ArtblocksTraitOracle is ITraitOracle {
         emit AdminChanged(_admin);
     }
 
+    function setOracleSigner(address _oracleSigner) external onlyAdmin {
+        oracleSigner = _oracleSigner;
+        emit OracleSignerChanged(_oracleSigner);
+    }
+
     function _requireSignature(
         bytes32 _typeHash,
         bytes memory _message,
@@ -111,7 +118,7 @@ contract ArtblocksTraitOracle is ITraitOracle {
             ArtblocksTraitOracleMessages.TYPEHASH_SET_PROJECT_INFO,
             abi.encode(_msg),
             _signature,
-            admin
+            oracleSigner
         );
         _setProjectInfo(
             _msg.projectId,
@@ -154,7 +161,7 @@ contract ArtblocksTraitOracle is ITraitOracle {
             ArtblocksTraitOracleMessages.TYPEHASH_SET_FEATURE_INFO,
             abi.encode(_msg),
             _signature,
-            admin
+            oracleSigner
         );
         _setFeatureInfo(
             _msg.projectId,
@@ -199,7 +206,7 @@ contract ArtblocksTraitOracle is ITraitOracle {
             ArtblocksTraitOracleMessages.TYPEHASH_ADD_TRAIT_MEMBERSHIPS,
             abi.encode(_msg),
             _signature,
-            admin
+            oracleSigner
         );
         _addTraitMemberships(_msg.traitId, _msg.tokenIds);
     }
