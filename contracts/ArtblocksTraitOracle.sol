@@ -74,7 +74,11 @@ contract ArtblocksTraitOracle is ITraitOracle {
             )
         );
 
-    uint256 constant TOKENS_PER_PROJECT = 10**6;
+    /// Art Blocks gives each project a token space of 1 million IDs. Most IDs
+    /// in this space are not actually used, but a token's ID floor-divided by
+    /// this stride gives the project ID, and the token ID modulo this stride
+    /// gives the token index within the project.
+    uint256 constant PROJECT_STRIDE = 10**6;
 
     address public admin;
     address public oracleSigner;
@@ -248,11 +252,11 @@ contract ArtblocksTraitOracle is ITraitOracle {
         uint256 _projectSize = projectTraitInfo[_traitId].size;
         if (_projectSize == 0) return false; // gas
 
-        uint256 _tokenProjectId = _tokenId / TOKENS_PER_PROJECT;
+        uint256 _tokenProjectId = _tokenId / PROJECT_STRIDE;
         uint256 _traitProjectId = projectTraitInfo[_traitId].projectId;
         if (_tokenProjectId != _traitProjectId) return false;
 
-        uint256 _tokenIndexInProject = _tokenId % TOKENS_PER_PROJECT;
+        uint256 _tokenIndexInProject = _tokenId % PROJECT_STRIDE;
         if (_tokenIndexInProject >= _projectSize) return false;
 
         return true;
