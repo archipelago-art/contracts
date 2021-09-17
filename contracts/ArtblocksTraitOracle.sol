@@ -87,12 +87,12 @@ contract ArtblocksTraitOracle is ITraitOracle {
     }
 
     modifier requireSignature(
+        bytes32 _typeHash,
         bytes memory _message,
         bytes memory _signature,
         address _expectedSigner
     ) {
-        bytes32 _rawHash = keccak256(_message);
-        // TODO: Use an EIP-712 `typeHash` here to avoid cross-type collisions.
+        bytes32 _rawHash = keccak256(abi.encodePacked(_typeHash, _message));
         bytes32 _ethMessageHash = ECDSA.toEthSignedMessageHash(_rawHash);
         address _signer = ECDSA.recover(_ethMessageHash, _signature);
         require(_signer == _expectedSigner, ERR_UNAUTHORIZED);
@@ -102,7 +102,15 @@ contract ArtblocksTraitOracle is ITraitOracle {
     function setProjectInfo(
         SetProjectInfoMessage memory _msg,
         bytes memory _signature
-    ) external requireSignature(abi.encode(_msg), _signature, admin) {
+    )
+        external
+        requireSignature(
+            ArtblocksTraitOracleMessages.TYPEHASH_SET_PROJECT_INFO,
+            abi.encode(_msg),
+            _signature,
+            admin
+        )
+    {
         _setProjectInfo(
             _msg.projectId,
             _msg.version,
@@ -139,7 +147,15 @@ contract ArtblocksTraitOracle is ITraitOracle {
     function setFeatureInfo(
         SetFeatureInfoMessage memory _msg,
         bytes memory _signature
-    ) external requireSignature(abi.encode(_msg), _signature, admin) {
+    )
+        external
+        requireSignature(
+            ArtblocksTraitOracleMessages.TYPEHASH_SET_FEATURE_INFO,
+            abi.encode(_msg),
+            _signature,
+            admin
+        )
+    {
         _setFeatureInfo(
             _msg.projectId,
             _msg.featureName,
@@ -178,7 +194,15 @@ contract ArtblocksTraitOracle is ITraitOracle {
     function addTraitMemberships(
         AddTraitMembershipsMessage memory _msg,
         bytes memory _signature
-    ) external requireSignature(abi.encode(_msg), _signature, admin) {
+    )
+        external
+        requireSignature(
+            ArtblocksTraitOracleMessages.TYPEHASH_ADD_TRAIT_MEMBERSHIPS,
+            abi.encode(_msg),
+            _signature,
+            admin
+        )
+    {
         _addTraitMemberships(_msg.traitId, _msg.tokenIds);
     }
 

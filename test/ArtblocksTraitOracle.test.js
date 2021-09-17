@@ -30,33 +30,49 @@ function featureTraitId(projectId, featureName, version) {
   return ethers.utils.keccak256(blob);
 }
 
-async function signBlob(signer, blob) {
-  const rawHash = ethers.utils.arrayify(ethers.utils.keccak256(blob));
+async function signBlob(signer, typeHash, blob) {
+  const message = ethers.utils.concat([typeHash, blob]);
+  const rawHash = ethers.utils.arrayify(ethers.utils.keccak256(message));
   return await signer.signMessage(rawHash); // implicit EIP-191 prefix
 }
 
 async function signSetProjectInfoMessage(signer, msg) {
+  const typeHash = ethers.utils.keccak256(
+    ethers.utils.toUtf8Bytes(
+      "SetProjectInfoMessage(uint256 projectId,uint256 version,string projectName,uint256 size)"
+    )
+  );
   const blob = ethers.utils.defaultAbiCoder.encode(
     ["(uint256,uint256,string,uint256)"],
     [[msg.projectId, msg.version, msg.projectName, msg.size]]
   );
-  return await signBlob(signer, blob);
+  return await signBlob(signer, typeHash, blob);
 }
 
 async function signSetFeatureInfoMessage(signer, msg) {
+  const typeHash = ethers.utils.keccak256(
+    ethers.utils.toUtf8Bytes(
+      "SetFeatureInfoMessage(uint256 projectId,string featureName,uint256 version,uint256 size)"
+    )
+  );
   const blob = ethers.utils.defaultAbiCoder.encode(
     ["(uint256,string,uint256,uint256)"],
     [[msg.projectId, msg.featureName, msg.version, msg.size]]
   );
-  return await signBlob(signer, blob);
+  return await signBlob(signer, typeHash, blob);
 }
 
 async function signAddTraitMembershipsMessage(signer, msg) {
+  const typeHash = ethers.utils.keccak256(
+    ethers.utils.toUtf8Bytes(
+      "AddTraitMembershipsMessage(uint256 traitId,uint256[] tokenIds)"
+    )
+  );
   const blob = ethers.utils.defaultAbiCoder.encode(
     ["(uint256,uint256[])"],
     [[msg.traitId, msg.tokenIds]]
   );
-  return await signBlob(signer, blob);
+  return await signBlob(signer, typeHash, blob);
 }
 
 describe("ArtblocksTraitOracle", () => {
@@ -317,16 +333,15 @@ describe("ArtblocksTraitOracle", () => {
     });
   });
 
-  it.skip("admits signature collisions! this is bad", async () => {
-    // These two messages, of different types, have the same ABI encoding and
-    // therefore the same signature. This can be solved by using an EIP-712
-    // type hash.
+  it("does not admit signature collisions", async () => {
+    // These two messages have the same ABI encoding, but different signatures
+    // because their type hashes are different.
     const msg1 = { projectId: 0, version: 0x80, projectName: "", size: 0 };
     const msg2 = { projectId: 0, featureName: "", version: 0x80, size: 0 };
     expect(msg1).to.not.deep.equal(msg2);
 
     const sig1 = await signSetProjectInfoMessage(signers[0], msg1);
     const sig2 = await signSetFeatureInfoMessage(signers[0], msg2);
-    expect(sig1).not.to.equal(sig2); // fails!
+    expect(sig1).not.to.equal(sig2);
   });
 });
