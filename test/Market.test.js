@@ -96,6 +96,7 @@ describe("Market", () => {
     deadline = ethers.constants.MaxUint256,
     price = exa,
     tokenId = 0,
+    royalties = [],
   } = {}) {
     return {
       nonce,
@@ -103,6 +104,7 @@ describe("Market", () => {
       deadline,
       price,
       tokenId,
+      royalties,
     };
   }
 
@@ -132,8 +134,17 @@ describe("Market", () => {
 
   async function signAsk(ask, signer) {
     const blob = ethers.utils.defaultAbiCoder.encode(
-      ["(uint256,uint256,uint256,uint256,uint256)"],
-      [[ask.nonce, ask.created, ask.deadline, ask.price, ask.tokenId]]
+      ["(uint256,uint256,uint256,uint256,uint256,(address,uint256)[])"],
+      [
+        [
+          ask.nonce,
+          ask.created,
+          ask.deadline,
+          ask.price,
+          ask.tokenId,
+          ask.royalties,
+        ],
+      ]
     );
     return signBlob(blob, signer);
   }
@@ -154,7 +165,7 @@ describe("Market", () => {
       await fillOrder(market, bid, bidder, ask, asker);
       expect(await nft.ownerOf(0)).to.equal(bidder.address);
       expect(await weth.balanceOf(bidder.address)).to.equal(0);
-      expect(await weth.balanceOf(asker.address)).to.equal(exa); // TODO: fix when we add royalties
+      expect(await weth.balanceOf(asker.address)).to.equal(exa);
     });
 
     describe("traits and oracle", () => {
@@ -194,6 +205,79 @@ describe("Market", () => {
         await oracle.setTrait(0, 69); // it has one trait but not both
         const fail = fillOrder(market, bid, bidder, ask, asker);
         await expect(fail).to.be.revertedWith("missing trait");
+      });
+    });
+
+    describe("royalties", () => {
+      const bp = BN.from("10").pow(14);
+      it("handles zero royalties correctly", async () => {
+        const { market, signers, weth, asker, bidder } = await setup();
+        const r0 = signers[3].address;
+        const bid = tokenIdBid();
+        const ask = newAsk({ royalties: [[r0, 0]] });
+        await fillOrder(market, bid, bidder, ask, asker);
+        expect(await weth.balanceOf(r0)).to.equal(0);
+        expect(await weth.balanceOf(asker.address)).to.equal(exa);
+      });
+      it("handles a single royalty correctly", async () => {
+        const { market, signers, weth, asker, bidder } = await setup();
+        const r0 = signers[3].address;
+        const bid = tokenIdBid();
+        const ask = newAsk({ royalties: [[r0, 5]] });
+        const roy = bp.mul(5);
+        await fillOrder(market, bid, bidder, ask, asker);
+        expect(await weth.balanceOf(r0)).to.equal(roy);
+        expect(await weth.balanceOf(asker.address)).to.equal(exa.sub(roy));
+      });
+      it("handles multiple royalties correctly", async () => {
+        const { market, signers, weth, asker, bidder } = await setup();
+        const r0 = signers[3].address;
+        const r1 = signers[4].address;
+        const bid = tokenIdBid();
+        const ask = newAsk({
+          royalties: [
+            [r0, 5],
+            [r1, 1],
+          ],
+        });
+        const roy = bp.mul(5);
+        await fillOrder(market, bid, bidder, ask, asker);
+        expect(await weth.balanceOf(r0)).to.equal(roy);
+        expect(await weth.balanceOf(r1)).to.equal(bp);
+        expect(await weth.balanceOf(asker.address)).to.equal(
+          exa.sub(roy).sub(bp)
+        );
+      });
+      it("handles the edge case where royalties sum to 100%", async () => {
+        const { market, signers, weth, asker, bidder } = await setup();
+        const r0 = signers[3].address;
+        const r1 = signers[4].address;
+        const bid = tokenIdBid();
+        const ask = newAsk({
+          royalties: [
+            [r0, 8000],
+            [r1, 2000],
+          ],
+        });
+        await fillOrder(market, bid, bidder, ask, asker);
+        expect(await weth.balanceOf(r0)).to.equal(bp.mul(8000));
+        expect(await weth.balanceOf(r1)).to.equal(bp.mul(2000));
+        expect(await weth.balanceOf(asker.address)).to.equal(0);
+      });
+      it("reverts if royalties sum to >100%", async () => {
+        const { market, signers, weth, asker, bidder } = await setup();
+        const r0 = signers[3].address;
+        const r1 = signers[4].address;
+        const bid = tokenIdBid();
+        const ask = newAsk({
+          royalties: [
+            [r0, 8000],
+            [r1, 2001],
+          ],
+        });
+        await expect(
+          fillOrder(market, bid, bidder, ask, asker)
+        ).to.be.revertedWith("Arithmetic operation underflowed");
       });
     });
 

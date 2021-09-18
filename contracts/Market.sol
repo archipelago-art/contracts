@@ -34,6 +34,13 @@ struct Bid {
     uint256[] traitset;
 }
 
+struct Royalty {
+    address recipient;
+    // Basis points of the sale price this recipient should receive
+    // one bp is 1/10,000
+    uint256 bps;
+}
+
 struct Ask {
     uint256 nonce;
     /// Timestamp at which this ask was created. Affects time-based
@@ -44,6 +51,7 @@ struct Ask {
     /// List price, in wei.
     uint256 price;
     uint256 tokenId;
+    Royalty[] royalties;
 }
 
 contract Market {
@@ -170,7 +178,9 @@ contract Market {
             ORDER_CANCELLED_OR_EXPIRED
         );
 
-        require(bid.price == ask.price, "price mismatch");
+        uint256 _price = bid.price;
+        uint256 _proceeds = _price; // amount that goes to the asker, after royalties
+        require(_price == ask.price, "price mismatch");
 
         if (bid.bidType == BidType.SINGLE_TOKEN) {
             require(bid.tokenId == tokenId, "tokenid mismatch");
@@ -183,9 +193,15 @@ contract Market {
             }
         }
 
+        for (uint256 _i = 0; _i < ask.royalties.length; _i++) {
+            Royalty memory _royalty = ask.royalties[_i];
+            uint256 _amt = (_royalty.bps * _price) / 10000;
+            _proceeds -= _amt;
+            weth.transferFrom(bidder, _royalty.recipient, _amt);
+        }
+
         token.safeTransferFrom(tokenOwner, bidder, tokenId);
-        weth.transferFrom(bidder, tokenOwner, bid.price);
-        // TODO: royalties
+        weth.transferFrom(bidder, tokenOwner, _proceeds);
 
         // bids and asks are cancelled on execution, to prevent replays
         nonceCancellation[bidder][bid.nonce] = true;
