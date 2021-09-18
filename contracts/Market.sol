@@ -112,6 +112,7 @@ contract Market {
             _cancellationTimestamp > bidTimestampCancellation[msg.sender],
             INVALID_ARGS
         );
+        require(_cancellationTimestamp <= block.timestamp, INVALID_ARGS);
         bidTimestampCancellation[msg.sender] = _cancellationTimestamp;
         emit BidCancellation(msg.sender, _cancellationTimestamp);
     }
@@ -121,6 +122,7 @@ contract Market {
             _cancellationTimestamp > askTimestampCancellation[msg.sender],
             INVALID_ARGS
         );
+        require(_cancellationTimestamp <= block.timestamp, INVALID_ARGS);
         askTimestampCancellation[msg.sender] = _cancellationTimestamp;
         emit AskCancellation(msg.sender, _cancellationTimestamp);
     }

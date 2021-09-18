@@ -10,16 +10,25 @@ const BidType = Object.freeze({
 
 describe("Market", () => {
   const exa = BN.from("10").pow(18);
+  let Clock;
   let Market;
   let TestERC20;
   let TestERC721;
+
+  let clock;
+
   before(async () => {
-    [Market, TestERC20, TestERC721, TestTraitOracle] = await Promise.all([
-      ethers.getContractFactory("Market"),
-      ethers.getContractFactory("TestERC20"),
-      ethers.getContractFactory("TestERC721"),
-      ethers.getContractFactory("TestTraitOracle"),
-    ]);
+    [Clock, Market, TestERC20, TestERC721, TestTraitOracle] = await Promise.all(
+      [
+        ethers.getContractFactory("Clock"),
+        ethers.getContractFactory("Market"),
+        ethers.getContractFactory("TestERC20"),
+        ethers.getContractFactory("TestERC721"),
+        ethers.getContractFactory("TestTraitOracle"),
+      ]
+    );
+    clock = await Clock.deploy();
+    await clock.deployed();
   });
 
   async function setup() {
@@ -531,6 +540,17 @@ describe("Market", () => {
       await expect(market.cancelBids(1)).to.be.revertedWith("invalid args");
       await expect(market.cancelAsks(0)).to.be.revertedWith("invalid args");
       await expect(market.cancelAsks(1)).to.be.revertedWith("invalid args");
+    });
+    it("cancellation timestamps must not be in the future", async () => {
+      const { market } = await setup();
+      const now = await clock.timestamp();
+      const future = now.add(BN.from("86400"));
+      await expect(market.cancelBids(future)).to.be.revertedWith(
+        "invalid args"
+      );
+      await expect(market.cancelAsks(future)).to.be.revertedWith(
+        "invalid args"
+      );
     });
   });
 });
