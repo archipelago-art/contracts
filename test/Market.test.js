@@ -60,6 +60,7 @@ describe("Market", () => {
     deadline = ethers.constants.MaxUint256,
     price = exa,
     tokenId = 0,
+    royalties = [],
   } = {}) {
     return {
       nonce,
@@ -69,6 +70,7 @@ describe("Market", () => {
       tokenId,
       traitset: [],
       bidType: BidType.SINGLE_TOKEN,
+      royalties,
     };
   }
 
@@ -78,6 +80,7 @@ describe("Market", () => {
     deadline = ethers.constants.MaxUint256,
     price = exa,
     traitset = [],
+    royalties = [],
   } = {}) {
     return {
       nonce,
@@ -87,6 +90,7 @@ describe("Market", () => {
       tokenId: 0,
       traitset,
       bidType: BidType.TRAITSET,
+      royalties,
     };
   }
 
@@ -116,7 +120,9 @@ describe("Market", () => {
 
   async function signBid(bid, signer) {
     const blob = ethers.utils.defaultAbiCoder.encode(
-      ["(uint256,uint256,uint256,uint256,uint8,uint256,uint256[])"],
+      [
+        "(uint256,uint256,uint256,uint256,uint8,uint256,uint256[],(address, uint256)[])",
+      ],
       [
         [
           bid.nonce,
@@ -126,6 +132,7 @@ describe("Market", () => {
           bid.bidType,
           bid.tokenId,
           bid.traitset,
+          bid.royalties,
         ],
       ]
     );
@@ -278,6 +285,48 @@ describe("Market", () => {
         await expect(
           fillOrder(market, bid, bidder, ask, asker)
         ).to.be.revertedWith("Arithmetic operation underflowed");
+      });
+
+      it("bidder royalty works (if specified)", async () => {
+        const { market, signers, weth, asker, bidder } = await setup();
+        const roy = bp.mul(10);
+        const r0 = signers[3].address;
+        const bid = tokenIdBid({ royalties: [[r0, 10]] });
+        const ask = newAsk();
+        await weth.mint(bidder.address, roy);
+        await fillOrder(market, bid, bidder, ask, asker);
+        expect(await weth.balanceOf(asker.address)).to.equal(exa); // seller got full price
+        expect(await weth.balanceOf(r0)).to.equal(roy); // recipient got "extra"
+        expect(await weth.balanceOf(bidder.address)).to.equal(0); // bidder spent everything
+      });
+
+      it("transaction fails if bidder doesn't have enough for the bidder royalty", async () => {
+        const { market, signers, weth, asker, bidder } = await setup();
+        const r0 = signers[3].address;
+        const bid = tokenIdBid({ royalties: [[r0, 10]] });
+        const ask = newAsk();
+        await expect(
+          fillOrder(market, bid, bidder, ask, asker)
+        ).to.be.revertedWith("ERC20: transfer amount exceeds balance");
+      });
+
+      it("there can be multiple bidder royalties", async () => {
+        const { market, signers, weth, asker, bidder } = await setup();
+        const r0 = signers[3].address;
+        const r1 = signers[4].address;
+        await weth.mint(bidder.address, bp.mul(3));
+        const bid = tokenIdBid({
+          royalties: [
+            [r0, 1],
+            [r1, 2],
+          ],
+        });
+        const ask = newAsk();
+        await fillOrder(market, bid, bidder, ask, asker);
+        expect(await weth.balanceOf(asker.address)).to.equal(exa);
+        expect(await weth.balanceOf(r0)).to.equal(bp);
+        expect(await weth.balanceOf(r1)).to.equal(bp.mul(2));
+        expect(await weth.balanceOf(bidder.address)).to.equal(0);
       });
     });
 

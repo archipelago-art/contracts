@@ -14,6 +14,13 @@ enum BidType {
     TRAITSET
 }
 
+struct Royalty {
+    address recipient;
+    // Basis points of the sale price this recipient should receive
+    // one bp is 1/10,000
+    uint256 bps;
+}
+
 struct Bid {
     uint256 nonce;
     /// Timestamp at which this bid was created. Affects time-based
@@ -32,13 +39,12 @@ struct Bid {
     /// the bid. The array may be empty, in which case this naturally represents
     /// a floor bid on all tokens. For non-`TRAITSET` bids, this array is empty.
     uint256[] traitset;
-}
-
-struct Royalty {
-    address recipient;
-    // Basis points of the sale price this recipient should receive
-    // one bp is 1/10,000
-    uint256 bps;
+    // Royalties specified by the bidder. These royalties are added _on top of_ the
+    // sale price. These are paid to agents that directly helped the bidder, e.g.
+    // a broker who is helping the bidder, or to the frontend marketplace that
+    // the bidder is operating from. By convention, artist and platform royalties
+    // are paid by the seller, not the bidder.
+    Royalty[] royalties;
 }
 
 struct Ask {
@@ -51,6 +57,10 @@ struct Ask {
     /// List price, in wei.
     uint256 price;
     uint256 tokenId;
+    // Royalties that are paid by the asker, i.e. are subtracted from the amount
+    // of the sale price that is given to the asker when the sale completes.
+    // Artist or platform royalties (e.g. to ArtBlocks or the Archipelago protocol)
+    // should be deducted from the Ask side.
     Royalty[] royalties;
 }
 
@@ -196,7 +206,16 @@ contract Market {
         for (uint256 _i = 0; _i < ask.royalties.length; _i++) {
             Royalty memory _royalty = ask.royalties[_i];
             uint256 _amt = (_royalty.bps * _price) / 10000;
+            // Proceeds to the seller are decreased by all Ask royalties
             _proceeds -= _amt;
+            weth.transferFrom(bidder, _royalty.recipient, _amt);
+        }
+
+        for (uint256 _i = 0; _i < bid.royalties.length; _i++) {
+            Royalty memory _royalty = bid.royalties[_i];
+            uint256 _amt = (_royalty.bps * _price) / 10000;
+            // Proceeds to the seller are *not* decreased by Bid royalties,
+            // meaning the bidder pays them on top of the bid price.
             weth.transferFrom(bidder, _royalty.recipient, _amt);
         }
 
