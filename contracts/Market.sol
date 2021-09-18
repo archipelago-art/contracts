@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 import "./ITraitOracle.sol";
 import "./MarketMessages.sol";
+import "./IWeth.sol";
 
 contract Market {
     using MarketMessages for Bid;
@@ -17,7 +17,7 @@ contract Market {
     event NonceCancellation(address indexed participant, uint256 indexed nonce);
 
     IERC721 token;
-    IERC20 weth;
+    IWeth weth;
     ITraitOracle traitOracle;
     mapping(address => uint256) public bidTimestampCancellation;
     mapping(address => uint256) public askTimestampCancellation;
@@ -37,7 +37,7 @@ contract Market {
 
     function initialize(
         IERC721 _token,
-        IERC20 _weth,
+        IWeth _weth,
         ITraitOracle _traitOracle
     ) external {
         require(

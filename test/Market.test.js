@@ -14,20 +14,18 @@ describe("Market", () => {
   const exa = BN.from("10").pow(18);
   let Clock;
   let Market;
-  let TestERC20;
+  let TestWeth;
   let TestERC721;
 
   let clock;
   before(async () => {
-    [Clock, Market, TestERC20, TestERC721, TestTraitOracle] = await Promise.all(
-      [
-        ethers.getContractFactory("Clock"),
-        ethers.getContractFactory("Market"),
-        ethers.getContractFactory("TestERC20"),
-        ethers.getContractFactory("TestERC721"),
-        ethers.getContractFactory("TestTraitOracle"),
-      ]
-    );
+    [Clock, Market, TestWeth, TestERC721, TestTraitOracle] = await Promise.all([
+      ethers.getContractFactory("Clock"),
+      ethers.getContractFactory("Market"),
+      ethers.getContractFactory("TestWeth"),
+      ethers.getContractFactory("TestERC721"),
+      ethers.getContractFactory("TestTraitOracle"),
+    ]);
     clock = await Clock.deploy();
     await clock.deployed();
   });
@@ -44,7 +42,7 @@ describe("Market", () => {
     const signers = await ethers.getSigners();
     const [market, weth, nft, oracle] = await Promise.all([
       Market.deploy(),
-      TestERC20.deploy(),
+      TestWeth.deploy(),
       TestERC721.deploy(),
       TestTraitOracle.deploy(),
     ]);
@@ -57,7 +55,7 @@ describe("Market", () => {
     await market.initialize(nft.address, weth.address, oracle.address);
     const bidder = signers[1];
     const asker = signers[2];
-    await weth.mint(bidder.address, exa); // give bidder 1 full weth
+    await weth.connect(bidder).deposit({ value: exa.mul(2) }); // give bidder 2 weth
     await weth
       .connect(bidder)
       .approve(market.address, ethers.constants.MaxUint256);
@@ -190,12 +188,13 @@ describe("Market", () => {
     it("works in a basic tokenId specified case", async () => {
       const { market, signers, weth, nft, asker, bidder } = await setup();
       expect(await nft.ownerOf(0)).to.equal(asker.address);
+      expect(await weth.balanceOf(bidder.address)).to.equal(exa.mul(2));
       const bid = tokenIdBid();
       const ask = newAsk();
 
       await fillOrder(market, bid, bidder, ask, asker);
       expect(await nft.ownerOf(0)).to.equal(bidder.address);
-      expect(await weth.balanceOf(bidder.address)).to.equal(0);
+      expect(await weth.balanceOf(bidder.address)).to.equal(exa);
       expect(await weth.balanceOf(asker.address)).to.equal(exa);
     });
 
@@ -317,18 +316,20 @@ describe("Market", () => {
         const r0 = signers[3].address;
         const bid = tokenIdBid({ royalties: [{ recipient: r0, bps: 10 }] });
         const ask = newAsk();
-        await weth.mint(bidder.address, roy);
         await fillOrder(market, bid, bidder, ask, asker);
         expect(await weth.balanceOf(asker.address)).to.equal(exa); // seller got full price
         expect(await weth.balanceOf(r0)).to.equal(roy); // recipient got "extra"
-        expect(await weth.balanceOf(bidder.address)).to.equal(0); // bidder spent everything
+        expect(await weth.balanceOf(bidder.address)).to.equal(exa.sub(roy)); // bidder started with 2 weth
       });
 
       it("transaction fails if bidder doesn't have enough for the bidder royalty", async () => {
         const { market, signers, weth, asker, bidder } = await setup();
         const r0 = signers[3].address;
-        const bid = tokenIdBid({ royalties: [{ recipient: r0, bps: 10 }] });
-        const ask = newAsk();
+        const bid = tokenIdBid({
+          royalties: [{ recipient: r0, bps: 10 }],
+          price: exa.mul(2),
+        });
+        const ask = newAsk({ price: exa.mul(2) });
         await expect(
           fillOrder(market, bid, bidder, ask, asker)
         ).to.be.revertedWith("ERC20: transfer amount exceeds balance");
@@ -338,7 +339,6 @@ describe("Market", () => {
         const { market, signers, weth, asker, bidder } = await setup();
         const r0 = signers[3].address;
         const r1 = signers[4].address;
-        await weth.mint(bidder.address, bp.mul(3));
         const bid = tokenIdBid({
           royalties: [
             { recipient: r0, bps: 1 },
@@ -350,7 +350,9 @@ describe("Market", () => {
         expect(await weth.balanceOf(asker.address)).to.equal(exa);
         expect(await weth.balanceOf(r0)).to.equal(bp);
         expect(await weth.balanceOf(r1)).to.equal(bp.mul(2));
-        expect(await weth.balanceOf(bidder.address)).to.equal(0);
+        expect(await weth.balanceOf(bidder.address)).to.equal(
+          exa.sub(bp.mul(3))
+        );
       });
     });
 
