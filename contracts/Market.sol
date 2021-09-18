@@ -81,6 +81,8 @@ contract Market {
     string constant ORDER_CANCELLED_OR_EXPIRED =
         "Market: order cancelled or expired";
 
+    string constant TRANSFER_FAILED = "Market: transfer failed";
+
     function initialize(
         IERC721 _token,
         IERC20 _weth,
@@ -216,7 +218,10 @@ contract Market {
             uint256 _amt = (_royalty.bps * _price) / 10000;
             // Proceeds to the seller are decreased by all Ask royalties
             _proceeds -= _amt;
-            weth.transferFrom(bidder, _royalty.recipient, _amt);
+            require(
+                weth.transferFrom(bidder, _royalty.recipient, _amt),
+                TRANSFER_FAILED
+            );
         }
 
         for (uint256 _i = 0; _i < bid.royalties.length; _i++) {
@@ -224,10 +229,16 @@ contract Market {
             uint256 _amt = (_royalty.bps * _price) / 10000;
             // Proceeds to the seller are *not* decreased by Bid royalties,
             // meaning the bidder pays them on top of the bid price.
-            weth.transferFrom(bidder, _royalty.recipient, _amt);
+            require(
+                weth.transferFrom(bidder, _royalty.recipient, _amt),
+                TRANSFER_FAILED
+            );
         }
 
         token.safeTransferFrom(tokenOwner, bidder, tokenId);
-        weth.transferFrom(bidder, tokenOwner, _proceeds);
+        require(
+            weth.transferFrom(bidder, tokenOwner, _proceeds),
+            TRANSFER_FAILED
+        );
     }
 }

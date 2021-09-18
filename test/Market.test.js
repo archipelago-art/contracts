@@ -376,6 +376,16 @@ describe("Market", () => {
           fillOrder(market, bid, bidder, ask, asker)
         ).to.be.revertedWith("tokenid mismatch");
       });
+
+      it("rejects if ERC-20 transfer returns `false`", async () => {
+        const { market, signers, weth, asker, bidder } = await setup();
+        await weth.setPaused(true);
+        const bid = tokenIdBid();
+        const ask = newAsk();
+        await expect(
+          fillOrder(market, bid, bidder, ask, asker)
+        ).to.be.revertedWith("Market: transfer failed");
+      });
     });
 
     describe("approvals", () => {
