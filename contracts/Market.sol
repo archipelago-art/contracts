@@ -30,11 +30,10 @@ contract Market {
 
     string constant TRANSFER_FAILED = "Market: transfer failed";
 
-    bytes32 constant DOMAIN_SEPARATOR =
+    bytes32 constant TYPEHASH_DOMAIN_SEPARATOR =
         keccak256(
             abi.encodePacked(
-                keccak256(abi.encodePacked("EIP712Domain(string name)")),
-                keccak256(abi.encodePacked("ArchipelagoMarket"))
+                "EIP712Domain(string name,uint256 chainId,address verifyingContract)"
             )
         );
 
@@ -54,14 +53,26 @@ contract Market {
         traitOracle = _traitOracle;
     }
 
-    function _verify(bytes memory _message, bytes memory _signature)
-        internal
-        pure
-        returns (address)
-    {
+    function _computeDomainSeparator() internal view returns (bytes32) {
+        return
+            keccak256(
+                abi.encode(
+                    TYPEHASH_DOMAIN_SEPARATOR,
+                    keccak256(abi.encodePacked("ArchipelagoMarket")),
+                    block.chainid,
+                    address(this)
+                )
+            );
+    }
+
+    function _verify(
+        bytes32 _domainSeparator,
+        bytes memory _message,
+        bytes memory _signature
+    ) internal pure returns (address) {
         bytes32 _structHash = keccak256(_message);
         bytes32 _ethMessageHash = ECDSA.toTypedDataHash(
-            DOMAIN_SEPARATOR,
+            _domainSeparator,
             _structHash
         );
         return ECDSA.recover(_ethMessageHash, _signature);
@@ -101,8 +112,17 @@ contract Market {
         Ask memory ask,
         bytes memory askSignature
     ) external {
-        address bidder = _verify(bid.serialize(), bidSignature);
-        address asker = _verify(ask.serialize(), askSignature);
+        bytes32 _domainSeparator = _computeDomainSeparator();
+        address bidder = _verify(
+            _domainSeparator,
+            bid.serialize(),
+            bidSignature
+        );
+        address asker = _verify(
+            _domainSeparator,
+            ask.serialize(),
+            askSignature
+        );
         _fillOrder(bid, bidder, ask, asker);
     }
 

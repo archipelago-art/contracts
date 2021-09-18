@@ -18,7 +18,6 @@ describe("Market", () => {
   let TestERC721;
 
   let clock;
-
   before(async () => {
     [Clock, Market, TestERC20, TestERC721, TestTraitOracle] = await Promise.all(
       [
@@ -32,6 +31,14 @@ describe("Market", () => {
     clock = await Clock.deploy();
     await clock.deployed();
   });
+
+  async function domainSeparator(address) {
+    return {
+      name: "ArchipelagoMarket",
+      chainId: await ethers.provider.send("eth_chainId"),
+      verifyingContract: address,
+    };
+  }
 
   async function setup() {
     const signers = await ethers.getSigners();
@@ -129,9 +136,9 @@ describe("Market", () => {
     return result;
   }
 
-  async function signBid(bid, signer) {
+  async function signBid(marketAddress, bid, signer) {
     return signer._signTypedData(
-      DOMAIN_SEPARATOR,
+      await domainSeparator(marketAddress),
       {
         Bid: [
           { type: "uint256", name: "nonce" },
@@ -152,9 +159,9 @@ describe("Market", () => {
     );
   }
 
-  async function signAsk(ask, signer) {
+  async function signAsk(marketAddress, ask, signer) {
     return signer._signTypedData(
-      DOMAIN_SEPARATOR,
+      await domainSeparator(marketAddress),
       {
         Ask: [
           { type: "uint256", name: "nonce" },
@@ -174,8 +181,8 @@ describe("Market", () => {
   }
 
   async function fillOrder(market, bid, bidder, ask, asker) {
-    const bidSignature = await signBid(bid, bidder);
-    const askSignature = await signAsk(ask, asker);
+    const bidSignature = await signBid(market.address, bid, bidder);
+    const askSignature = await signAsk(market.address, ask, asker);
     return market.fillOrder(bid, bidSignature, ask, askSignature);
   }
 
