@@ -163,11 +163,9 @@ contract Market {
         address tokenOwner = token.ownerOf(tokenId);
         if (tokenOwner == asker) {
             ownerOrApproved = true;
-        }
-        if (token.getApproved(tokenId) == asker) {
+        } else if (token.getApproved(tokenId) == asker) {
             ownerOrApproved = true;
-        }
-        if (token.isApprovedForAll(tokenOwner, asker)) {
+        } else if (token.isApprovedForAll(tokenOwner, asker)) {
             ownerOrApproved = true;
         }
         require(ownerOrApproved, "asker is not owner or approved");
