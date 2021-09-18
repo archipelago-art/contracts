@@ -68,8 +68,8 @@ contract ArtblocksTraitOracle is ITraitOracle {
     bytes32 constant DOMAIN_SEPARATOR =
         keccak256(
             abi.encodePacked(
-                keccak256(abi.encodePacked("EIP712Domain(string name)")),
-                keccak256(abi.encodePacked("ArtblocksTraitOracle"))
+                keccak256("EIP712Domain(string name)"),
+                keccak256("ArtblocksTraitOracle")
             )
         );
 

@@ -32,9 +32,7 @@ contract Market {
 
     bytes32 constant TYPEHASH_DOMAIN_SEPARATOR =
         keccak256(
-            abi.encodePacked(
-                "EIP712Domain(string name,uint256 chainId,address verifyingContract)"
-            )
+            "EIP712Domain(string name,uint256 chainId,address verifyingContract)"
         );
 
     function initialize(
@@ -58,7 +56,7 @@ contract Market {
             keccak256(
                 abi.encode(
                     TYPEHASH_DOMAIN_SEPARATOR,
-                    keccak256(abi.encodePacked("ArchipelagoMarket")),
+                    keccak256("ArchipelagoMarket"),
                     block.chainid,
                     address(this)
                 )
