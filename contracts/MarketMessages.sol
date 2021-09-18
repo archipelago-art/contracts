@@ -56,6 +56,10 @@ struct Ask {
     // Artist or platform royalties (e.g. to ArtBlocks or the Archipelago protocol)
     // should be deducted from the Ask side.
     Royalty[] royalties;
+    // Whether the asker would like their WETH proceeds to be automatically
+    // unwrapped to ETH on order execution.
+    // Purely a convenience for people who prefer ETH to WETH.
+    bool unwrapWeth;
 }
 
 library MarketMessages {

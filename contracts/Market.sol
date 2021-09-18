@@ -35,6 +35,11 @@ contract Market {
             "EIP712Domain(string name,uint256 chainId,address verifyingContract)"
         );
 
+    receive() external payable {
+        // only accept ETH from the WETH contract (so we can unwrap for users)
+        require(msg.sender == address(weth), "only weth contract may pay");
+    }
+
     function initialize(
         IERC721 _token,
         IWeth _weth,
@@ -206,9 +211,21 @@ contract Market {
         }
 
         token.safeTransferFrom(tokenOwner, bidder, tokenId);
-        require(
-            weth.transferFrom(bidder, tokenOwner, _proceeds),
-            TRANSFER_FAILED
-        );
+        if (ask.unwrapWeth) {
+            require(
+                weth.transferFrom(bidder, address(this), _proceeds),
+                TRANSFER_FAILED
+            );
+            weth.withdraw(_proceeds);
+            // Note: This invokes the asker's fallback function. Be careful of
+            // re-entrancy attacks. We deliberately invalidate the bid and ask
+            // nonces before this point, to prevent replay attacks.
+            payable(tokenOwner).transfer(_proceeds);
+        } else {
+            require(
+                weth.transferFrom(bidder, tokenOwner, _proceeds),
+                TRANSFER_FAILED
+            );
+        }
     }
 }

@@ -117,6 +117,7 @@ describe("Market", () => {
     price = exa,
     tokenId = 0,
     royalties = [],
+    unwrapWeth = false,
   } = {}) {
     return {
       nonce,
@@ -125,6 +126,7 @@ describe("Market", () => {
       price,
       tokenId,
       royalties,
+      unwrapWeth,
     };
   }
 
@@ -196,6 +198,17 @@ describe("Market", () => {
       expect(await nft.ownerOf(0)).to.equal(bidder.address);
       expect(await weth.balanceOf(bidder.address)).to.equal(exa);
       expect(await weth.balanceOf(asker.address)).to.equal(exa);
+    });
+
+    it("unwraps weth->eth for the asker, if specified", async () => {
+      const { market, signers, weth, nft, asker, bidder } = await setup();
+      const bid = tokenIdBid();
+      const ask = newAsk({ unwrapWeth: true });
+      const askerBalanceBefore = await asker.getBalance();
+      await fillOrder(market, bid, bidder, ask, asker);
+      expect(await weth.balanceOf(asker.address)).to.equal(0);
+      const askerBalanceAfter = await asker.getBalance();
+      expect(askerBalanceAfter.sub(askerBalanceBefore)).to.equal(exa);
     });
 
     describe("traits and oracle", () => {
@@ -403,6 +416,16 @@ describe("Market", () => {
           fillOrder(market, bid, bidder, ask, asker)
         ).to.be.revertedWith("Market: transfer failed");
       });
+
+      it("rejects if ERC-20 transfer returns `false` (in unwrap mode)", async () => {
+        const { market, signers, weth, asker, bidder } = await setup();
+        await weth.setPaused(true);
+        const bid = tokenIdBid();
+        const ask = newAsk({ unwrapWeth: true });
+        await expect(
+          fillOrder(market, bid, bidder, ask, asker)
+        ).to.be.revertedWith("Market: transfer failed");
+      });
     });
 
     describe("approvals", () => {
@@ -579,5 +602,10 @@ describe("Market", () => {
         "invalid args"
       );
     });
+  });
+  it("rejects ether transfers that are not from the weth contract", async () => {
+    const { market, signers } = await setup();
+    const fail = signers[0].sendTransaction({ to: market.address, value: exa });
+    await expect(fail).to.be.revertedWith("only weth contract may pay");
   });
 });
