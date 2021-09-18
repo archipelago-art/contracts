@@ -2,11 +2,11 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 import "./ITraitOracle.sol";
 import "./IWeth.sol";
 import "./MarketMessages.sol";
+import "./SignatureChecker.sol";
 
 contract Market {
     using MarketMessages for Bid;
@@ -73,12 +73,13 @@ contract Market {
         bytes memory _message,
         bytes memory _signature
     ) internal pure returns (address) {
-        bytes32 _structHash = keccak256(_message);
-        bytes32 _ethMessageHash = ECDSA.toTypedDataHash(
-            _domainSeparator,
-            _structHash
-        );
-        return ECDSA.recover(_ethMessageHash, _signature);
+        return
+            SignatureChecker.recover(
+                _domainSeparator,
+                keccak256(_message),
+                _signature,
+                SignatureKind.EIP_712
+            );
     }
 
     function cancelBids(uint256 _cancellationTimestamp) external {

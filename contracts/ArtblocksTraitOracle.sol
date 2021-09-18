@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-
 import "./ArtblocksTraitOracleMessages.sol";
 import "./ITraitOracle.sol";
+import "./SignatureChecker.sol";
 
 enum TraitType {
     /// A trait that represents an Art Blocks project, like "Chromie Squiggle"
@@ -117,12 +116,12 @@ contract ArtblocksTraitOracle is ITraitOracle {
         bytes memory _message,
         bytes memory _signature
     ) internal view {
-        bytes32 _structHash = keccak256(_message);
-        bytes32 _ethMessageHash = ECDSA.toTypedDataHash(
+        address _signer = SignatureChecker.recover(
             DOMAIN_SEPARATOR,
-            _structHash
+            keccak256(_message),
+            _signature,
+            SignatureKind.EIP_712
         );
-        address _signer = ECDSA.recover(_ethMessageHash, _signature);
         require(_signer == oracleSigner, ERR_UNAUTHORIZED);
     }
 
