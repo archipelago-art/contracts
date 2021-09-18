@@ -190,6 +190,12 @@ contract Market {
             ORDER_CANCELLED_OR_EXPIRED
         );
 
+        // Bids and asks are cancelled on execution, to prevent replays. Cancel
+        // upfront so that external calls (`transferFrom`, `safeTransferFrom`,
+        // the ERC-721 receive hook) only observe the cancelled state.
+        nonceCancellation[bidder][bid.nonce] = true;
+        nonceCancellation[asker][ask.nonce] = true;
+
         uint256 _price = bid.price;
         uint256 _proceeds = _price; // amount that goes to the asker, after royalties
         require(_price == ask.price, "price mismatch");
@@ -223,9 +229,5 @@ contract Market {
 
         token.safeTransferFrom(tokenOwner, bidder, tokenId);
         weth.transferFrom(bidder, tokenOwner, _proceeds);
-
-        // bids and asks are cancelled on execution, to prevent replays
-        nonceCancellation[bidder][bid.nonce] = true;
-        nonceCancellation[asker][ask.nonce] = true;
     }
 }
