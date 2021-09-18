@@ -6,65 +6,12 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 import "./ITraitOracle.sol";
-
-enum BidType {
-    /// A bid for a specific token, keyed by token ID.
-    SINGLE_TOKEN,
-    /// A blanket bid for any token that matches *all* of the specified traits.
-    TRAITSET
-}
-
-struct Royalty {
-    address recipient;
-    // Basis points of the sale price this recipient should receive
-    // one bp is 1/10,000
-    uint256 bps;
-}
-
-struct Bid {
-    uint256 nonce;
-    /// Timestamp at which this bid was created. Affects time-based
-    /// cancellations.
-    uint256 created;
-    /// Timestamp past which this bid is no longer valid.
-    uint256 deadline;
-    /// Offer price, in wei.
-    uint256 price;
-    BidType bidType;
-    /// For `SINGLE_TOKEN` bids, this is the token that the bid applies to. For
-    /// other bids, this is zero.
-    uint256 tokenId;
-    /// For `TRAITSET` bids, this is an array of trait IDs, sorted in strictly
-    /// increasing order. A token must have *every* trait in this array to match
-    /// the bid. The array may be empty, in which case this naturally represents
-    /// a floor bid on all tokens. For non-`TRAITSET` bids, this array is empty.
-    uint256[] traitset;
-    // Royalties specified by the bidder. These royalties are added _on top of_ the
-    // sale price. These are paid to agents that directly helped the bidder, e.g.
-    // a broker who is helping the bidder, or to the frontend marketplace that
-    // the bidder is operating from. By convention, artist and platform royalties
-    // are paid by the seller, not the bidder.
-    Royalty[] royalties;
-}
-
-struct Ask {
-    uint256 nonce;
-    /// Timestamp at which this ask was created. Affects time-based
-    /// cancellations.
-    uint256 created;
-    /// Timestamp past which this ask is no longer valid.
-    uint256 deadline;
-    /// List price, in wei.
-    uint256 price;
-    uint256 tokenId;
-    // Royalties that are paid by the asker, i.e. are subtracted from the amount
-    // of the sale price that is given to the asker when the sale completes.
-    // Artist or platform royalties (e.g. to ArtBlocks or the Archipelago protocol)
-    // should be deducted from the Ask side.
-    Royalty[] royalties;
-}
+import "./MarketMessages.sol";
 
 contract Market {
+    using MarketMessages for Bid;
+    using MarketMessages for Ask;
+
     event BidCancellation(address indexed participant, uint256 timestamp);
     event AskCancellation(address indexed participant, uint256 timestamp);
     event NonceCancellation(address indexed participant, uint256 indexed nonce);
@@ -82,6 +29,14 @@ contract Market {
         "Market: order cancelled or expired";
 
     string constant TRANSFER_FAILED = "Market: transfer failed";
+
+    bytes32 constant DOMAIN_SEPARATOR =
+        keccak256(
+            abi.encodePacked(
+                keccak256(abi.encodePacked("EIP712Domain(string name)")),
+                keccak256(abi.encodePacked("ArchipelagoMarket"))
+            )
+        );
 
     function initialize(
         IERC721 _token,
@@ -104,8 +59,11 @@ contract Market {
         pure
         returns (address)
     {
-        bytes32 _rawHash = keccak256(_message);
-        bytes32 _ethMessageHash = ECDSA.toEthSignedMessageHash(_rawHash);
+        bytes32 _structHash = keccak256(_message);
+        bytes32 _ethMessageHash = ECDSA.toTypedDataHash(
+            DOMAIN_SEPARATOR,
+            _structHash
+        );
         return ECDSA.recover(_ethMessageHash, _signature);
     }
 
@@ -143,12 +101,8 @@ contract Market {
         Ask memory ask,
         bytes memory askSignature
     ) external {
-        bytes memory bidMessage = abi.encode(bid);
-        bytes memory askMessage = abi.encode(ask);
-
-        address bidder = _verify(bidMessage, bidSignature);
-        address asker = _verify(askMessage, askSignature);
-
+        address bidder = _verify(bid.serialize(), bidSignature);
+        address asker = _verify(ask.serialize(), askSignature);
         _fillOrder(bid, bidder, ask, asker);
     }
 

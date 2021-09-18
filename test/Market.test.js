@@ -8,6 +8,8 @@ const BidType = Object.freeze({
   TRAITSET: 1,
 });
 
+const DOMAIN_SEPARATOR = Object.freeze({ name: "ArchipelagoMarket" });
+
 describe("Market", () => {
   const exa = BN.from("10").pow(18);
   let Clock;
@@ -128,41 +130,47 @@ describe("Market", () => {
   }
 
   async function signBid(bid, signer) {
-    const blob = ethers.utils.defaultAbiCoder.encode(
-      [
-        "(uint256,uint256,uint256,uint256,uint8,uint256,uint256[],(address, uint256)[])",
-      ],
-      [
-        [
-          bid.nonce,
-          bid.created,
-          bid.deadline,
-          bid.price,
-          bid.bidType,
-          bid.tokenId,
-          bid.traitset,
-          bid.royalties,
+    return signer._signTypedData(
+      DOMAIN_SEPARATOR,
+      {
+        Bid: [
+          { type: "uint256", name: "nonce" },
+          { type: "uint256", name: "created" },
+          { type: "uint256", name: "deadline" },
+          { type: "uint256", name: "price" },
+          { type: "uint8", name: "bidType" },
+          { type: "uint256", name: "tokenId" },
+          { type: "uint256[]", name: "traitset" },
+          { type: "Royalty[]", name: "royalties" },
         ],
-      ]
+        Royalty: [
+          { type: "address", name: "recipient" },
+          { type: "uint256", name: "bps" },
+        ],
+      },
+      bid
     );
-    return signBlob(blob, signer);
   }
 
   async function signAsk(ask, signer) {
-    const blob = ethers.utils.defaultAbiCoder.encode(
-      ["(uint256,uint256,uint256,uint256,uint256,(address,uint256)[])"],
-      [
-        [
-          ask.nonce,
-          ask.created,
-          ask.deadline,
-          ask.price,
-          ask.tokenId,
-          ask.royalties,
+    return signer._signTypedData(
+      DOMAIN_SEPARATOR,
+      {
+        Ask: [
+          { type: "uint256", name: "nonce" },
+          { type: "uint256", name: "created" },
+          { type: "uint256", name: "deadline" },
+          { type: "uint256", name: "price" },
+          { type: "uint256", name: "tokenId" },
+          { type: "Royalty[]", name: "royalties" },
         ],
-      ]
+        Royalty: [
+          { type: "address", name: "recipient" },
+          { type: "uint256", name: "bps" },
+        ],
+      },
+      ask
     );
-    return signBlob(blob, signer);
   }
 
   async function fillOrder(market, bid, bidder, ask, asker) {
@@ -230,7 +238,7 @@ describe("Market", () => {
         const { market, signers, weth, asker, bidder } = await setup();
         const r0 = signers[3].address;
         const bid = tokenIdBid();
-        const ask = newAsk({ royalties: [[r0, 0]] });
+        const ask = newAsk({ royalties: [{ recipient: r0, bps: 0 }] });
         await fillOrder(market, bid, bidder, ask, asker);
         expect(await weth.balanceOf(r0)).to.equal(0);
         expect(await weth.balanceOf(asker.address)).to.equal(exa);
@@ -239,7 +247,7 @@ describe("Market", () => {
         const { market, signers, weth, asker, bidder } = await setup();
         const r0 = signers[3].address;
         const bid = tokenIdBid();
-        const ask = newAsk({ royalties: [[r0, 5]] });
+        const ask = newAsk({ royalties: [{ recipient: r0, bps: 5 }] });
         const roy = bp.mul(5);
         await fillOrder(market, bid, bidder, ask, asker);
         expect(await weth.balanceOf(r0)).to.equal(roy);
@@ -252,8 +260,8 @@ describe("Market", () => {
         const bid = tokenIdBid();
         const ask = newAsk({
           royalties: [
-            [r0, 5],
-            [r1, 1],
+            { recipient: r0, bps: 5 },
+            { recipient: r1, bps: 1 },
           ],
         });
         const roy = bp.mul(5);
@@ -271,8 +279,8 @@ describe("Market", () => {
         const bid = tokenIdBid();
         const ask = newAsk({
           royalties: [
-            [r0, 8000],
-            [r1, 2000],
+            { recipient: r0, bps: 8000 },
+            { recipient: r1, bps: 2000 },
           ],
         });
         await fillOrder(market, bid, bidder, ask, asker);
@@ -287,8 +295,8 @@ describe("Market", () => {
         const bid = tokenIdBid();
         const ask = newAsk({
           royalties: [
-            [r0, 8000],
-            [r1, 2001],
+            { recipient: r0, bps: 8000 },
+            { recipient: r1, bps: 2001 },
           ],
         });
         await expect(
@@ -300,7 +308,7 @@ describe("Market", () => {
         const { market, signers, weth, asker, bidder } = await setup();
         const roy = bp.mul(10);
         const r0 = signers[3].address;
-        const bid = tokenIdBid({ royalties: [[r0, 10]] });
+        const bid = tokenIdBid({ royalties: [{ recipient: r0, bps: 10 }] });
         const ask = newAsk();
         await weth.mint(bidder.address, roy);
         await fillOrder(market, bid, bidder, ask, asker);
@@ -312,7 +320,7 @@ describe("Market", () => {
       it("transaction fails if bidder doesn't have enough for the bidder royalty", async () => {
         const { market, signers, weth, asker, bidder } = await setup();
         const r0 = signers[3].address;
-        const bid = tokenIdBid({ royalties: [[r0, 10]] });
+        const bid = tokenIdBid({ royalties: [{ recipient: r0, bps: 10 }] });
         const ask = newAsk();
         await expect(
           fillOrder(market, bid, bidder, ask, asker)
@@ -326,8 +334,8 @@ describe("Market", () => {
         await weth.mint(bidder.address, bp.mul(3));
         const bid = tokenIdBid({
           royalties: [
-            [r0, 1],
-            [r1, 2],
+            { recipient: r0, bps: 1 },
+            { recipient: r1, bps: 2 },
           ],
         });
         const ask = newAsk();
