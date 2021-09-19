@@ -130,6 +130,41 @@ contract Market {
         _fillOrder(bid, bidder, ask, asker);
     }
 
+    // Variant of fill order where the buyer pays in ETH (which is converted to
+    // WETH under the hood). Added as a convenience. Code is mostly a repeat of
+    // fillOrder, since we need to get the bidder from the signature, and then
+    // convert the paid ETH to WETH.
+    //
+    // We don't know exactly how much the order will cost the bidder upfront
+    // (we'd need to calculate royalties). So instead, the bidder just provides
+    // any amount of ETH they want, which will be added to their WETH balance
+    // before attempting to fill the transaction. If they haven't sent enough,
+    // the tx will fail; if they sent extra, they wil have a remaining WETH
+    // balance afterwards, which we assume was their intent (maybe they have
+    // other bids outstanding).
+    function fillOrderEth(
+        Bid memory bid,
+        bytes memory bidSignature,
+        Ask memory ask,
+        bytes memory askSignature
+    ) external payable {
+        bytes32 _domainSeparator = _computeDomainSeparator();
+        address bidder = _verify(
+            _domainSeparator,
+            bid.serialize(),
+            bidSignature
+        );
+        address asker = _verify(
+            _domainSeparator,
+            ask.serialize(),
+            askSignature
+        );
+        require(msg.sender == bidder, "only bidder may fill with ETH");
+        weth.deposit{value: msg.value}();
+        weth.transfer(bidder, msg.value);
+        _fillOrder(bid, bidder, ask, asker);
+    }
+
     function _fillOrder(
         Bid memory bid,
         address bidder,

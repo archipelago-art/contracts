@@ -211,6 +211,59 @@ describe("Market", () => {
       expect(askerBalanceAfter.sub(askerBalanceBefore)).to.equal(exa);
     });
 
+    describe("order filling in ETH", () => {
+      it("bidder can top-off their weth with eth", async () => {
+        const { market, bidder, asker, weth } = await setup();
+        const bid = tokenIdBid({ price: exa.mul(3) });
+        const ask = newAsk({ price: exa.mul(3) });
+        const bidSignature = await signBid(market.address, bid, bidder);
+        const askSignature = await signAsk(market.address, ask, asker);
+        await market
+          .connect(bidder)
+          .fillOrderEth(bid, bidSignature, ask, askSignature, { value: exa });
+        expect(await weth.balanceOf(bidder.address)).to.equal(0);
+      });
+      it("only bidder can call fillOrderEth", async () => {
+        const { market, bidder, asker, weth } = await setup();
+        const bid = tokenIdBid({ price: exa.mul(3) });
+        const ask = newAsk({ price: exa.mul(3) });
+        const bidSignature = await signBid(market.address, bid, bidder);
+        const askSignature = await signAsk(market.address, ask, asker);
+        const fail = market
+          .connect(asker)
+          .fillOrderEth(bid, bidSignature, ask, askSignature, { value: exa });
+        await expect(fail).to.be.revertedWith("only bidder may fill with ETH");
+      });
+      it("bidder can over-fill if they choose", async () => {
+        const { market, bidder, asker, weth } = await setup();
+        const bid = tokenIdBid();
+        const ask = newAsk();
+        const bidSignature = await signBid(market.address, bid, bidder);
+        const askSignature = await signAsk(market.address, ask, asker);
+        await market
+          .connect(bidder)
+          .fillOrderEth(bid, bidSignature, ask, askSignature, {
+            value: exa.mul(9),
+          });
+        expect(await weth.balanceOf(bidder.address)).to.equal(exa.mul(10));
+      });
+      it("still fails if there's insufficient weth", async () => {
+        const { market, bidder, asker, weth } = await setup();
+        const bid = tokenIdBid({ price: exa.mul(10) });
+        const ask = newAsk({ price: exa.mul(10) });
+        const bidSignature = await signBid(market.address, bid, bidder);
+        const askSignature = await signAsk(market.address, ask, asker);
+        const fail = market
+          .connect(bidder)
+          .fillOrderEth(bid, bidSignature, ask, askSignature, {
+            value: exa.mul(5),
+          });
+        await expect(fail).to.be.revertedWith(
+          "transfer amount exceeds balance"
+        );
+      });
+    });
+
     describe("traits and oracle", () => {
       it("any nft can match if the traitset is empty", async () => {
         const { market, bidder, asker } = await setup();
