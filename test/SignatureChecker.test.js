@@ -47,6 +47,17 @@ describe("SignatureChecker", () => {
   );
   const TYPEHASH_POINT_2D = stringHash("Point2d(uint256 x,uint256 y)");
 
+  function makePrism() {
+    return {
+      footprint: [
+        { x: 0, y: 0 },
+        { x: 1, y: 2 },
+        { x: 2, y: 0 },
+      ],
+      height: 7,
+    };
+  }
+
   function prismStructHash(prism) {
     return ethers.utils.keccak256(
       ethers.utils.defaultAbiCoder.encode(
@@ -70,16 +81,30 @@ describe("SignatureChecker", () => {
     );
   }
 
+  it("rejects unsigned messages", async () => {
+    // Setting `_kind` to `NO_SIGNATURE` should fail unconditionally, even if
+    // the other arguments might constitute a valid signature of a different
+    // kind.
+    const signer = (await ethers.getSigners())[0];
+    const prism = makePrism();
+    const signature = await signer._signTypedData(
+      TYPED_DOMAIN_SEPARATOR,
+      TYPES,
+      prism
+    );
+    await expect(
+      fixture.recover(
+        RAW_DOMAIN_SEPARATOR,
+        prismStructHash(prism),
+        signature,
+        SignatureKind.NO_SIGNATURE
+      )
+    ).to.be.revertedWith("SignatureChecker: no signature given");
+  });
+
   it("verifies an Ethereum signed message", async () => {
     const signer = (await ethers.getSigners())[0];
-    const prism = {
-      footprint: [
-        { x: 0, y: 0 },
-        { x: 1, y: 2 },
-        { x: 2, y: 0 },
-      ],
-      height: 7,
-    };
+    const prism = makePrism();
     const structHash = prismStructHash(prism);
     const message = ethers.utils.arrayify(
       ethers.utils.keccak256(
@@ -102,14 +127,7 @@ describe("SignatureChecker", () => {
 
   it("verifies a typed data signature", async () => {
     const signer = (await ethers.getSigners())[0];
-    const prism = {
-      footprint: [
-        { x: 0, y: 0 },
-        { x: 1, y: 2 },
-        { x: 2, y: 0 },
-      ],
-      height: 7,
-    };
+    const prism = makePrism();
     const signature = await signer._signTypedData(
       TYPED_DOMAIN_SEPARATOR,
       TYPES,

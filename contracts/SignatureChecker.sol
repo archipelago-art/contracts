@@ -4,6 +4,10 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 enum SignatureKind {
+    /// An unsigned message. "Signatures" with this kind will always be
+    /// rejected; this enum variant exists to let callers handle other types of
+    /// authorization.
+    NO_SIGNATURE,
     /// A message that starts with "\x19Ethereum Signed Message[...]", as
     /// implemented by the `personal_sign` JSON-RPC method.
     ETHEREUM_SIGNED_MESSAGE,
@@ -24,8 +28,10 @@ library SignatureChecker {
             _hash = ECDSA.toEthSignedMessageHash(
                 keccak256(abi.encode(_domainSeparator, _structHash))
             );
-        } else {
+        } else if (_kind == SignatureKind.EIP_712) {
             _hash = ECDSA.toTypedDataHash(_domainSeparator, _structHash);
+        } else {
+            revert("SignatureChecker: no signature given");
         }
         return ECDSA.recover(_hash, _signature);
     }

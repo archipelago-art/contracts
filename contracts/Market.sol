@@ -23,6 +23,13 @@ contract Market {
     mapping(address => uint256) public askTimestampCancellation;
     mapping(address => mapping(uint256 => bool)) public nonceCancellation;
 
+    /// `onChainApprovals[_address][_structHash]` is `true` if `_address` has
+    /// provided on-chain approval of a message with hash `_structHash`.
+    ///
+    /// These approvals are not bounded by a domain separator; the contract
+    /// storage itself is the signing domain.
+    mapping(address => mapping(bytes32 => bool)) public onChainApprovals;
+
     string constant INVALID_ARGS = "Market: invalid args";
 
     string constant ORDER_CANCELLED_OR_EXPIRED =
@@ -73,14 +80,30 @@ contract Market {
         bytes32 _structHash,
         bytes memory _signature,
         SignatureKind _signatureKind
-    ) internal pure returns (address) {
-        return
-            SignatureChecker.recover(
-                _domainSeparator,
-                _structHash,
-                _signature,
-                _signatureKind
-            );
+    ) internal view returns (address) {
+        if (_signatureKind != SignatureKind.NO_SIGNATURE) {
+            return
+                SignatureChecker.recover(
+                    _domainSeparator,
+                    _structHash,
+                    _signature,
+                    _signatureKind
+                );
+        }
+        address _signer = abi.decode(_signature, (address));
+        require(
+            onChainApprovals[_signer][_structHash],
+            "Market: on-chain approval missing"
+        );
+        return _signer;
+    }
+
+    function setOnChainBidApproval(Bid memory _bid, bool _approved) external {
+        onChainApprovals[msg.sender][_bid.structHash()] = _approved;
+    }
+
+    function setOnChainAskApproval(Ask memory _ask, bool _approved) external {
+        onChainApprovals[msg.sender][_ask.structHash()] = _approved;
     }
 
     function cancelBids(uint256 _cancellationTimestamp) external {

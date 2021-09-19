@@ -74,6 +74,7 @@ describe("Market", () => {
     await market.initialize(nft.address, weth.address, oracle.address);
     const bidder = signers[1];
     const asker = signers[2];
+    const otherSigner = signers[3];
     await weth.connect(bidder).deposit({ value: exa.mul(2) }); // give bidder 2 weth
     await weth
       .connect(bidder)
@@ -82,7 +83,7 @@ describe("Market", () => {
     await nft.mint(asker.address, 0);
     await nft.mint(asker.address, 1);
     await nft.connect(asker).setApprovalForAll(market.address, true);
-    return { signers, market, weth, nft, bidder, asker, oracle };
+    return { signers, market, weth, nft, bidder, asker, otherSigner, oracle };
   }
 
   it("deploys", async () => {
@@ -322,6 +323,12 @@ describe("Market", () => {
   ) {
     let bidSignature, askSignature;
     switch (signatureKinds.bidder) {
+      case SignatureKind.NO_SIGNATURE:
+        bidSignature = ethers.utils.defaultAbiCoder.encode(
+          ["address"],
+          [signatureKinds.bidderAddress]
+        );
+        break;
       case SignatureKind.ETHEREUM_SIGNED_MESSAGE:
         bidSignature = await signBidLegacy(market.address, bid, bidder);
         break;
@@ -334,6 +341,12 @@ describe("Market", () => {
         );
     }
     switch (signatureKinds.asker) {
+      case SignatureKind.NO_SIGNATURE:
+        askSignature = ethers.utils.defaultAbiCoder.encode(
+          ["address"],
+          [signatureKinds.askerAddress]
+        );
+        break;
       case SignatureKind.ETHEREUM_SIGNED_MESSAGE:
         askSignature = await signAskLegacy(market.address, ask, asker);
         break;
@@ -356,43 +369,88 @@ describe("Market", () => {
   }
 
   describe("order filling", () => {
-    describe("works with basic exact tokenId specifications", () => {
-      async function go(signatureKinds) {
-        const { market, signers, weth, nft, asker, bidder } = await setup();
+    describe("authorization", () => {
+      async function expectSuccess(setUpSignatures) {
+        const setupData = await setup();
+        const { market, signers, weth, nft, asker, bidder } = setupData;
         expect(await nft.ownerOf(0)).to.equal(asker.address);
         expect(await weth.balanceOf(bidder.address)).to.equal(exa.mul(2));
         const bid = tokenIdBid();
         const ask = newAsk();
 
+        const signatureSetupData = { ...setupData, bid, ask };
+        const signatureKinds = await setUpSignatures(signatureSetupData);
         await fillOrder(market, bid, bidder, ask, asker, signatureKinds);
         expect(await nft.ownerOf(0)).to.equal(bidder.address);
         expect(await weth.balanceOf(bidder.address)).to.equal(exa);
         expect(await weth.balanceOf(asker.address)).to.equal(exa);
       }
 
-      it("with EIP-712 signatures on both ends", async () => {
-        await go({
+      it("supports EIP-712 signatures on both ends", async () => {
+        await expectSuccess(async () => ({
           bidder: SignatureKind.EIP_712,
           asker: SignatureKind.EIP_712,
-        });
+        }));
       });
-      it("with legacy signatures on both ends", async () => {
-        await go({
+      it("supports legacy signatures on both ends", async () => {
+        await expectSuccess(async () => ({
           bidder: SignatureKind.ETHEREUM_SIGNED_MESSAGE,
           asker: SignatureKind.ETHEREUM_SIGNED_MESSAGE,
-        });
+        }));
       });
-      it("with a legacy bid signature only", async () => {
-        await go({
+      it("supports a legacy bid signature only", async () => {
+        await expectSuccess(async () => ({
           bidder: SignatureKind.ETHEREUM_SIGNED_MESSAGE,
           asker: SignatureKind.EIP_712,
-        });
+        }));
       });
-      it("with a legacy ask signature only", async () => {
-        await go({
+      it("supports a legacy ask signature only", async () => {
+        await expectSuccess(async () => ({
           bidder: SignatureKind.EIP_712,
           asker: SignatureKind.ETHEREUM_SIGNED_MESSAGE,
+        }));
+      });
+      it("supports bid and ask approved in contract storage", async () => {
+        await expectSuccess(async ({ market, bid, bidder, ask, asker }) => {
+          await market.connect(bidder).setOnChainBidApproval(bid, true);
+          await market.connect(asker).setOnChainAskApproval(ask, true);
+          return {
+            bidder: SignatureKind.NO_SIGNATURE,
+            asker: SignatureKind.NO_SIGNATURE,
+            bidderAddress: bidder.address,
+            askerAddress: asker.address,
+          };
         });
+      });
+
+      it("rejects if asker/bidder is not approved in contract storage", async () => {
+        const { market, asker, bidder } = await setup();
+        const bid = tokenIdBid();
+        const ask = newAsk();
+
+        // do not set on-chain ask approval
+        await expect(
+          fillOrder(market, bid, bidder, ask, asker, {
+            bidder: SignatureKind.EIP_712,
+            asker: SignatureKind.NO_SIGNATURE,
+            askerAddress: asker.address,
+          })
+        ).to.be.revertedWith("Market: on-chain approval missing");
+      });
+
+      it("rejects if ask is only approved in contract storage by a third party", async () => {
+        const { market, asker, bidder, otherSigner } = await setup();
+        const bid = tokenIdBid();
+        const ask = newAsk();
+
+        await market.connect(otherSigner).setOnChainAskApproval(ask, true);
+        await expect(
+          fillOrder(market, bid, bidder, ask, asker, {
+            bidder: SignatureKind.EIP_712,
+            asker: SignatureKind.NO_SIGNATURE,
+            askerAddress: asker.address,
+          })
+        ).to.be.revertedWith("Market: on-chain approval missing");
       });
     });
 

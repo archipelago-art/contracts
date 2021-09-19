@@ -1,6 +1,7 @@
 const SignatureKind = Object.freeze({
-  ETHEREUM_SIGNED_MESSAGE: 0,
-  EIP_712: 1,
+  NO_SIGNATURE: 0,
+  ETHEREUM_SIGNED_MESSAGE: 1,
+  EIP_712: 2,
 });
 
 module.exports = { SignatureKind };
