@@ -16,6 +16,19 @@ contract Market {
     event AskCancellation(address indexed participant, uint256 timestamp);
     event NonceCancellation(address indexed participant, uint256 indexed nonce);
 
+    event BidApproval(
+        address indexed participant,
+        bytes32 indexed bidHash,
+        bool approved,
+        Bid bid
+    );
+    event AskApproval(
+        address indexed participant,
+        bytes32 indexed askHash,
+        bool approved,
+        Ask ask
+    );
+
     IERC721 token;
     IWeth weth;
     ITraitOracle traitOracle;
@@ -99,11 +112,15 @@ contract Market {
     }
 
     function setOnChainBidApproval(Bid memory _bid, bool _approved) external {
-        onChainApprovals[msg.sender][_bid.structHash()] = _approved;
+        bytes32 _hash = _bid.structHash();
+        onChainApprovals[msg.sender][_hash] = _approved;
+        emit BidApproval(msg.sender, _hash, _approved, _bid);
     }
 
     function setOnChainAskApproval(Ask memory _ask, bool _approved) external {
-        onChainApprovals[msg.sender][_ask.structHash()] = _approved;
+        bytes32 _hash = _ask.structHash();
+        onChainApprovals[msg.sender][_hash] = _approved;
+        emit AskApproval(msg.sender, _hash, _approved, _ask);
     }
 
     /// Computes the EIP-712 struct hash of the given bid. The resulting hash

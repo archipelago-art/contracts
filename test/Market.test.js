@@ -959,9 +959,13 @@ describe("Market", () => {
       const hash = await market.bidHash(bid);
       const addr = bidder.address;
       expect(await market.onChainApprovals(addr, hash)).to.equal(false);
-      await market.connect(bidder).setOnChainBidApproval(bid, true);
+      await expect(
+        market.connect(bidder).setOnChainBidApproval(bid, true)
+      ).to.emit(market, "BidApproval");
       expect(await market.onChainApprovals(addr, hash)).to.equal(true);
-      await market.connect(bidder).setOnChainBidApproval(bid, false);
+      await expect(
+        market.connect(bidder).setOnChainBidApproval(bid, false)
+      ).to.emit(market, "BidApproval");
       expect(await market.onChainApprovals(addr, hash)).to.equal(false);
     });
     it("properly hash asks", async () => {
@@ -980,9 +984,13 @@ describe("Market", () => {
       const hash = await market.askHash(ask);
       const addr = asker.address;
       expect(await market.onChainApprovals(addr, hash)).to.equal(false);
-      await market.connect(asker).setOnChainAskApproval(ask, true);
+      await expect(
+        market.connect(asker).setOnChainAskApproval(ask, true)
+      ).to.emit(market, "AskApproval");
       expect(await market.onChainApprovals(addr, hash)).to.equal(true);
-      await market.connect(asker).setOnChainAskApproval(ask, false);
+      await expect(
+        market.connect(asker).setOnChainAskApproval(ask, false)
+      ).to.emit(market, "AskApproval");
       expect(await market.onChainApprovals(addr, hash)).to.equal(false);
     });
   });
