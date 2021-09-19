@@ -942,6 +942,50 @@ describe("Market", () => {
       );
     });
   });
+  describe("EIP-712 struct hash helpers", () => {
+    it("properly hash bids", async () => {
+      const { market, signers, bidder } = await setup();
+      const bid = traitsetBid({
+        nonce: 1,
+        created: 2,
+        deadline: ethers.constants.MaxUint256,
+        price: exa,
+        traitset: [0x1234, 0x5678],
+        royalties: [
+          { recipient: signers[3].address, bps: 10 },
+          { recipient: signers[4].address, bps: 100 },
+        ],
+      });
+      const hash = await market.bidHash(bid);
+      const addr = bidder.address;
+      expect(await market.onChainApprovals(addr, hash)).to.equal(false);
+      await market.connect(bidder).setOnChainBidApproval(bid, true);
+      expect(await market.onChainApprovals(addr, hash)).to.equal(true);
+      await market.connect(bidder).setOnChainBidApproval(bid, false);
+      expect(await market.onChainApprovals(addr, hash)).to.equal(false);
+    });
+    it("properly hash asks", async () => {
+      const { market, signers, asker } = await setup();
+      const ask = newAsk({
+        nonce: 1,
+        created: 2,
+        deadline: ethers.constants.MaxUint256,
+        tokenId: 0x12345678,
+        price: exa,
+        royalties: [
+          { recipient: signers[3].address, bps: 10 },
+          { recipient: signers[4].address, bps: 100 },
+        ],
+      });
+      const hash = await market.askHash(ask);
+      const addr = asker.address;
+      expect(await market.onChainApprovals(addr, hash)).to.equal(false);
+      await market.connect(asker).setOnChainAskApproval(ask, true);
+      expect(await market.onChainApprovals(addr, hash)).to.equal(true);
+      await market.connect(asker).setOnChainAskApproval(ask, false);
+      expect(await market.onChainApprovals(addr, hash)).to.equal(false);
+    });
+  });
   it("rejects ether transfers that are not from the weth contract", async () => {
     const { market, signers } = await setup();
     const fail = signers[0].sendTransaction({ to: market.address, value: exa });

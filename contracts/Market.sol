@@ -106,6 +106,20 @@ contract Market {
         onChainApprovals[msg.sender][_ask.structHash()] = _approved;
     }
 
+    /// Computes the EIP-712 struct hash of the given bid. The resulting hash
+    /// can be passed to `onChainApprovals(address, bytes32)` to check whether
+    /// a given account has signed this bid.
+    function bidHash(Bid memory _bid) external pure returns (bytes32) {
+        return _bid.structHash();
+    }
+
+    /// Computes the EIP-712 struct hash of the given ask. The resulting hash
+    /// can be passed to `onChainApprovals(address, bytes32)` to check whether
+    /// a given account has signed this ask.
+    function askHash(Ask memory _ask) external pure returns (bytes32) {
+        return _ask.structHash();
+    }
+
     function cancelBids(uint256 _cancellationTimestamp) external {
         require(
             _cancellationTimestamp > bidTimestampCancellation[msg.sender],
