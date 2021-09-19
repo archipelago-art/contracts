@@ -5,8 +5,8 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 import "./ITraitOracle.sol";
-import "./MarketMessages.sol";
 import "./IWeth.sol";
+import "./MarketMessages.sol";
 
 contract Market {
     using MarketMessages for Bid;
