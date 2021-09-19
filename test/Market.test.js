@@ -10,8 +10,6 @@ const BidType = Object.freeze({
   TRAITSET: 1,
 });
 
-const DOMAIN_SEPARATOR = Object.freeze({ name: "ArchipelagoMarket" });
-
 describe("Market", () => {
   const exa = BN.from("10").pow(18);
   let Clock;
