@@ -72,7 +72,7 @@ library MarketMessages {
         );
     bytes32 internal constant TYPEHASH_ASK =
         keccak256(
-            "Ask(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint256 tokenId,Royalty[] royalties)Royalty(address recipient,uint256 bps)"
+            "Ask(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint256 tokenId,Royalty[] royalties,bool unwrapWeth)Royalty(address recipient,uint256 bps)"
         );
     bytes32 internal constant TYPEHASH_ROYALTY =
         keccak256("Royalty(address recipient,uint256 bps)");
@@ -104,7 +104,8 @@ library MarketMessages {
                     _self.deadline,
                     _self.price,
                     _self.tokenId,
-                    _self.royalties.structHash()
+                    _self.royalties.structHash(),
+                    _self.unwrapWeth
                 )
             );
     }

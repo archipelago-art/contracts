@@ -159,7 +159,7 @@ describe("Market", () => {
   );
   const TYPEHASH_ASK = ethers.utils.keccak256(
     ethers.utils.toUtf8Bytes(
-      "Ask(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint256 tokenId,Royalty[] royalties)Royalty(address recipient,uint256 bps)"
+      "Ask(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint256 tokenId,Royalty[] royalties,bool unwrapWeth)Royalty(address recipient,uint256 bps)"
     )
   );
 
@@ -217,6 +217,7 @@ describe("Market", () => {
           "uint256",
           "uint256",
           "bytes32",
+          "bool",
         ],
         [
           TYPEHASH_ASK,
@@ -231,6 +232,7 @@ describe("Market", () => {
               [ask.royalties.map(royaltyStructHash)]
             )
           ),
+          ask.unwrapWeth,
         ]
       )
     );
@@ -283,6 +285,7 @@ describe("Market", () => {
           { type: "uint256", name: "price" },
           { type: "uint256", name: "tokenId" },
           { type: "Royalty[]", name: "royalties" },
+          { type: "bool", name: "unwrapWeth" },
         ],
         Royalty: [
           { type: "address", name: "recipient" },
