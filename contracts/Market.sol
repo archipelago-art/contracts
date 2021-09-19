@@ -71,14 +71,15 @@ contract Market {
     function _verify(
         bytes32 _domainSeparator,
         bytes32 _structHash,
-        bytes memory _signature
+        bytes memory _signature,
+        SignatureKind _signatureKind
     ) internal pure returns (address) {
         return
             SignatureChecker.recover(
                 _domainSeparator,
                 _structHash,
                 _signature,
-                SignatureKind.EIP_712
+                _signatureKind
             );
     }
 
@@ -113,19 +114,23 @@ contract Market {
     function fillOrder(
         Bid memory bid,
         bytes memory bidSignature,
+        SignatureKind bidSignatureKind,
         Ask memory ask,
-        bytes memory askSignature
+        bytes memory askSignature,
+        SignatureKind askSignatureKind
     ) external {
         bytes32 _domainSeparator = _computeDomainSeparator();
         address bidder = _verify(
             _domainSeparator,
             bid.structHash(),
-            bidSignature
+            bidSignature,
+            bidSignatureKind
         );
         address asker = _verify(
             _domainSeparator,
             ask.structHash(),
-            askSignature
+            askSignature,
+            askSignatureKind
         );
         _fillOrder(bid, bidder, ask, asker);
     }
@@ -145,19 +150,23 @@ contract Market {
     function fillOrderEth(
         Bid memory bid,
         bytes memory bidSignature,
+        SignatureKind bidSignatureKind,
         Ask memory ask,
-        bytes memory askSignature
+        bytes memory askSignature,
+        SignatureKind askSignatureKind
     ) external payable {
         bytes32 _domainSeparator = _computeDomainSeparator();
         address bidder = _verify(
             _domainSeparator,
             bid.structHash(),
-            bidSignature
+            bidSignature,
+            bidSignatureKind
         );
         address asker = _verify(
             _domainSeparator,
             ask.structHash(),
-            askSignature
+            askSignature,
+            askSignatureKind
         );
         require(msg.sender == bidder, "only bidder may fill with ETH");
         weth.deposit{value: msg.value}();

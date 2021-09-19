@@ -3,6 +3,8 @@ const { ethers } = require("hardhat");
 
 const BN = ethers.BigNumber;
 
+const { SignatureKind } = require("./SignatureChecker");
+
 const BidType = Object.freeze({
   SINGLE_TOKEN: 0,
   TRAITSET: 1,
@@ -36,6 +38,25 @@ describe("Market", () => {
       chainId: await ethers.provider.send("eth_chainId"),
       verifyingContract: address,
     };
+  }
+
+  async function rawDomainSeparator(address) {
+    const { name, chainId, verifyingContract } = await domainSeparator(address);
+    return ethers.utils.keccak256(
+      ethers.utils.defaultAbiCoder.encode(
+        ["bytes32", "bytes32", "uint256", "address"],
+        [
+          ethers.utils.keccak256(
+            ethers.utils.toUtf8Bytes(
+              "EIP712Domain(string name,uint256 chainId,address verifyingContract)"
+            )
+          ),
+          ethers.utils.keccak256(ethers.utils.toUtf8Bytes(name)),
+          chainId,
+          verifyingContract,
+        ]
+      )
+    );
   }
 
   async function setup() {
@@ -130,10 +151,91 @@ describe("Market", () => {
     };
   }
 
-  async function signBlob(blob, signer) {
-    const hash = ethers.utils.arrayify(ethers.utils.keccak256(blob));
-    const result = await signer.signMessage(hash);
-    return result;
+  const TYPEHASH_ROYALTY = ethers.utils.keccak256(
+    ethers.utils.toUtf8Bytes("Royalty(address recipient,uint256 bps)")
+  );
+  const TYPEHASH_BID = ethers.utils.keccak256(
+    ethers.utils.toUtf8Bytes(
+      "Bid(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint8 bidType,uint256 tokenId,uint256[] traitset,Royalty[] royalties)Royalty(address recipient,uint256 bps)"
+    )
+  );
+  const TYPEHASH_ASK = ethers.utils.keccak256(
+    ethers.utils.toUtf8Bytes(
+      "Ask(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint256 tokenId,Royalty[] royalties)Royalty(address recipient,uint256 bps)"
+    )
+  );
+
+  function royaltyStructHash(royalty) {
+    return ethers.utils.keccak256(
+      ethers.utils.defaultAbiCoder.encode(
+        ["bytes32", "address", "uint256"],
+        [TYPEHASH_ROYALTY, royalty.recipient, royalty.bps]
+      )
+    );
+  }
+  function bidStructHash(bid) {
+    return ethers.utils.keccak256(
+      ethers.utils.defaultAbiCoder.encode(
+        [
+          "bytes32",
+          "uint256",
+          "uint256",
+          "uint256",
+          "uint256",
+          "uint8",
+          "uint256",
+          "uint256",
+          "bytes32",
+        ],
+        [
+          TYPEHASH_BID,
+          bid.nonce,
+          bid.created,
+          bid.deadline,
+          bid.price,
+          bid.bidType,
+          bid.tokenId,
+          ethers.utils.keccak256(
+            ethers.utils.solidityPack(["uint256[]"], [bid.traitset])
+          ),
+          ethers.utils.keccak256(
+            ethers.utils.solidityPack(
+              ["bytes32[]"],
+              [bid.royalties.map(royaltyStructHash)]
+            )
+          ),
+        ]
+      )
+    );
+  }
+  function askStructHash(ask) {
+    return ethers.utils.keccak256(
+      ethers.utils.defaultAbiCoder.encode(
+        [
+          "bytes32",
+          "uint256",
+          "uint256",
+          "uint256",
+          "uint256",
+          "uint256",
+          "bytes32",
+        ],
+        [
+          TYPEHASH_ASK,
+          ask.nonce,
+          ask.created,
+          ask.deadline,
+          ask.price,
+          ask.tokenId,
+          ethers.utils.keccak256(
+            ethers.utils.solidityPack(
+              ["bytes32[]"],
+              [ask.royalties.map(royaltyStructHash)]
+            )
+          ),
+        ]
+      )
+    );
   }
 
   async function signBid(marketAddress, bid, signer) {
@@ -159,6 +261,19 @@ describe("Market", () => {
     );
   }
 
+  async function signBidLegacy(marketAddress, bid, signer) {
+    const domain = await rawDomainSeparator(marketAddress);
+    const blob = ethers.utils.arrayify(
+      ethers.utils.keccak256(
+        ethers.utils.defaultAbiCoder.encode(
+          ["bytes32", "bytes32"],
+          [domain, bidStructHash(bid)]
+        )
+      )
+    );
+    return await signer.signMessage(blob);
+  }
+
   async function signAsk(marketAddress, ask, signer) {
     return signer._signTypedData(
       await domainSeparator(marketAddress),
@@ -180,24 +295,104 @@ describe("Market", () => {
     );
   }
 
-  async function fillOrder(market, bid, bidder, ask, asker) {
-    const bidSignature = await signBid(market.address, bid, bidder);
-    const askSignature = await signAsk(market.address, ask, asker);
-    return market.fillOrder(bid, bidSignature, ask, askSignature);
+  async function signAskLegacy(marketAddress, ask, signer) {
+    const domain = await rawDomainSeparator(marketAddress);
+    const blob = ethers.utils.arrayify(
+      ethers.utils.keccak256(
+        ethers.utils.defaultAbiCoder.encode(
+          ["bytes32", "bytes32"],
+          [domain, askStructHash(ask)]
+        )
+      )
+    );
+    return await signer.signMessage(blob);
+  }
+
+  async function fillOrder(
+    market,
+    bid,
+    bidder,
+    ask,
+    asker,
+    signatureKinds = {
+      bidder: SignatureKind.EIP_712,
+      asker: SignatureKind.EIP_712,
+    }
+  ) {
+    let bidSignature, askSignature;
+    switch (signatureKinds.bidder) {
+      case SignatureKind.ETHEREUM_SIGNED_MESSAGE:
+        bidSignature = await signBidLegacy(market.address, bid, bidder);
+        break;
+      case SignatureKind.EIP_712:
+        bidSignature = await signBid(market.address, bid, bidder);
+        break;
+      default:
+        throw new Error(
+          "unexpected signatureKinds.bidder: " + signatureKinds.bidder
+        );
+    }
+    switch (signatureKinds.asker) {
+      case SignatureKind.ETHEREUM_SIGNED_MESSAGE:
+        askSignature = await signAskLegacy(market.address, ask, asker);
+        break;
+      case SignatureKind.EIP_712:
+        askSignature = await signAsk(market.address, ask, asker);
+        break;
+      default:
+        throw new Error(
+          "unexpected signatureKinds.asker: " + signatureKinds.asker
+        );
+    }
+    return market.fillOrder(
+      bid,
+      bidSignature,
+      signatureKinds.bidder,
+      ask,
+      askSignature,
+      signatureKinds.asker
+    );
   }
 
   describe("order filling", () => {
-    it("works in a basic tokenId specified case", async () => {
-      const { market, signers, weth, nft, asker, bidder } = await setup();
-      expect(await nft.ownerOf(0)).to.equal(asker.address);
-      expect(await weth.balanceOf(bidder.address)).to.equal(exa.mul(2));
-      const bid = tokenIdBid();
-      const ask = newAsk();
+    describe("works with basic exact tokenId specifications", () => {
+      async function go(signatureKinds) {
+        const { market, signers, weth, nft, asker, bidder } = await setup();
+        expect(await nft.ownerOf(0)).to.equal(asker.address);
+        expect(await weth.balanceOf(bidder.address)).to.equal(exa.mul(2));
+        const bid = tokenIdBid();
+        const ask = newAsk();
 
-      await fillOrder(market, bid, bidder, ask, asker);
-      expect(await nft.ownerOf(0)).to.equal(bidder.address);
-      expect(await weth.balanceOf(bidder.address)).to.equal(exa);
-      expect(await weth.balanceOf(asker.address)).to.equal(exa);
+        await fillOrder(market, bid, bidder, ask, asker, signatureKinds);
+        expect(await nft.ownerOf(0)).to.equal(bidder.address);
+        expect(await weth.balanceOf(bidder.address)).to.equal(exa);
+        expect(await weth.balanceOf(asker.address)).to.equal(exa);
+      }
+
+      it("with EIP-712 signatures on both ends", async () => {
+        await go({
+          bidder: SignatureKind.EIP_712,
+          asker: SignatureKind.EIP_712,
+        });
+      });
+      it("with legacy signatures on both ends", async () => {
+        await go({
+          bidder: SignatureKind.ETHEREUM_SIGNED_MESSAGE,
+          asker: SignatureKind.ETHEREUM_SIGNED_MESSAGE,
+        });
+      });
+      it("with a legacy bid signature only", async () => {
+        await go({
+          bidder: SignatureKind.ETHEREUM_SIGNED_MESSAGE,
+          asker: SignatureKind.EIP_712,
+        });
+      });
+      it("with a legacy ask signature only", async () => {
+        await go({
+          bidder: SignatureKind.EIP_712,
+          asker: SignatureKind.ETHEREUM_SIGNED_MESSAGE,
+        });
+      });
     });
 
     it("unwraps weth->eth for the asker, if specified", async () => {
@@ -220,7 +415,15 @@ describe("Market", () => {
         const askSignature = await signAsk(market.address, ask, asker);
         await market
           .connect(bidder)
-          .fillOrderEth(bid, bidSignature, ask, askSignature, { value: exa });
+          .fillOrderEth(
+            bid,
+            bidSignature,
+            SignatureKind.EIP_712,
+            ask,
+            askSignature,
+            SignatureKind.EIP_712,
+            { value: exa }
+          );
         expect(await weth.balanceOf(bidder.address)).to.equal(0);
       });
       it("only bidder can call fillOrderEth", async () => {
@@ -231,7 +434,15 @@ describe("Market", () => {
         const askSignature = await signAsk(market.address, ask, asker);
         const fail = market
           .connect(asker)
-          .fillOrderEth(bid, bidSignature, ask, askSignature, { value: exa });
+          .fillOrderEth(
+            bid,
+            bidSignature,
+            SignatureKind.EIP_712,
+            ask,
+            askSignature,
+            SignatureKind.EIP_712,
+            { value: exa }
+          );
         await expect(fail).to.be.revertedWith("only bidder may fill with ETH");
       });
       it("bidder can over-fill if they choose", async () => {
@@ -242,9 +453,17 @@ describe("Market", () => {
         const askSignature = await signAsk(market.address, ask, asker);
         await market
           .connect(bidder)
-          .fillOrderEth(bid, bidSignature, ask, askSignature, {
-            value: exa.mul(9),
-          });
+          .fillOrderEth(
+            bid,
+            bidSignature,
+            SignatureKind.EIP_712,
+            ask,
+            askSignature,
+            SignatureKind.EIP_712,
+            {
+              value: exa.mul(9),
+            }
+          );
         expect(await weth.balanceOf(bidder.address)).to.equal(exa.mul(10));
       });
       it("still fails if there's insufficient weth", async () => {
@@ -255,9 +474,17 @@ describe("Market", () => {
         const askSignature = await signAsk(market.address, ask, asker);
         const fail = market
           .connect(bidder)
-          .fillOrderEth(bid, bidSignature, ask, askSignature, {
-            value: exa.mul(5),
-          });
+          .fillOrderEth(
+            bid,
+            bidSignature,
+            SignatureKind.EIP_712,
+            ask,
+            askSignature,
+            SignatureKind.EIP_712,
+            {
+              value: exa.mul(5),
+            }
+          );
         await expect(fail).to.be.revertedWith(
           "transfer amount exceeds balance"
         );
