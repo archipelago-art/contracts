@@ -113,12 +113,12 @@ contract ArtblocksTraitOracle is ITraitOracle {
     }
 
     function _requireOracleSignature(
-        bytes memory _message,
+        bytes32 _structHash,
         bytes memory _signature
     ) internal view {
         address _signer = SignatureChecker.recover(
             DOMAIN_SEPARATOR,
-            keccak256(_message),
+            _structHash,
             _signature,
             SignatureKind.EIP_712
         );
@@ -129,7 +129,7 @@ contract ArtblocksTraitOracle is ITraitOracle {
         SetProjectInfoMessage memory _msg,
         bytes memory _signature
     ) external {
-        _requireOracleSignature(_msg.serialize(), _signature);
+        _requireOracleSignature(_msg.structHash(), _signature);
         _setProjectInfo(
             _msg.projectId,
             _msg.version,
@@ -166,7 +166,7 @@ contract ArtblocksTraitOracle is ITraitOracle {
         SetFeatureInfoMessage memory _msg,
         bytes memory _signature
     ) external {
-        _requireOracleSignature(_msg.serialize(), _signature);
+        _requireOracleSignature(_msg.structHash(), _signature);
         _setFeatureInfo(_msg.projectId, _msg.featureName, _msg.version);
     }
 
@@ -199,7 +199,7 @@ contract ArtblocksTraitOracle is ITraitOracle {
         AddTraitMembershipsMessage memory _msg,
         bytes memory _signature
     ) external {
-        _requireOracleSignature(_msg.serialize(), _signature);
+        _requireOracleSignature(_msg.structHash(), _signature);
         _addTraitMemberships(_msg.traitId, _msg.tokenIds);
     }
 

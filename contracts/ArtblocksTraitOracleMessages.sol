@@ -33,45 +33,51 @@ library ArtblocksTraitOracleMessages {
             "AddTraitMembershipsMessage(uint256 traitId,uint256[] tokenIds)"
         );
 
-    function serialize(SetProjectInfoMessage memory _self)
+    function structHash(SetProjectInfoMessage memory _self)
         internal
         pure
-        returns (bytes memory)
+        returns (bytes32)
     {
         return
-            abi.encodePacked(
-                TYPEHASH_SET_PROJECT_INFO,
-                _self.projectId,
-                _self.version,
-                keccak256(abi.encodePacked(_self.projectName)),
-                _self.size
+            keccak256(
+                abi.encodePacked(
+                    TYPEHASH_SET_PROJECT_INFO,
+                    _self.projectId,
+                    _self.version,
+                    keccak256(abi.encodePacked(_self.projectName)),
+                    _self.size
+                )
             );
     }
 
-    function serialize(SetFeatureInfoMessage memory _self)
+    function structHash(SetFeatureInfoMessage memory _self)
         internal
         pure
-        returns (bytes memory)
+        returns (bytes32)
     {
         return
-            abi.encodePacked(
-                TYPEHASH_SET_FEATURE_INFO,
-                _self.projectId,
-                keccak256(abi.encodePacked(_self.featureName)),
-                _self.version
+            keccak256(
+                abi.encodePacked(
+                    TYPEHASH_SET_FEATURE_INFO,
+                    _self.projectId,
+                    keccak256(abi.encodePacked(_self.featureName)),
+                    _self.version
+                )
             );
     }
 
-    function serialize(AddTraitMembershipsMessage memory _self)
+    function structHash(AddTraitMembershipsMessage memory _self)
         internal
         pure
-        returns (bytes memory)
+        returns (bytes32)
     {
         return
-            abi.encodePacked(
-                TYPEHASH_ADD_TRAIT_MEMBERSHIPS,
-                _self.traitId,
-                keccak256(abi.encodePacked(_self.tokenIds))
+            keccak256(
+                abi.encodePacked(
+                    TYPEHASH_ADD_TRAIT_MEMBERSHIPS,
+                    _self.traitId,
+                    keccak256(abi.encodePacked(_self.tokenIds))
+                )
             );
     }
 }

@@ -63,6 +63,9 @@ struct Ask {
 }
 
 library MarketMessages {
+    using MarketMessages for Royalty;
+    using MarketMessages for Royalty[];
+
     bytes32 internal constant TYPEHASH_BID =
         keccak256(
             "Bid(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint8 bidType,uint256 tokenId,uint256[] traitset,Royalty[] royalties)Royalty(address recipient,uint256 bps)"
@@ -74,45 +77,51 @@ library MarketMessages {
     bytes32 internal constant TYPEHASH_ROYALTY =
         keccak256("Royalty(address recipient,uint256 bps)");
 
-    function serialize(Bid memory _self) internal pure returns (bytes memory) {
+    function structHash(Bid memory _self) internal pure returns (bytes32) {
         return
-            abi.encode(
-                TYPEHASH_BID,
-                _self.nonce,
-                _self.created,
-                _self.deadline,
-                _self.price,
-                _self.bidType,
-                _self.tokenId,
-                keccak256(abi.encodePacked(_self.traitset)),
-                _royaltiesHash(_self.royalties)
+            keccak256(
+                abi.encode(
+                    TYPEHASH_BID,
+                    _self.nonce,
+                    _self.created,
+                    _self.deadline,
+                    _self.price,
+                    _self.bidType,
+                    _self.tokenId,
+                    keccak256(abi.encodePacked(_self.traitset)),
+                    _self.royalties.structHash()
+                )
             );
     }
 
-    function serialize(Ask memory _self) internal pure returns (bytes memory) {
+    function structHash(Ask memory _self) internal pure returns (bytes32) {
         return
-            abi.encode(
-                TYPEHASH_ASK,
-                _self.nonce,
-                _self.created,
-                _self.deadline,
-                _self.price,
-                _self.tokenId,
-                _royaltiesHash(_self.royalties)
+            keccak256(
+                abi.encode(
+                    TYPEHASH_ASK,
+                    _self.nonce,
+                    _self.created,
+                    _self.deadline,
+                    _self.price,
+                    _self.tokenId,
+                    _self.royalties.structHash()
+                )
             );
     }
 
-    function _royaltiesHash(Royalty[] memory _self)
-        private
+    function structHash(Royalty memory _self) internal pure returns (bytes32) {
+        return
+            keccak256(abi.encode(TYPEHASH_ROYALTY, _self.recipient, _self.bps));
+    }
+
+    function structHash(Royalty[] memory _self)
+        internal
         pure
         returns (bytes32)
     {
         bytes32[] memory _structHashes = new bytes32[](_self.length);
         for (uint256 _i = 0; _i < _self.length; _i++) {
-            Royalty memory _r = _self[_i];
-            _structHashes[_i] = keccak256(
-                abi.encode(TYPEHASH_ROYALTY, _r.recipient, _r.bps)
-            );
+            _structHashes[_i] = _self[_i].structHash();
         }
         return keccak256(abi.encodePacked(_structHashes));
     }

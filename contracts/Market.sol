@@ -70,13 +70,13 @@ contract Market {
 
     function _verify(
         bytes32 _domainSeparator,
-        bytes memory _message,
+        bytes32 _structHash,
         bytes memory _signature
     ) internal pure returns (address) {
         return
             SignatureChecker.recover(
                 _domainSeparator,
-                keccak256(_message),
+                _structHash,
                 _signature,
                 SignatureKind.EIP_712
             );
@@ -119,12 +119,12 @@ contract Market {
         bytes32 _domainSeparator = _computeDomainSeparator();
         address bidder = _verify(
             _domainSeparator,
-            bid.serialize(),
+            bid.structHash(),
             bidSignature
         );
         address asker = _verify(
             _domainSeparator,
-            ask.serialize(),
+            ask.structHash(),
             askSignature
         );
         _fillOrder(bid, bidder, ask, asker);
