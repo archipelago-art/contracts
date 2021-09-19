@@ -114,22 +114,24 @@ contract ArtblocksTraitOracle is ITraitOracle {
 
     function _requireOracleSignature(
         bytes32 _structHash,
-        bytes memory _signature
+        bytes memory _signature,
+        SignatureKind _kind
     ) internal view {
         address _signer = SignatureChecker.recover(
             DOMAIN_SEPARATOR,
             _structHash,
             _signature,
-            SignatureKind.EIP_712
+            _kind
         );
         require(_signer == oracleSigner, ERR_UNAUTHORIZED);
     }
 
     function setProjectInfo(
         SetProjectInfoMessage memory _msg,
-        bytes memory _signature
+        bytes memory _signature,
+        SignatureKind _signatureKind
     ) external {
-        _requireOracleSignature(_msg.structHash(), _signature);
+        _requireOracleSignature(_msg.structHash(), _signature, _signatureKind);
         _setProjectInfo(
             _msg.projectId,
             _msg.version,
@@ -164,9 +166,10 @@ contract ArtblocksTraitOracle is ITraitOracle {
 
     function setFeatureInfo(
         SetFeatureInfoMessage memory _msg,
-        bytes memory _signature
+        bytes memory _signature,
+        SignatureKind _signatureKind
     ) external {
-        _requireOracleSignature(_msg.structHash(), _signature);
+        _requireOracleSignature(_msg.structHash(), _signature, _signatureKind);
         _setFeatureInfo(_msg.projectId, _msg.featureName, _msg.version);
     }
 
@@ -197,9 +200,10 @@ contract ArtblocksTraitOracle is ITraitOracle {
     /// Adds tokens as members of a feature trait.
     function addTraitMemberships(
         AddTraitMembershipsMessage memory _msg,
-        bytes memory _signature
+        bytes memory _signature,
+        SignatureKind _signatureKind
     ) external {
-        _requireOracleSignature(_msg.structHash(), _signature);
+        _requireOracleSignature(_msg.structHash(), _signature, _signatureKind);
         _addTraitMemberships(_msg.traitId, _msg.tokenIds);
     }
 

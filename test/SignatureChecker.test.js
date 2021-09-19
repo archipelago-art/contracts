@@ -1,10 +1,7 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
-const SignatureKind = Object.freeze({
-  ETHEREUM_SIGNED_MESSAGE: 0,
-  EIP_712: 1,
-});
+const { SignatureKind } = require("./SignatureChecker");
 
 describe("SignatureChecker", () => {
   let SignatureCheckerFixture;
