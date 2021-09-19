@@ -151,12 +151,12 @@ contract Market {
         bytes32 _domainSeparator = _computeDomainSeparator();
         address bidder = _verify(
             _domainSeparator,
-            bid.serialize(),
+            bid.structHash(),
             bidSignature
         );
         address asker = _verify(
             _domainSeparator,
-            ask.serialize(),
+            ask.structHash(),
             askSignature
         );
         require(msg.sender == bidder, "only bidder may fill with ETH");
