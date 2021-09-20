@@ -7,33 +7,47 @@ const {
   oracle: { TraitType, Errors, PROJECT_STRIDE },
 } = sdk;
 
-const RAW_DOMAIN_SEPARATOR = ethers.utils.keccak256(
-  ethers.utils.concat([
-    ethers.utils.keccak256(
-      ethers.utils.toUtf8Bytes("EIP712Domain(string name)")
-    ),
-    ethers.utils.keccak256(
-      ethers.utils.toUtf8Bytes(sdk.oracle.DOMAIN_SEPARATOR.name)
-    ),
-  ])
-);
+async function domainInfo(oracleAddress) {
+  const chainId = await ethers.provider.send("eth_chainId");
+  return { oracleAddress, chainId };
+}
 
 async function setProjectInfo(oracle, signer, msg) {
-  const sig = await sdk.oracle.sign712.setProjectInfo(signer, msg);
+  const domain = await domainInfo(oracle.address);
+  const sig = await sdk.oracle.sign712.setProjectInfo(signer, domain, msg);
   return oracle.setProjectInfo(msg, sig, SignatureKind.EIP_712);
 }
 
 async function setFeatureInfo(oracle, signer, msg) {
-  const sig = await sdk.oracle.sign712.setFeatureInfo(signer, msg);
+  const domain = await domainInfo(oracle.address);
+  const sig = await sdk.oracle.sign712.setFeatureInfo(signer, domain, msg);
   return oracle.setFeatureInfo(msg, sig, SignatureKind.EIP_712);
 }
 
 async function addTraitMemberships(oracle, signer, msg) {
-  const sig = await sdk.oracle.sign712.addTraitMemberships(signer, msg);
+  const domain = await domainInfo(oracle.address);
+  const sig = await sdk.oracle.sign712.addTraitMemberships(signer, domain, msg);
   return oracle.addTraitMemberships(msg, sig, SignatureKind.EIP_712);
 }
 
-async function signSetProjectInfoLegacy(signer, msg) {
+async function signSetProjectInfoLegacy(oracle, signer, msg) {
+  const domain = sdk.oracle.domainSeparator(await domainInfo(oracle.address));
+  const rawDomainSeparator = ethers.utils.keccak256(
+    ethers.utils.defaultAbiCoder.encode(
+      ["bytes32", "bytes32", "uint256", "address"],
+      [
+        ethers.utils.keccak256(
+          ethers.utils.toUtf8Bytes(
+            "EIP712Domain(string name,uint256 chainId,address verifyingContract)"
+          )
+        ),
+        ethers.utils.keccak256(ethers.utils.toUtf8Bytes(domain.name)),
+        domain.chainId,
+        domain.verifyingContract,
+      ]
+    )
+  );
+
   const typeHash = ethers.utils.keccak256(
     ethers.utils.toUtf8Bytes(
       "SetProjectInfoMessage(uint256 projectId,uint256 version,string projectName,uint256 size)"
@@ -53,7 +67,7 @@ async function signSetProjectInfoLegacy(signer, msg) {
   );
   const message = ethers.utils.arrayify(
     ethers.utils.keccak256(
-      ethers.utils.concat([RAW_DOMAIN_SEPARATOR, structHash])
+      ethers.utils.concat([rawDomainSeparator, structHash])
     )
   );
   return signer.signMessage(message);
@@ -67,11 +81,6 @@ describe("ArtblocksTraitOracle", () => {
     );
     signers = await ethers.getSigners();
   });
-
-  async function domainInfo(oracleAddress) {
-    const chainId = await ethers.provider.send("eth_chainId");
-    return { marketAddress, chainId };
-  }
 
   it("deploys", async () => {
     const oracle = await ArtblocksTraitOracle.deploy();
@@ -135,7 +144,7 @@ describe("ArtblocksTraitOracle", () => {
       projectName: "Archetype",
       size: 600,
     };
-    const sig = await signSetProjectInfoLegacy(signers[1], msg);
+    const sig = await signSetProjectInfoLegacy(oracle, signers[1], msg);
     await expect(
       oracle.setProjectInfo(msg, sig, SignatureKind.ETHEREUM_SIGNED_MESSAGE)
     ).to.emit(oracle, "ProjectInfoSet");
@@ -374,7 +383,11 @@ describe("ArtblocksTraitOracle", () => {
       await setFeatureInfo(oracle, signer, msg);
 
       const msg1 = { traitId, tokenIds: [1, 2] };
-      const sig1 = await sdk.oracle.sign712.addTraitMemberships(signer, msg1);
+      const sig1 = await sdk.oracle.sign712.addTraitMemberships(
+        signer,
+        await domainInfo(oracle.address),
+        msg1
+      );
       const msg2 = { traitId, tokenIds: [3, 4] };
       await expect(
         oracle.addTraitMemberships(msg2, sig1, SignatureKind.EIP_712)

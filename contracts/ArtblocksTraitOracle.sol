@@ -64,13 +64,12 @@ contract ArtblocksTraitOracle is ITraitOracle {
         "ArtblocksTraitOracle: INVALID_ARGUMENT";
     string constant ERR_UNAUTHORIZED = "ArtblocksTraitOracle: UNAUTHORIZED";
 
-    bytes32 constant DOMAIN_SEPARATOR =
+    bytes32 constant TYPEHASH_DOMAIN_SEPARATOR =
         keccak256(
-            abi.encodePacked(
-                keccak256("EIP712Domain(string name)"),
-                keccak256("ArtblocksTraitOracle")
-            )
+            "EIP712Domain(string name,uint256 chainId,address verifyingContract)"
         );
+    bytes32 constant DOMAIN_SEPARATOR_NAME_HASH =
+        keccak256("ArtblocksTraitOracle");
 
     /// Art Blocks gives each project a token space of 1 million IDs. Most IDs
     /// in this space are not actually used, but a token's ID floor-divided by
@@ -122,12 +121,24 @@ contract ArtblocksTraitOracle is ITraitOracle {
         SignatureKind _kind
     ) internal view {
         address _signer = SignatureChecker.recover(
-            DOMAIN_SEPARATOR,
+            _computeDomainSeparator(),
             _structHash,
             _signature,
             _kind
         );
         require(_signer == oracleSigner, ERR_UNAUTHORIZED);
+    }
+
+    function _computeDomainSeparator() internal view returns (bytes32) {
+        return
+            keccak256(
+                abi.encode(
+                    TYPEHASH_DOMAIN_SEPARATOR,
+                    DOMAIN_SEPARATOR_NAME_HASH,
+                    block.chainid,
+                    address(this)
+                )
+            );
     }
 
     function setProjectInfo(

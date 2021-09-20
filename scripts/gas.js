@@ -28,17 +28,25 @@ TEST_CASES.push(async function* oracleTraitMemberships(props) {
   const featureName = "Palette: Paddle";
   const version = 0;
   const traitId = sdk.oracle.featureTraitId(projectId, featureName, version);
+  const domain = {
+    oracleAddress: oracle.address,
+    chainId: await ethers.provider.send("eth_chainId"),
+  };
 
   {
     const msg = { projectId, featureName, version };
-    const sig = await sdk.oracle.sign712.setFeatureInfo(signer, msg);
+    const sig = await sdk.oracle.sign712.setFeatureInfo(signer, domain, msg);
     const tx = await oracle.setFeatureInfo(msg, sig, EIP_712);
     yield ["setFeatureInfo", await tx.wait()];
   }
 
   {
     const msg = { traitId, tokenIds: [] };
-    const sig = await sdk.oracle.sign712.addTraitMemberships(signer, msg);
+    const sig = await sdk.oracle.sign712.addTraitMemberships(
+      signer,
+      domain,
+      msg
+    );
     const tx = await oracle.addTraitMemberships(msg, sig, EIP_712);
     yield ["addTraitMemberships: empty", await tx.wait()];
   }
@@ -50,7 +58,11 @@ TEST_CASES.push(async function* oracleTraitMemberships(props) {
 
   {
     const msg = { traitId, tokenIds };
-    const sig = await sdk.oracle.sign712.addTraitMemberships(signer, msg);
+    const sig = await sdk.oracle.sign712.addTraitMemberships(
+      signer,
+      domain,
+      msg
+    );
     const tx1 = await oracle.addTraitMemberships(msg, sig, EIP_712);
     yield [
       `addTraitMemberships: Paddle (${tokenIds.length})`,
@@ -65,7 +77,11 @@ TEST_CASES.push(async function* oracleTraitMemberships(props) {
     .map((_, i) => baseTokenId + 0x0100 + i);
   {
     const msg = { traitId, tokenIds };
-    const sig = await sdk.oracle.sign712.addTraitMemberships(signer, msg);
+    const sig = await sdk.oracle.sign712.addTraitMemberships(
+      signer,
+      domain,
+      msg
+    );
     const tx = await oracle.addTraitMemberships(msg, sig, EIP_712);
     yield ["addTraitMemberships: 256 consecutive", await tx.wait()];
   }
@@ -75,7 +91,11 @@ TEST_CASES.push(async function* oracleTraitMemberships(props) {
     .map((_, i) => baseTokenId + 0x0200 + i * 8);
   {
     const msg = { traitId, tokenIds };
-    const sig = await sdk.oracle.sign712.addTraitMemberships(signer, msg);
+    const sig = await sdk.oracle.sign712.addTraitMemberships(
+      signer,
+      domain,
+      msg
+    );
     const tx = await oracle.addTraitMemberships(msg, sig, EIP_712);
     yield ["addTraitMemberships: 256 semi-scattered", await tx.wait()];
   }

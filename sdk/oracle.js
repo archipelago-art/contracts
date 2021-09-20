@@ -13,7 +13,13 @@ const Errors = Object.freeze({
 
 const PROJECT_STRIDE = 10 ** 6;
 
-const DOMAIN_SEPARATOR = Object.freeze({ name: "ArtblocksTraitOracle" });
+function domainSeparator({ oracleAddress, chainId }) {
+  return {
+    name: "ArtblocksTraitOracle",
+    chainId,
+    verifyingContract: oracleAddress,
+  };
+}
 
 const SetProjectInfoMessage = [
   { type: "uint256", name: "projectId" },
@@ -32,23 +38,23 @@ const AddTraitMembershipsMessage = [
 ];
 
 const sign712 = Object.freeze({
-  setProjectInfo(signer, msg) {
+  setProjectInfo(signer, domainInfo, msg) {
     return signer._signTypedData(
-      DOMAIN_SEPARATOR,
+      domainSeparator(domainInfo),
       { SetProjectInfoMessage },
       msg
     );
   },
-  setFeatureInfo(signer, msg) {
+  setFeatureInfo(signer, domainInfo, msg) {
     return signer._signTypedData(
-      DOMAIN_SEPARATOR,
+      domainSeparator(domainInfo),
       { SetFeatureInfoMessage },
       msg
     );
   },
-  addTraitMemberships(signer, msg) {
+  addTraitMemberships(signer, domainInfo, msg) {
     return signer._signTypedData(
-      DOMAIN_SEPARATOR,
+      domainSeparator(domainInfo),
       { AddTraitMembershipsMessage },
       msg
     );
@@ -75,7 +81,7 @@ module.exports = {
   TraitType,
   Errors,
   PROJECT_STRIDE,
-  DOMAIN_SEPARATOR,
+  domainSeparator,
   sign712,
   projectTraitId,
   featureTraitId,
