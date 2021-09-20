@@ -63,9 +63,14 @@ TEST_CASES.push(async function* oracleTraitMemberships(props) {
   }
 });
 
+const Mode = Object.freeze({
+  TEXT: "TEXT",
+  JSON: "JSON",
+});
+
 async function main() {
   await hre.run("compile", { quiet: true });
-  const { patterns } = parseArgs();
+  const { mode, patterns } = parseArgs();
   function testCaseMatches(name) {
     if (patterns.length === 0) return true;
     return patterns.some((p) => name.match(p));
@@ -92,7 +97,27 @@ async function main() {
         } else {
           gas = gasOrReceipt;
         }
-        console.log(`${label}: ${formatGas(gas)}`);
+        switch (mode) {
+          case Mode.TEXT:
+            console.log(`${label}: ${formatGas(gas)}`);
+            break;
+          case Mode.JSON: {
+            const keccak = ethers.utils.keccak256(
+              ethers.utils.toUtf8Bytes(label)
+            );
+            const hash = ethers.BigNumber.from(
+              ethers.utils.hexDataSlice(keccak, 0, 6)
+            )
+              .toBigInt()
+              .toString(32)
+              .padStart(10, "0");
+            const blob = { hash, label, gas: gas.toString() };
+            console.log(JSON.stringify(blob));
+            break;
+          }
+          default:
+            throw new Error(`Unexpected mode: ${mode}`);
+        }
       }
     } catch (e) {
       allPassed = false;
@@ -103,17 +128,34 @@ async function main() {
 }
 
 function parseArgs() {
+  let mode = Mode.TEXT;
   const rawArgs = process.argv.slice(2);
   const patterns = [];
+  let moreFlags = true;
   for (let i = 0; i < rawArgs.length; i++) {
     const arg = rawArgs[i];
+    if (moreFlags && arg === "--") {
+      moreFlags = false;
+      continue;
+    }
+    if (moreFlags && arg.startsWith("-")) {
+      if (arg === "-j" || arg === "--json") {
+        mode = Mode.JSON;
+        continue;
+      }
+      if (arg === "-t" || arg === "--text") {
+        mode = Mode.TEXT;
+        continue;
+      }
+      throw `In argument ${i + 1}: Unknown flag "${arg}"`;
+    }
     try {
       patterns.push(RegExp(arg, "i"));
     } catch (e) {
       throw `In argument ${i + 1}: ${e.message}`;
     }
   }
-  return { patterns };
+  return { patterns, mode };
 }
 
 function formatGas(gas, samplePrice = 10n ** 9n * 150n) {
