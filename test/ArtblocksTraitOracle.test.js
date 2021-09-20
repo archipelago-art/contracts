@@ -232,6 +232,7 @@ describe("ArtblocksTraitOracle", () => {
     const projectId = 23;
     const featureName = "Palette: Paddle";
     const version = 0;
+    const baseTokenId = projectId * PROJECT_STRIDE;
     const traitId = sdk.oracle.featureTraitId(projectId, featureName, version);
 
     async function setUp() {
@@ -250,7 +251,6 @@ describe("ArtblocksTraitOracle", () => {
       await oracle.setFeatureInfo(msg, sig, SignatureKind.EIP_712);
       expect(await oracle.featureMembers(traitId)).to.equal(0);
 
-      const baseTokenId = 23000000;
       const tokenIds = [
         467, 36, 45, 3, 70, 237, 449, 491, 135, 54, 250, 314,
       ].map((x) => x + baseTokenId);
@@ -290,28 +290,34 @@ describe("ArtblocksTraitOracle", () => {
       const sig = await sdk.oracle.sign712.setFeatureInfo(signer, msg);
       await oracle.setFeatureInfo(msg, sig, SignatureKind.EIP_712);
 
-      const msg1 = { traitId, tokenIds: [1, 2, 1] };
+      const msg1 = {
+        traitId,
+        tokenIds: [baseTokenId + 1, baseTokenId + 2, baseTokenId + 1],
+      };
       const sig1 = await sdk.oracle.sign712.addTraitMemberships(signer, msg1);
       await expect(
         oracle.addTraitMemberships(msg1, sig1, SignatureKind.EIP_712)
       )
         .to.emit(oracle, "TraitMembershipExpanded")
         .withArgs(traitId, 2);
-      expect(await oracle.hasTrait(1, traitId)).to.be.true;
-      expect(await oracle.hasTrait(2, traitId)).to.be.true;
-      expect(await oracle.hasTrait(3, traitId)).to.be.false;
+      expect(await oracle.hasTrait(baseTokenId + 1, traitId)).to.be.true;
+      expect(await oracle.hasTrait(baseTokenId + 2, traitId)).to.be.true;
+      expect(await oracle.hasTrait(baseTokenId + 3, traitId)).to.be.false;
       expect(await oracle.featureMembers(traitId)).to.equal(2);
 
-      const msg2 = { traitId, tokenIds: [2, 3, 2] };
+      const msg2 = {
+        traitId,
+        tokenIds: [baseTokenId + 2, baseTokenId + 3, baseTokenId + 2],
+      };
       const sig2 = await sdk.oracle.sign712.addTraitMemberships(signer, msg2);
       await expect(
         oracle.addTraitMemberships(msg2, sig2, SignatureKind.EIP_712)
       )
         .to.emit(oracle, "TraitMembershipExpanded")
         .withArgs(traitId, 3);
-      expect(await oracle.hasTrait(1, traitId)).to.be.true;
-      expect(await oracle.hasTrait(2, traitId)).to.be.true;
-      expect(await oracle.hasTrait(3, traitId)).to.be.true;
+      expect(await oracle.hasTrait(baseTokenId + 1, traitId)).to.be.true;
+      expect(await oracle.hasTrait(baseTokenId + 2, traitId)).to.be.true;
+      expect(await oracle.hasTrait(baseTokenId + 3, traitId)).to.be.true;
       expect(await oracle.featureMembers(traitId)).to.equal(3);
     });
 

@@ -210,10 +210,16 @@ contract ArtblocksTraitOracle is ITraitOracle {
     function _addTraitMemberships(uint256 _traitId, uint256[] memory _tokenIds)
         internal
     {
+        uint256 _projectId = featureTraitInfo[_traitId].projectId;
+        uint256 _minTokenId = _projectId * PROJECT_STRIDE;
+        uint256 _maxTokenId = _minTokenId + PROJECT_STRIDE;
+
         uint256 _originalSize = traitMembersCount[_traitId];
         uint256 _newSize = _originalSize;
         for (uint256 _i = 0; _i < _tokenIds.length; _i++) {
             uint256 _tokenId = _tokenIds[_i];
+            if (_tokenId < _minTokenId || _tokenId > _maxTokenId)
+                revert(ERR_INVALID_ARGUMENT);
             if (traitMembers[_traitId][_tokenId]) continue;
             traitMembers[_traitId][_tokenId] = true;
             _newSize++;
