@@ -446,16 +446,4 @@ describe("ArtblocksTraitOracle", () => {
       expect(await oracle.hasTrait(baseId, traitIdV2)).to.be.false;
     });
   });
-
-  it("does not admit signature collisions", async () => {
-    // These two messages have the same ABI encoding, but different signatures
-    // because their type hashes are different.
-    const msg1 = { projectId: 0, version: 0x80, projectName: "", size: 0 };
-    const msg2 = { projectId: 0, featureName: "", version: 0x80, size: 0 };
-    expect(msg1).to.not.deep.equal(msg2);
-
-    const sig1 = await sdk.oracle.sign712.setProjectInfo(signers[0], msg1);
-    const sig2 = await sdk.oracle.sign712.setFeatureInfo(signers[0], msg2);
-    expect(sig1).not.to.equal(sig2);
-  });
 });
