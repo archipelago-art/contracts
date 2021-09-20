@@ -86,10 +86,14 @@ contract ArtblocksTraitOracle is ITraitOracle {
 
     /// Append-only relation on `TraitId * TokenId`, for feature traits only.
     /// (Project trait membership is tracked implicitly through Art Blocks
-    /// token IDs.)
-    mapping(uint256 => mapping(uint256 => bool)) traitMembers;
+    /// token IDs.) Encoded by packing 256 token IDs into each word: the
+    /// `_tokenId % 256`th bit (counting from the LSB) of
+    /// `traitMembers[_traitId][_tokenId / 256]` represents whether `_tokenId`
+    /// has trait `_traitId`.
+    mapping(uint256 => mapping(uint256 => uint256)) traitMembers;
     /// `traitMembersCount[_traitId]` is the number of distinct `_tokenId`s
-    /// such that `traitMembers[_traitId][_tokenId]` is true.
+    /// that have trait `_traitId`. In terms of encoding, it's the sum of the
+    /// population counts of all `traitMembers[_traitId][_]` values.
     mapping(uint256 => uint256) traitMembersCount;
 
     constructor() {
@@ -216,21 +220,54 @@ contract ArtblocksTraitOracle is ITraitOracle {
         );
         uint256 _projectId = featureTraitInfo[_traitId].projectId;
         uint256 _minTokenId = _projectId * PROJECT_STRIDE;
-        uint256 _maxTokenId = _minTokenId + PROJECT_STRIDE;
-
         uint256 _originalSize = traitMembersCount[_traitId];
         uint256 _newSize = _originalSize;
         for (uint256 _i = 0; _i < _tokenIds.length; _i++) {
             uint256 _tokenId = _tokenIds[_i];
-            if (_tokenId < _minTokenId || _tokenId > _maxTokenId)
-                revert(ERR_INVALID_ARGUMENT);
-            if (traitMembers[_traitId][_tokenId]) continue;
-            traitMembers[_traitId][_tokenId] = true;
+            (bool _inRange, uint256 _wordIndex, uint256 _mask) = _tokenBitmask(
+                _tokenId,
+                _minTokenId
+            );
+            if (!_inRange) revert(ERR_INVALID_ARGUMENT);
+            uint256 _bitset = traitMembers[_traitId][_wordIndex];
+            if (_bitset & _mask != 0) continue;
+            traitMembers[_traitId][_wordIndex] = _bitset | _mask;
             _newSize++;
         }
         if (_newSize == _originalSize) return;
         traitMembersCount[_traitId] = _newSize;
         emit TraitMembershipExpanded({traitId: _traitId, newSize: _newSize});
+    }
+
+    /// Gets the location of the trait membership for the given token ID,
+    /// relative to the minimum token ID in its project. For instance, to look
+    /// up Archetype #250, call `_tokenBitmask(23000250, 23000000)`.
+    ///
+    /// The `_inRange` return value is true iff `_tokenId` is within the range
+    /// of valid tokens for its project: namely, if `_minTokenId <= _tokenId`
+    /// and `_tokenId < _minTokenId + PROJECT_STRIDE`. If `_inRange` is false,
+    /// the call is considered unsuccessful, and the other two return values
+    /// are to be ignored. The caller may wish to revert.
+    ///
+    /// For a successful call, the return values `_wordIndex` and `_mask` are
+    /// such that `traitMembers[_traitId][_wordIndex] & _mask` isolates the bit
+    /// that represents whether token `_tokenId` has trait `_traitId`
+    /// (uniformly for all traits).
+    function _tokenBitmask(uint256 _tokenId, uint256 _minTokenId)
+        internal
+        pure
+        returns (
+            bool _inRange,
+            uint256 _wordIndex,
+            uint256 _mask
+        )
+    {
+        if (_tokenId < _minTokenId) revert(ERR_INVALID_ARGUMENT);
+        uint256 _tokenIndex = _tokenId - _minTokenId;
+        if (_tokenIndex > PROJECT_STRIDE) return (false, 0, 0);
+        _inRange = true;
+        _wordIndex = _tokenIndex >> 8;
+        _mask = 1 << (_tokenIndex & 0xff);
     }
 
     function hasTrait(uint256 _tokenId, uint256 _traitId)
@@ -272,7 +309,14 @@ contract ArtblocksTraitOracle is ITraitOracle {
         // This affirms memberships even for traits that aren't finalized; it's
         // the responsibility of a conscientious frontend to discourage users
         // from making bids on such traits.
-        return traitMembers[_traitId][_tokenId];
+        uint256 _projectId = featureTraitInfo[_traitId].projectId;
+        uint256 _minTokenId = _projectId * PROJECT_STRIDE;
+        (bool _inRange, uint256 _wordIndex, uint256 _mask) = _tokenBitmask(
+            _tokenId,
+            _minTokenId
+        );
+        if (!_inRange) return false;
+        return traitMembers[_traitId][_wordIndex] & _mask != 0;
     }
 
     function projectTraitId(uint256 _projectId, uint256 _version)
