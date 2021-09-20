@@ -45,6 +45,13 @@ contract Market {
         uint256 indexed tokenId
     );
 
+    event RoyaltyPaid(
+        uint256 indexed tradeId,
+        address indexed recipient,
+        uint256 bps,
+        uint256 amount
+    );
+
     IERC721 token;
     IWeth weth;
     ITraitOracle traitOracle;
@@ -315,6 +322,7 @@ contract Market {
                 weth.transferFrom(bidder, _royalty.recipient, _amt),
                 TRANSFER_FAILED
             );
+            emit RoyaltyPaid(_tradeId, _royalty.recipient, _royalty.bps, _amt);
         }
 
         for (uint256 _i = 0; _i < bid.royalties.length; _i++) {
@@ -326,6 +334,7 @@ contract Market {
                 weth.transferFrom(bidder, _royalty.recipient, _amt),
                 TRANSFER_FAILED
             );
+            emit RoyaltyPaid(_tradeId, _royalty.recipient, _royalty.bps, _amt);
         }
 
         token.safeTransferFrom(tokenOwner, bidder, tokenId);

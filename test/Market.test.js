@@ -593,7 +593,10 @@ describe("Market", () => {
         const bid = tokenIdBid();
         const ask = newAsk({ royalties: [{ recipient: r0, bps: 5 }] });
         const roy = bp.mul(5);
-        await fillOrder(market, bid, bidder, ask, asker);
+        const tradeId = computeTradeId(bid, bidder, ask, asker);
+        await expect(fillOrder(market, bid, bidder, ask, asker))
+          .to.emit(market, "RoyaltyPaid")
+          .withArgs(tradeId, r0, 5, roy);
         expect(await weth.balanceOf(r0)).to.equal(roy);
         expect(await weth.balanceOf(asker.address)).to.equal(exa.sub(roy));
       });
@@ -609,7 +612,12 @@ describe("Market", () => {
           ],
         });
         const roy = bp.mul(5);
-        await fillOrder(market, bid, bidder, ask, asker);
+        const tradeId = computeTradeId(bid, bidder, ask, asker);
+        await expect(fillOrder(market, bid, bidder, ask, asker))
+          .to.emit(market, "RoyaltyPaid")
+          .withArgs(tradeId, r0, 5, roy)
+          .to.emit(market, "RoyaltyPaid")
+          .withArgs(tradeId, r1, 1, bp);
         expect(await weth.balanceOf(r0)).to.equal(roy);
         expect(await weth.balanceOf(r1)).to.equal(bp);
         expect(await weth.balanceOf(asker.address)).to.equal(
@@ -654,7 +662,10 @@ describe("Market", () => {
         const r0 = signers[3].address;
         const bid = tokenIdBid({ royalties: [{ recipient: r0, bps: 10 }] });
         const ask = newAsk();
-        await fillOrder(market, bid, bidder, ask, asker);
+        const tradeId = computeTradeId(bid, bidder, ask, asker);
+        await expect(fillOrder(market, bid, bidder, ask, asker))
+          .to.emit(market, "RoyaltyPaid")
+          .withArgs(tradeId, r0, 10, roy);
         expect(await weth.balanceOf(asker.address)).to.equal(exa); // seller got full price
         expect(await weth.balanceOf(r0)).to.equal(roy); // recipient got "extra"
         expect(await weth.balanceOf(bidder.address)).to.equal(exa.sub(roy)); // bidder started with 2 weth
@@ -684,7 +695,12 @@ describe("Market", () => {
           ],
         });
         const ask = newAsk();
-        await fillOrder(market, bid, bidder, ask, asker);
+        const tradeId = computeTradeId(bid, bidder, ask, asker);
+        await expect(fillOrder(market, bid, bidder, ask, asker))
+          .to.emit(market, "RoyaltyPaid")
+          .withArgs(tradeId, r0, 1, bp)
+          .to.emit(market, "RoyaltyPaid")
+          .withArgs(tradeId, r1, 2, bp.mul(2));
         expect(await weth.balanceOf(asker.address)).to.equal(exa);
         expect(await weth.balanceOf(r0)).to.equal(bp);
         expect(await weth.balanceOf(r1)).to.equal(bp.mul(2));
