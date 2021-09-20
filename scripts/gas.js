@@ -6,15 +6,14 @@ const TEST_CASES = [];
 TEST_CASES.push(async function* marketDeploy(props) {
   const market = await props.factories.Market.deploy();
   await market.deployed();
-  const receipt = await market.deployTransaction.wait();
-  yield ["Market deploy", receipt.gasUsed];
+  yield ["Market deploy", await market.deployTransaction.wait()];
 });
 
 TEST_CASES.push(async function* oracleDeploy(props) {
   const oracle = await props.factories.ArtblocksTraitOracle.deploy();
   await oracle.deployed();
-  const receipt = await oracle.deployTransaction.wait();
-  yield ["ArtblocksTraitOracle deploy", receipt.gasUsed];
+  yield ["ArtblocksTraitOracle deploy", await oracle.deployTransaction.wait()];
+});
 });
 
 async function main() {
@@ -39,7 +38,13 @@ async function main() {
         },
         signers: await ethers.getSigners(),
       });
-      for await (const [label, gas] of gen) {
+      for await (const [label, gasOrReceipt] of gen) {
+        let gas;
+        if (ethers.BigNumber.isBigNumber(gasOrReceipt.gasUsed)) {
+          gas = gasOrReceipt.gasUsed;
+        } else {
+          gas = gasOrReceipt;
+        }
         console.log(`${label}: ${formatGas(gas)}`);
       }
     } catch (e) {
