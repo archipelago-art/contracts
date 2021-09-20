@@ -321,6 +321,47 @@ describe("ArtblocksTraitOracle", () => {
       expect(await oracle.featureMembers(traitId)).to.equal(3);
     });
 
+    it("rejects assignments to traits that do not exist", async () => {
+      const { oracle, signer } = await setUp();
+      // Important to use project 0, because that's the default project ID
+      // when reading from uninitialized storage.
+      const projectId = 0;
+      const traitId = sdk.oracle.featureTraitId(
+        projectId,
+        featureName,
+        version
+      );
+
+      const tokenIds = [0, 1];
+      const msg = { traitId, tokenIds };
+      const sig = await sdk.oracle.sign712.addTraitMemberships(signer, msg);
+      await expect(
+        oracle.addTraitMemberships(msg, sig, SignatureKind.EIP_712)
+      ).to.be.revertedWith(Errors.INVALID_ARGUMENT);
+    });
+
+    it("permits assignments to project 0", async () => {
+      const { oracle, signer } = await setUp();
+      const projectId = 0;
+      const traitId = sdk.oracle.featureTraitId(
+        projectId,
+        featureName,
+        version
+      );
+      const msg = { projectId, featureName, version };
+      const sig = await sdk.oracle.sign712.setFeatureInfo(signer, msg);
+      await oracle.setFeatureInfo(msg, sig, SignatureKind.EIP_712);
+
+      const tokenIds = [0, 1];
+      const msg1 = { traitId, tokenIds };
+      const sig1 = await sdk.oracle.sign712.addTraitMemberships(signer, msg1);
+      await expect(
+        oracle.addTraitMemberships(msg1, sig1, SignatureKind.EIP_712)
+      )
+        .to.emit(oracle, "TraitMembershipExpanded")
+        .withArgs(traitId, 2);
+    });
+
     it("rejects signatures from unauthorized accounts", async () => {
       const { oracle, signer, nonSigner } = await setUp();
       const msg = { projectId, featureName, version };
