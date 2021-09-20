@@ -1,6 +1,9 @@
 const hre = require("hardhat");
 const { ethers } = hre;
 
+const sdk = require("../sdk");
+const { EIP_712 } = sdk.SignatureKind;
+
 const TEST_CASES = [];
 
 TEST_CASES.push(async function* marketDeploy(props) {
@@ -14,6 +17,50 @@ TEST_CASES.push(async function* oracleDeploy(props) {
   await oracle.deployed();
   yield ["ArtblocksTraitOracle deploy", await oracle.deployTransaction.wait()];
 });
+
+TEST_CASES.push(async function* oracleTraitMemberships(props) {
+  const oracle = await props.factories.ArtblocksTraitOracle.deploy();
+  await oracle.deployed();
+  const signer = props.signers[0];
+  await oracle.setOracleSigner(signer.address);
+
+  const projectId = 23;
+  const featureName = "Palette: Paddle";
+  const version = 0;
+  const traitId = sdk.oracle.featureTraitId(projectId, featureName, version);
+
+  {
+    const msg = { projectId, featureName, version };
+    const sig = await sdk.oracle.sign712.setFeatureInfo(signer, msg);
+    const tx = await oracle.setFeatureInfo(msg, sig, EIP_712);
+    yield ["setFeatureInfo", await tx.wait()];
+  }
+
+  {
+    const msg = { traitId, tokenIds: [] };
+    const sig = await sdk.oracle.sign712.addTraitMemberships(signer, msg);
+    const tx = await oracle.addTraitMemberships(msg, sig, EIP_712);
+    yield ["addTraitMemberships: empty", await tx.wait()];
+  }
+
+  const baseTokenId = 23000000;
+  const tokenIds = [467, 36, 45, 3, 70, 237, 449, 491, 135, 54, 250, 314].map(
+    (x) => x + baseTokenId
+  );
+
+  {
+    const msg = { traitId, tokenIds };
+    const sig = await sdk.oracle.sign712.addTraitMemberships(signer, msg);
+    const tx = await oracle.addTraitMemberships(msg, sig, EIP_712);
+    yield [`addTraitMemberships: Paddle (${tokenIds.length})`, await tx.wait()];
+  }
+
+  {
+    const msg = { traitId, tokenIds };
+    const sig = await sdk.oracle.sign712.addTraitMemberships(signer, msg);
+    const tx = await oracle.addTraitMemberships(msg, sig, EIP_712);
+    yield ["addTraitMemberships: Paddle again (no-op)", await tx.wait()];
+  }
 });
 
 async function main() {
