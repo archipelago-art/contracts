@@ -3,12 +3,8 @@ const { ethers } = require("hardhat");
 
 const BN = ethers.BigNumber;
 
-const { SignatureKind } = require("./SignatureChecker");
-
-const BidType = Object.freeze({
-  SINGLE_TOKEN: 0,
-  TRAITSET: 1,
-});
+const sdk = require("../sdk");
+const { SignatureKind } = sdk;
 
 describe("Market", () => {
   const exa = BN.from("10").pow(18);
@@ -30,16 +26,15 @@ describe("Market", () => {
     await clock.deployed();
   });
 
-  async function domainSeparator(address) {
-    return {
-      name: "ArchipelagoMarket",
-      chainId: await ethers.provider.send("eth_chainId"),
-      verifyingContract: address,
-    };
+  async function domainInfo(marketAddress) {
+    const chainId = await ethers.provider.send("eth_chainId");
+    return { marketAddress, chainId };
   }
 
   async function rawDomainSeparator(address) {
-    const { name, chainId, verifyingContract } = await domainSeparator(address);
+    const { name, chainId, verifyingContract } = sdk.market.domainSeparator(
+      await domainInfo(address)
+    );
     return ethers.utils.keccak256(
       ethers.utils.defaultAbiCoder.encode(
         ["bytes32", "bytes32", "uint256", "address"],
@@ -105,7 +100,7 @@ describe("Market", () => {
       price,
       tokenId,
       traitset: [],
-      bidType: BidType.SINGLE_TOKEN,
+      bidType: sdk.market.BidType.SINGLE_TOKEN,
       royalties,
     };
   }
@@ -125,7 +120,7 @@ describe("Market", () => {
       price,
       tokenId: 0,
       traitset,
-      bidType: BidType.TRAITSET,
+      bidType: sdk.market.BidType.TRAITSET,
       royalties,
     };
   }
@@ -240,26 +235,7 @@ describe("Market", () => {
   }
 
   async function signBid(marketAddress, bid, signer) {
-    return signer._signTypedData(
-      await domainSeparator(marketAddress),
-      {
-        Bid: [
-          { type: "uint256", name: "nonce" },
-          { type: "uint256", name: "created" },
-          { type: "uint256", name: "deadline" },
-          { type: "uint256", name: "price" },
-          { type: "uint8", name: "bidType" },
-          { type: "uint256", name: "tokenId" },
-          { type: "uint256[]", name: "traitset" },
-          { type: "Royalty[]", name: "royalties" },
-        ],
-        Royalty: [
-          { type: "address", name: "recipient" },
-          { type: "uint256", name: "bps" },
-        ],
-      },
-      bid
-    );
+    return sdk.market.sign712.bid(signer, await domainInfo(marketAddress), bid);
   }
 
   async function signBidLegacy(marketAddress, bid, signer) {
@@ -276,25 +252,7 @@ describe("Market", () => {
   }
 
   async function signAsk(marketAddress, ask, signer) {
-    return signer._signTypedData(
-      await domainSeparator(marketAddress),
-      {
-        Ask: [
-          { type: "uint256", name: "nonce" },
-          { type: "uint256", name: "created" },
-          { type: "uint256", name: "deadline" },
-          { type: "uint256", name: "price" },
-          { type: "uint256", name: "tokenId" },
-          { type: "Royalty[]", name: "royalties" },
-          { type: "bool", name: "unwrapWeth" },
-        ],
-        Royalty: [
-          { type: "address", name: "recipient" },
-          { type: "uint256", name: "bps" },
-        ],
-      },
-      ask
-    );
+    return sdk.market.sign712.ask(signer, await domainInfo(marketAddress), ask);
   }
 
   async function signAskLegacy(marketAddress, ask, signer) {

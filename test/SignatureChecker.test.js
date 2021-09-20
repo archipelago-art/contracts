@@ -1,7 +1,7 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
-const { SignatureKind } = require("./SignatureChecker");
+const { SignatureKind } = require("../sdk");
 
 describe("SignatureChecker", () => {
   let SignatureCheckerFixture;
