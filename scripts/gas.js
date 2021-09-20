@@ -51,15 +51,13 @@ TEST_CASES.push(async function* oracleTraitMemberships(props) {
   {
     const msg = { traitId, tokenIds };
     const sig = await sdk.oracle.sign712.addTraitMemberships(signer, msg);
-    const tx = await oracle.addTraitMemberships(msg, sig, EIP_712);
-    yield [`addTraitMemberships: Paddle (${tokenIds.length})`, await tx.wait()];
-  }
-
-  {
-    const msg = { traitId, tokenIds };
-    const sig = await sdk.oracle.sign712.addTraitMemberships(signer, msg);
-    const tx = await oracle.addTraitMemberships(msg, sig, EIP_712);
-    yield ["addTraitMemberships: Paddle again (no-op)", await tx.wait()];
+    const tx1 = await oracle.addTraitMemberships(msg, sig, EIP_712);
+    yield [
+      `addTraitMemberships: Paddle (${tokenIds.length})`,
+      await tx1.wait(),
+    ];
+    const tx2 = await oracle.addTraitMemberships(msg, sig, EIP_712);
+    yield ["addTraitMemberships: Paddle again (no-op)", await tx2.wait()];
   }
 });
 
