@@ -29,6 +29,29 @@ contract Market {
         Ask ask
     );
 
+    event Trade(
+        uint256 indexed tradeId,
+        address indexed buyer,
+        address indexed seller,
+        uint256 tokenId,
+        uint256 price
+    );
+    // Since an event may only have 3 indexed parameters, and we'd really like
+    // to index on the tokenId as well, we emit an auxiliary event whose sole
+    // purpose is to have the indexed tokenId alongside the corresponding
+    // tradeId
+    event TradeWithIndexedTokenId(
+        uint256 indexed tradeId,
+        uint256 indexed tokenId
+    );
+
+    event RoyaltyPaid(
+        uint256 indexed tradeId,
+        address indexed recipient,
+        uint256 bps,
+        uint256 amount
+    );
+
     IERC721 token;
     IWeth weth;
     ITraitOracle traitOracle;
@@ -272,6 +295,9 @@ contract Market {
         nonceCancellation[bidder][bid.nonce] = true;
         nonceCancellation[asker][ask.nonce] = true;
 
+        uint256 _tradeId = uint256(
+            keccak256(abi.encode(bidder, bid.nonce, asker, ask.nonce))
+        );
         uint256 _price = bid.price;
         uint256 _proceeds = _price; // amount that goes to the asker, after royalties
         require(_price == ask.price, "price mismatch");
@@ -296,6 +322,7 @@ contract Market {
                 weth.transferFrom(bidder, _royalty.recipient, _amt),
                 TRANSFER_FAILED
             );
+            emit RoyaltyPaid(_tradeId, _royalty.recipient, _royalty.bps, _amt);
         }
 
         for (uint256 _i = 0; _i < bid.royalties.length; _i++) {
@@ -307,6 +334,7 @@ contract Market {
                 weth.transferFrom(bidder, _royalty.recipient, _amt),
                 TRANSFER_FAILED
             );
+            emit RoyaltyPaid(_tradeId, _royalty.recipient, _royalty.bps, _amt);
         }
 
         token.safeTransferFrom(tokenOwner, bidder, tokenId);
@@ -326,5 +354,8 @@ contract Market {
                 TRANSFER_FAILED
             );
         }
+
+        emit Trade(_tradeId, bidder, asker, tokenId, _price);
+        emit TradeWithIndexedTokenId(_tradeId, tokenId);
     }
 }
