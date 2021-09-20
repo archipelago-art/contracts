@@ -230,7 +230,6 @@ contract ArtblocksTraitOracle is ITraitOracle {
 
         for (uint256 _i = 0; _i < _tokenIds.length; _i++) {
             uint256 _tokenId = _tokenIds[_i];
-<<<<<<< HEAD
             (bool _inRange, uint256 _wordIndex, uint256 _mask) = _tokenBitmask(
                 _tokenId,
                 _minTokenId
@@ -244,21 +243,6 @@ contract ArtblocksTraitOracle is ITraitOracle {
                 _lastWord = traitMembers[_traitId][_lastWordIndex];
             }
             if (_lastWord & _mask != 0) continue;
-||||||| 19594e5
-            if (_tokenId < _minTokenId || _tokenId > _maxTokenId)
-                revert(ERR_INVALID_ARGUMENT);
-            if (traitMembers[_traitId][_tokenId]) continue;
-            traitMembers[_traitId][_tokenId] = true;
-=======
-            (bool _inRange, uint256 _wordIndex, uint256 _mask) = _tokenBitmask(
-                _tokenId,
-                _minTokenId
-            );
-            if (!_inRange) revert(ERR_INVALID_ARGUMENT);
-            uint256 _bitset = traitMembers[_traitId][_wordIndex];
-            if (_bitset & _mask != 0) continue;
-            traitMembers[_traitId][_wordIndex] = _bitset | _mask;
->>>>>>> 270c11f34522fa6fe910f6a028752d2b72292b0a
             _newSize++;
             _lastWord |= _mask;
         }
