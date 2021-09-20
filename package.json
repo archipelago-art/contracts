@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "hardhat test",
+    "test": "hardhat test && node scripts/gas.js",
     "lint": "npm run prettier:check",
     "fix": "npm run prettier:write",
     "prettier": "prettier '**/*.json' '**/*.js' '**/*.sol'",
