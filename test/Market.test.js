@@ -52,6 +52,16 @@ describe("Market", () => {
     );
   }
 
+  function computeTradeId(bid, bidder, ask, asker) {
+    const hash = ethers.utils.keccak256(
+      ethers.utils.defaultAbiCoder.encode(
+        ["address", "uint256", "address", "uint256"],
+        [bidder.address, bid.nonce, asker.address, ask.nonce]
+      )
+    );
+    return BN.from(hash);
+  }
+
   async function setup() {
     const signers = await ethers.getSigners();
     const [market, weth, nft, oracle] = await Promise.all([
@@ -421,6 +431,24 @@ describe("Market", () => {
       expect(await weth.balanceOf(asker.address)).to.equal(0);
       const askerBalanceAfter = await asker.getBalance();
       expect(askerBalanceAfter.sub(askerBalanceBefore)).to.equal(exa);
+    });
+
+    it("emits expected events when an order fills", async () => {
+      const { market, asker, bidder } = await setup();
+      const bid = tokenIdBid();
+      const ask = newAsk();
+      const tradeId = computeTradeId(bid, bidder, ask, asker);
+      await expect(fillOrder(market, bid, bidder, ask, asker))
+        .to.emit(market, "Trade")
+        .withArgs(
+          tradeId,
+          bidder.address,
+          asker.address,
+          bid.tokenId,
+          bid.price
+        )
+        .to.emit(market, "TradeWithIndexedTokenId")
+        .withArgs(tradeId, bid.tokenId);
     });
 
     describe("order filling in ETH", () => {

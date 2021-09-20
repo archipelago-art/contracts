@@ -29,6 +29,22 @@ contract Market {
         Ask ask
     );
 
+    event Trade(
+        uint256 indexed tradeId,
+        address indexed buyer,
+        address indexed seller,
+        uint256 tokenId,
+        uint256 price
+    );
+    // Since an event may only have 3 indexed parameters, and we'd really like
+    // to index on the tokenId as well, we emit an auxiliary event whose sole
+    // purpose is to have the indexed tokenId alongside the corresponding
+    // tradeId
+    event TradeWithIndexedTokenId(
+        uint256 indexed tradeId,
+        uint256 indexed tokenId
+    );
+
     IERC721 token;
     IWeth weth;
     ITraitOracle traitOracle;
@@ -272,6 +288,9 @@ contract Market {
         nonceCancellation[bidder][bid.nonce] = true;
         nonceCancellation[asker][ask.nonce] = true;
 
+        uint256 _tradeId = uint256(
+            keccak256(abi.encode(bidder, bid.nonce, asker, ask.nonce))
+        );
         uint256 _price = bid.price;
         uint256 _proceeds = _price; // amount that goes to the asker, after royalties
         require(_price == ask.price, "price mismatch");
@@ -326,5 +345,8 @@ contract Market {
                 TRANSFER_FAILED
             );
         }
+
+        emit Trade(_tradeId, bidder, asker, tokenId, _price);
+        emit TradeWithIndexedTokenId(_tradeId, tokenId);
     }
 }
