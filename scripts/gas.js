@@ -44,7 +44,7 @@ TEST_CASES.push(async function* oracleTraitMemberships(props) {
   }
 
   const baseTokenId = 23000000;
-  const tokenIds = [467, 36, 45, 3, 70, 237, 449, 491, 135, 54, 250, 314].map(
+  let tokenIds = [467, 36, 45, 3, 70, 237, 449, 491, 135, 54, 250, 314].map(
     (x) => x + baseTokenId
   );
 
@@ -58,6 +58,26 @@ TEST_CASES.push(async function* oracleTraitMemberships(props) {
     ];
     const tx2 = await oracle.addTraitMemberships(msg, sig, EIP_712);
     yield ["addTraitMemberships: Paddle again (no-op)", await tx2.wait()];
+  }
+
+  tokenIds = Array(256)
+    .fill()
+    .map((_, i) => baseTokenId + 0x0100 + i);
+  {
+    const msg = { traitId, tokenIds };
+    const sig = await sdk.oracle.sign712.addTraitMemberships(signer, msg);
+    const tx = await oracle.addTraitMemberships(msg, sig, EIP_712);
+    yield ["addTraitMemberships: 256 consecutive", await tx.wait()];
+  }
+
+  tokenIds = Array(256)
+    .fill()
+    .map((_, i) => baseTokenId + 0x0200 + i * 8);
+  {
+    const msg = { traitId, tokenIds };
+    const sig = await sdk.oracle.sign712.addTraitMemberships(signer, msg);
+    const tx = await oracle.addTraitMemberships(msg, sig, EIP_712);
+    yield ["addTraitMemberships: 256 semi-scattered", await tx.wait()];
   }
 });
 
