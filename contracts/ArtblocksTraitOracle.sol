@@ -222,6 +222,12 @@ contract ArtblocksTraitOracle is ITraitOracle {
         uint256 _minTokenId = _projectId * PROJECT_STRIDE;
         uint256 _originalSize = traitMembersCount[_traitId];
         uint256 _newSize = _originalSize;
+
+        // For gas savings, when consecutive entries in `_tokenIds` fall within
+        // the same word index, don't touch storage.
+        uint256 _lastWordIndex = type(uint256).max;
+        uint256 _lastWord = 0;
+
         for (uint256 _i = 0; _i < _tokenIds.length; _i++) {
             uint256 _tokenId = _tokenIds[_i];
             (bool _inRange, uint256 _wordIndex, uint256 _mask) = _tokenBitmask(
@@ -229,12 +235,19 @@ contract ArtblocksTraitOracle is ITraitOracle {
                 _minTokenId
             );
             if (!_inRange) revert(ERR_INVALID_ARGUMENT);
-            uint256 _bitset = traitMembers[_traitId][_wordIndex];
-            if (_bitset & _mask != 0) continue;
-            traitMembers[_traitId][_wordIndex] = _bitset | _mask;
+            if (_wordIndex != _lastWordIndex) {
+                if (_lastWordIndex != type(uint256).max) {
+                    traitMembers[_traitId][_lastWordIndex] = _lastWord;
+                }
+                _lastWordIndex = _wordIndex;
+                _lastWord = traitMembers[_traitId][_lastWordIndex];
+            }
+            if (_lastWord & _mask != 0) continue;
             _newSize++;
+            _lastWord |= _mask;
         }
         if (_newSize == _originalSize) return;
+        traitMembers[_traitId][_lastWordIndex] = _lastWord;
         traitMembersCount[_traitId] = _newSize;
         emit TraitMembershipExpanded({traitId: _traitId, newSize: _newSize});
     }
