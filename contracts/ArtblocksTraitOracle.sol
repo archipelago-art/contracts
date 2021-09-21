@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./ArtblocksTraitOracleMessages.sol";
 import "./ITraitOracle.sol";
+import "./Popcnt.sol";
 import "./SignatureChecker.sol";
 
 enum TraitType {
@@ -40,6 +41,7 @@ contract ArtblocksTraitOracle is ITraitOracle {
     using ArtblocksTraitOracleMessages for SetProjectInfoMessage;
     using ArtblocksTraitOracleMessages for SetFeatureInfoMessage;
     using ArtblocksTraitOracleMessages for AddTraitMembershipsMessage;
+    using Popcnt for uint256;
 
     event AdminChanged(address indexed admin);
     event OracleSignerChanged(address indexed oracleSigner);
@@ -219,46 +221,28 @@ contract ArtblocksTraitOracle is ITraitOracle {
         SignatureKind _signatureKind
     ) external {
         _requireOracleSignature(_msg.structHash(), _signature, _signatureKind);
-        _addTraitMemberships(_msg.traitId, _msg.tokenIds);
+        _addTraitMemberships(_msg.traitId, _msg.words);
     }
 
-    function _addTraitMemberships(uint256 _traitId, uint256[] memory _tokenIds)
-        internal
-    {
+    function _addTraitMemberships(
+        uint256 _traitId,
+        TraitMembershipWord[] memory _words
+    ) internal {
         require(
             !_stringEmpty(featureTraitInfo[_traitId].name),
             ERR_INVALID_ARGUMENT
         );
-        uint256 _projectId = featureTraitInfo[_traitId].projectId;
-        uint256 _minTokenId = _projectId * PROJECT_STRIDE;
         uint256 _originalSize = traitMembersCount[_traitId];
         uint256 _newSize = _originalSize;
 
-        // For gas savings, when consecutive entries in `_tokenIds` fall within
-        // the same word index, don't touch storage.
-        uint256 _lastWordIndex = type(uint256).max;
-        uint256 _lastWord = 0;
-
-        for (uint256 _i = 0; _i < _tokenIds.length; _i++) {
-            uint256 _tokenId = _tokenIds[_i];
-            (bool _inRange, uint256 _wordIndex, uint256 _mask) = _tokenBitmask(
-                _tokenId,
-                _minTokenId
-            );
-            if (!_inRange) revert(ERR_INVALID_ARGUMENT);
-            if (_wordIndex != _lastWordIndex) {
-                if (_lastWordIndex != type(uint256).max) {
-                    traitMembers[_traitId][_lastWordIndex] = _lastWord;
-                }
-                _lastWordIndex = _wordIndex;
-                _lastWord = traitMembers[_traitId][_lastWordIndex];
-            }
-            if (_lastWord & _mask != 0) continue;
-            _newSize++;
-            _lastWord |= _mask;
+        for (uint256 _i = 0; _i < _words.length; _i++) {
+            TraitMembershipWord memory _word = _words[_i];
+            uint256 _oldWord = traitMembers[_traitId][_word.wordIndex];
+            uint256 _newWord = _oldWord | _word.mask;
+            _newSize += (_newWord ^ _oldWord).popcnt();
+            traitMembers[_traitId][_word.wordIndex] = _newWord;
         }
         if (_newSize == _originalSize) return;
-        traitMembers[_traitId][_lastWordIndex] = _lastWord;
         traitMembersCount[_traitId] = _newSize;
         emit TraitMembershipExpanded({traitId: _traitId, newSize: _newSize});
     }
