@@ -41,7 +41,7 @@ TEST_CASES.push(async function* oracleTraitMemberships(props) {
   }
 
   {
-    const msg = sdk.oracle.buildAddTraitMemberships({ traitId, tokenIds: [] });
+    const msg = { traitId, words: [] };
     const sig = await sdk.oracle.sign712.addTraitMemberships(
       signer,
       domain,
@@ -57,7 +57,7 @@ TEST_CASES.push(async function* oracleTraitMemberships(props) {
   );
 
   {
-    const msg = sdk.oracle.buildAddTraitMemberships({ traitId, tokenIds });
+    const msg = { traitId, words: sdk.oracle.traitMembershipWords(tokenIds) };
     const sig = await sdk.oracle.sign712.addTraitMemberships(
       signer,
       domain,
@@ -76,7 +76,7 @@ TEST_CASES.push(async function* oracleTraitMemberships(props) {
     .fill()
     .map((_, i) => baseTokenId + 0x0100 + i);
   {
-    const msg = sdk.oracle.buildAddTraitMemberships({ traitId, tokenIds });
+    const msg = { traitId, words: sdk.oracle.traitMembershipWords(tokenIds) };
     const sig = await sdk.oracle.sign712.addTraitMemberships(
       signer,
       domain,
@@ -90,7 +90,7 @@ TEST_CASES.push(async function* oracleTraitMemberships(props) {
     .fill()
     .map((_, i) => baseTokenId + 0x0200 + i * 8);
   {
-    const msg = sdk.oracle.buildAddTraitMemberships({ traitId, tokenIds });
+    const msg = { traitId, words: sdk.oracle.traitMembershipWords(tokenIds) };
     const sig = await sdk.oracle.sign712.addTraitMemberships(
       signer,
       domain,

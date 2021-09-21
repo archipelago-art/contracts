@@ -25,7 +25,9 @@ async function setFeatureInfo(oracle, signer, msg) {
 }
 
 async function addTraitMemberships(oracle, signer, msg) {
-  msg = sdk.oracle.buildAddTraitMemberships(msg);
+  if (msg.words == null) {
+    msg = { ...msg, words: sdk.oracle.traitMembershipWords(msg.tokenIds) };
+  }
   const domain = await domainInfo(oracle.address);
   const sig = await sdk.oracle.sign712.addTraitMemberships(signer, domain, msg);
   return oracle.addTraitMemberships(msg, sig, SignatureKind.EIP_712);
@@ -383,19 +385,19 @@ describe("ArtblocksTraitOracle", () => {
       const msg = { projectId, featureName, version };
       await setFeatureInfo(oracle, signer, msg);
 
-      const msg1 = sdk.oracle.buildAddTraitMemberships({
+      const msg1 = {
         traitId,
-        tokenIds: [1, 2],
-      });
+        words: sdk.oracle.traitMembershipWords([1, 2]),
+      };
       const sig1 = await sdk.oracle.sign712.addTraitMemberships(
         signer,
         await domainInfo(oracle.address),
         msg1
       );
-      const msg2 = sdk.oracle.buildAddTraitMemberships({
+      const msg2 = {
         traitId,
-        tokenIds: [3, 4],
-      });
+        words: sdk.oracle.traitMembershipWords([3, 4]),
+      };
       await expect(
         oracle.addTraitMemberships(msg2, sig1, SignatureKind.EIP_712)
       ).to.be.revertedWith(Errors.UNAUTHORIZED);

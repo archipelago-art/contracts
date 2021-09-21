@@ -65,29 +65,20 @@ const sign712 = Object.freeze({
   },
 });
 
-function buildAddTraitMemberships(msg) {
-  msg = { ...msg };
-  if (msg.tokenIds == null && msg.words != null) {
-    return msg;
+function traitMembershipWords(tokenIds) {
+  const relativeIds = tokenIds
+    .map((id) => ethers.BigNumber.from(id).mod(PROJECT_STRIDE).toBigInt())
+    .sort((a, b) => Number(a - b));
+  const wordsByIndex = {};
+  for (const id of relativeIds) {
+    const idx = id >> 8n;
+    wordsByIndex[idx] = wordsByIndex[idx] || { wordIndex: idx, mask: 0n };
+    wordsByIndex[idx].mask |= 1n << (id & 0xffn);
   }
-  if (msg.tokenIds != null && msg.words == null) {
-    const relativeIds = msg.tokenIds
-      .map((id) => ethers.BigNumber.from(id).mod(PROJECT_STRIDE).toBigInt())
-      .sort((a, b) => Number(a - b));
-    const wordsByIndex = {};
-    for (const id of relativeIds) {
-      const idx = id >> 8n;
-      wordsByIndex[idx] = wordsByIndex[idx] || { wordIndex: idx, mask: 0n };
-      wordsByIndex[idx].mask |= 1n << (id & 0xffn);
-    }
-    msg.words = Object.values(wordsByIndex).map((o) => ({
-      wordIndex: ethers.BigNumber.from(o.wordIndex),
-      mask: ethers.BigNumber.from(o.mask),
-    }));
-    delete msg.tokenIds;
-    return msg;
-  }
-  throw new Error("must specify exactly one of `tokenIds` or `words`");
+  return Object.values(wordsByIndex).map((o) => ({
+    wordIndex: ethers.BigNumber.from(o.wordIndex),
+    mask: ethers.BigNumber.from(o.mask),
+  }));
 }
 
 function projectTraitId(projectId, version) {
@@ -112,7 +103,7 @@ module.exports = {
   PROJECT_STRIDE,
   domainSeparator,
   sign712,
-  buildAddTraitMemberships,
+  traitMembershipWords,
   projectTraitId,
   featureTraitId,
 };
