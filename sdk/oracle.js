@@ -34,7 +34,11 @@ const SetFeatureInfoMessage = [
 ];
 const AddTraitMembershipsMessage = [
   { type: "uint256", name: "traitId" },
-  { type: "uint256[]", name: "tokenIds" },
+  { type: "TraitMembershipWord[]", name: "words" },
+];
+const TraitMembershipWord = [
+  { type: "uint256", name: "wordIndex" },
+  { type: "uint256", name: "mask" },
 ];
 
 const sign712 = Object.freeze({
@@ -55,11 +59,27 @@ const sign712 = Object.freeze({
   addTraitMemberships(signer, domainInfo, msg) {
     return signer._signTypedData(
       domainSeparator(domainInfo),
-      { AddTraitMembershipsMessage },
+      { AddTraitMembershipsMessage, TraitMembershipWord },
       msg
     );
   },
 });
+
+function traitMembershipWords(tokenIds) {
+  const relativeIds = tokenIds
+    .map((id) => ethers.BigNumber.from(id).mod(PROJECT_STRIDE).toBigInt())
+    .sort((a, b) => Number(a - b));
+  const wordsByIndex = {};
+  for (const id of relativeIds) {
+    const idx = id >> 8n;
+    wordsByIndex[idx] = wordsByIndex[idx] || { wordIndex: idx, mask: 0n };
+    wordsByIndex[idx].mask |= 1n << (id & 0xffn);
+  }
+  return Object.values(wordsByIndex).map((o) => ({
+    wordIndex: ethers.BigNumber.from(o.wordIndex),
+    mask: ethers.BigNumber.from(o.mask),
+  }));
+}
 
 function projectTraitId(projectId, version) {
   const blob = ethers.utils.defaultAbiCoder.encode(
@@ -83,6 +103,7 @@ module.exports = {
   PROJECT_STRIDE,
   domainSeparator,
   sign712,
+  traitMembershipWords,
   projectTraitId,
   featureTraitId,
 };
