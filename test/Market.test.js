@@ -460,14 +460,8 @@ describe("Market", () => {
       const tradeId = computeTradeId(bid, bidder, ask, asker);
       await expect(fillOrder(market, bid, bidder, ask, asker))
         .to.emit(market, "Trade")
-        .withArgs(
-          tradeId,
-          bidder.address,
-          asker.address,
-          bid.tokenId,
-          bid.price
-        )
-        .to.emit(market, "TradeWithIndexedTokenId")
+        .withArgs(tradeId, bidder.address, asker.address, bid.price)
+        .to.emit(market, "TokenTraded")
         .withArgs(tradeId, bid.tokenId);
     });
 

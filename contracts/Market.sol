@@ -33,17 +33,11 @@ contract Market {
         uint256 indexed tradeId,
         address indexed buyer,
         address indexed seller,
-        uint256 tokenId,
         uint256 price
     );
-    // Since an event may only have 3 indexed parameters, and we'd really like
-    // to index on the tokenId as well, we emit an auxiliary event whose sole
-    // purpose is to have the indexed tokenId alongside the corresponding
-    // tradeId
-    event TradeWithIndexedTokenId(
-        uint256 indexed tradeId,
-        uint256 indexed tokenId
-    );
+    // Emitted once for every token that's transferred as part of a trade,
+    // i.e. a Trade event will correspond to zero-or-more TokenTraded events.
+    event TokenTraded(uint256 indexed tradeId, uint256 indexed tokenId);
 
     event RoyaltyPaid(
         uint256 indexed tradeId,
@@ -360,7 +354,7 @@ contract Market {
             );
         }
 
-        emit Trade(_tradeId, bidder, asker, tokenId, _price);
-        emit TradeWithIndexedTokenId(_tradeId, tokenId);
+        emit Trade(_tradeId, bidder, asker, _price);
+        emit TokenTraded(_tradeId, tokenId);
     }
 }
