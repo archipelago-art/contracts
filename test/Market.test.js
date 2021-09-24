@@ -814,7 +814,6 @@ describe("Market", () => {
         const bid = tokenIdBid();
         const ask = newAsk();
         await fillOrder(market, bid, bidder, ask, operator);
-        expect(await weth.balanceOf(asker.address)).to.equal(exa); // Owner got proceeds (not operator)
         expect(await nft.ownerOf(0)).to.equal(bidder.address);
       });
       it("works if asker has token approval", async () => {
@@ -824,7 +823,6 @@ describe("Market", () => {
         const bid = tokenIdBid();
         const ask = newAsk();
         await fillOrder(market, bid, bidder, ask, operator);
-        expect(await weth.balanceOf(asker.address)).to.equal(exa); // Owner got proceeds (not operator)
       });
       it("fails if asker has not approved the market (for NFT)", async () => {
         const { market, signers, weth, nft, asker, bidder } = await setup();
@@ -856,6 +854,45 @@ describe("Market", () => {
         const ask = newAsk();
         await fillOrder(market, bid, bidder, ask, asker);
         expect(await nft.ownerOf(0)).to.equal(bidder.address);
+      });
+
+      it("when asker is approved not owner, asker still gets WETH proceeds", async () => {
+        const {
+          market,
+          signers,
+          weth,
+          nft,
+          bidder,
+          asker: owner,
+        } = await setup();
+        const operator = signers[3];
+        await nft.connect(owner).setApprovalForAll(operator.address, true);
+        const bid = tokenIdBid();
+        const ask = newAsk();
+        await fillOrder(market, bid, bidder, ask, operator);
+        expect(await weth.balanceOf(owner.address)).to.equal(0);
+        expect(await weth.balanceOf(operator.address)).to.equal(exa);
+      });
+
+      it("when asker is approved not owner, asker still gets ETH proceeds", async () => {
+        const {
+          market,
+          signers,
+          weth,
+          nft,
+          bidder,
+          asker: owner,
+        } = await setup();
+        const operator = signers[3];
+        await nft.connect(owner).setApprovalForAll(operator.address, true);
+        const bid = tokenIdBid();
+        const ask = newAsk({ unwrapWeth: true });
+        const balanceBefore = await operator.getBalance();
+        const ownerBalanceBefore = await owner.getBalance();
+        await fillOrder(market, bid, bidder, ask, operator);
+        const balanceAfter = await operator.getBalance();
+        expect(balanceAfter.sub(balanceBefore)).to.equal(exa);
+        expect(await owner.getBalance()).to.equal(ownerBalanceBefore);
       });
     });
   });

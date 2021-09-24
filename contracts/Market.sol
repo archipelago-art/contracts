@@ -352,10 +352,10 @@ contract Market {
             // Note: This invokes the asker's fallback function. Be careful of
             // re-entrancy attacks. We deliberately invalidate the bid and ask
             // nonces before this point, to prevent replay attacks.
-            payable(tokenOwner).transfer(_proceeds);
+            payable(asker).transfer(_proceeds);
         } else {
             require(
-                weth.transferFrom(bidder, tokenOwner, _proceeds),
+                weth.transferFrom(bidder, asker, _proceeds),
                 TRANSFER_FAILED
             );
         }
