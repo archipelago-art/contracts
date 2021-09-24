@@ -60,6 +60,11 @@ struct Ask {
     // unwrapped to ETH on order execution.
     // Purely a convenience for people who prefer ETH to WETH.
     bool unwrapWeth;
+    // The address of the account that is allowed to fill this order.
+    // If this address is the zero address, then anyone's bid may match.
+    // If this address is nonzero, they are the only address allowed to match
+    // this ask.
+    address authorizedBidder;
 }
 
 library MarketMessages {
@@ -72,7 +77,7 @@ library MarketMessages {
         );
     bytes32 internal constant TYPEHASH_ASK =
         keccak256(
-            "Ask(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint256 tokenId,Royalty[] royalties,bool unwrapWeth)Royalty(address recipient,uint256 bps)"
+            "Ask(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint256 tokenId,Royalty[] royalties,bool unwrapWeth,address authorizedBidder)Royalty(address recipient,uint256 bps)"
         );
     bytes32 internal constant TYPEHASH_ROYALTY =
         keccak256("Royalty(address recipient,uint256 bps)");
@@ -105,7 +110,8 @@ library MarketMessages {
                     _self.price,
                     _self.tokenId,
                     _self.royalties.structHash(),
-                    _self.unwrapWeth
+                    _self.unwrapWeth,
+                    _self.authorizedBidder
                 )
             );
     }

@@ -29,6 +29,7 @@ const Ask = [
   { type: "uint256", name: "tokenId" },
   { type: "Royalty[]", name: "royalties" },
   { type: "bool", name: "unwrapWeth" },
+  { type: "address", name: "authorizedBidder" },
 ];
 const Royalty = [
   { type: "address", name: "recipient" },

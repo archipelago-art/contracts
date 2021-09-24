@@ -143,6 +143,7 @@ describe("Market", () => {
     tokenId = 0,
     royalties = [],
     unwrapWeth = false,
+    authorizedBidder = ethers.constants.AddressZero,
   } = {}) {
     return {
       nonce,
@@ -152,6 +153,7 @@ describe("Market", () => {
       tokenId,
       royalties,
       unwrapWeth,
+      authorizedBidder,
     };
   }
 
@@ -165,7 +167,7 @@ describe("Market", () => {
   );
   const TYPEHASH_ASK = ethers.utils.keccak256(
     ethers.utils.toUtf8Bytes(
-      "Ask(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint256 tokenId,Royalty[] royalties,bool unwrapWeth)Royalty(address recipient,uint256 bps)"
+      "Ask(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint256 tokenId,Royalty[] royalties,bool unwrapWeth,address authorizedBidder)Royalty(address recipient,uint256 bps)"
     )
   );
 
@@ -224,6 +226,7 @@ describe("Market", () => {
           "uint256",
           "bytes32",
           "bool",
+          "address",
         ],
         [
           TYPEHASH_ASK,
@@ -239,6 +242,7 @@ describe("Market", () => {
             )
           ),
           ask.unwrapWeth,
+          ask.authorizedBidder,
         ]
       )
     );
@@ -422,6 +426,22 @@ describe("Market", () => {
       });
     });
 
+    describe("authorizedBidder", () => {
+      it("allows bids from the ask's authorized bidder", async () => {
+        const { market, signers, weth, nft, asker, bidder } = await setup();
+        const bid = tokenIdBid();
+        const ask = newAsk({ authorizedBidder: bidder.address });
+        await fillOrder(market, bid, bidder, ask, asker);
+      });
+
+      it("disallows bids from non-authorized bidders", async () => {
+        const { market, signers, weth, nft, asker, bidder } = await setup();
+        const bid = tokenIdBid();
+        const ask = newAsk({ authorizedBidder: asker.address });
+        const fail = fillOrder(market, bid, bidder, ask, asker);
+        await expect(fail).to.be.revertedWith("bidder is not authorized");
+      });
+    });
     it("unwraps weth->eth for the asker, if specified", async () => {
       const { market, signers, weth, nft, asker, bidder } = await setup();
       const bid = tokenIdBid();

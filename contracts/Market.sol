@@ -268,6 +268,11 @@ contract Market {
             ownerOrApproved = true;
         }
         require(ownerOrApproved, "asker is not owner or approved");
+        require(
+            ask.authorizedBidder == address(0) ||
+                ask.authorizedBidder == bidder,
+            "bidder is not authorized"
+        );
 
         require(block.timestamp <= bid.deadline, ORDER_CANCELLED_OR_EXPIRED);
         require(block.timestamp <= ask.deadline, ORDER_CANCELLED_OR_EXPIRED);
