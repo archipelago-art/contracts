@@ -252,7 +252,12 @@ contract Market {
         address asker
     ) internal {
         bool ownerOrApproved;
-        uint256 tokenId = ask.tokenId;
+        require(ask.tokenIds.length == 1, "bundles not yet supported");
+        require(
+            bid.tokenIds.length == 1 || bid.bidType == BidType.TRAITSET,
+            "bundles not yet supported"
+        );
+        uint256 tokenId = ask.tokenIds[0];
         address tokenOwner = token.ownerOf(tokenId);
         if (tokenOwner == asker) {
             ownerOrApproved = true;
@@ -301,8 +306,8 @@ contract Market {
         uint256 _proceeds = _price; // amount that goes to the asker, after royalties
         require(_price == ask.price, "price mismatch");
 
-        if (bid.bidType == BidType.SINGLE_TOKEN) {
-            require(bid.tokenId == tokenId, "tokenid mismatch");
+        if (bid.bidType == BidType.TOKEN_IDS) {
+            require(bid.tokenIds[0] == tokenId, "tokenid mismatch");
         } else {
             for (uint256 _i = 0; _i < bid.traitset.length; _i++) {
                 require(

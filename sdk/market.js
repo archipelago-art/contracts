@@ -1,5 +1,5 @@
 const BidType = Object.freeze({
-  SINGLE_TOKEN: 0,
+  TOKEN_IDS: 0,
   TRAITSET: 1,
 });
 
@@ -17,7 +17,7 @@ const Bid = [
   { type: "uint256", name: "deadline" },
   { type: "uint256", name: "price" },
   { type: "uint8", name: "bidType" },
-  { type: "uint256", name: "tokenId" },
+  { type: "uint256[]", name: "tokenIds" },
   { type: "uint256[]", name: "traitset" },
   { type: "Royalty[]", name: "royalties" },
 ];
@@ -26,7 +26,7 @@ const Ask = [
   { type: "uint256", name: "created" },
   { type: "uint256", name: "deadline" },
   { type: "uint256", name: "price" },
-  { type: "uint256", name: "tokenId" },
+  { type: "uint256[]", name: "tokenIds" },
   { type: "Royalty[]", name: "royalties" },
   { type: "bool", name: "unwrapWeth" },
   { type: "address", name: "authorizedBidder" },

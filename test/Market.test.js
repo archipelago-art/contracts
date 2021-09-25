@@ -95,12 +95,12 @@ describe("Market", () => {
     const { market } = await setup();
   });
 
-  function tokenIdBid({
+  function tokenIdsBid({
     nonce = 0,
     created = 1,
     deadline = ethers.constants.MaxUint256,
     price = exa,
-    tokenId = 0,
+    tokenIds = [0],
     royalties = [],
   } = {}) {
     return {
@@ -108,9 +108,9 @@ describe("Market", () => {
       created,
       deadline,
       price,
-      tokenId,
+      tokenIds,
       traitset: [],
-      bidType: sdk.market.BidType.SINGLE_TOKEN,
+      bidType: sdk.market.BidType.TOKEN_IDS,
       royalties,
     };
   }
@@ -128,7 +128,7 @@ describe("Market", () => {
       created,
       deadline,
       price,
-      tokenId: 0,
+      tokenIds: [],
       traitset,
       bidType: sdk.market.BidType.TRAITSET,
       royalties,
@@ -140,7 +140,7 @@ describe("Market", () => {
     created = 1,
     deadline = ethers.constants.MaxUint256,
     price = exa,
-    tokenId = 0,
+    tokenIds = [0],
     royalties = [],
     unwrapWeth = false,
     authorizedBidder = ethers.constants.AddressZero,
@@ -150,7 +150,7 @@ describe("Market", () => {
       created,
       deadline,
       price,
-      tokenId,
+      tokenIds,
       royalties,
       unwrapWeth,
       authorizedBidder,
@@ -162,12 +162,12 @@ describe("Market", () => {
   );
   const TYPEHASH_BID = ethers.utils.keccak256(
     ethers.utils.toUtf8Bytes(
-      "Bid(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint8 bidType,uint256 tokenId,uint256[] traitset,Royalty[] royalties)Royalty(address recipient,uint256 bps)"
+      "Bid(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint8 bidType,uint256[] tokenIds,uint256[] traitset,Royalty[] royalties)Royalty(address recipient,uint256 bps)"
     )
   );
   const TYPEHASH_ASK = ethers.utils.keccak256(
     ethers.utils.toUtf8Bytes(
-      "Ask(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint256 tokenId,Royalty[] royalties,bool unwrapWeth,address authorizedBidder)Royalty(address recipient,uint256 bps)"
+      "Ask(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint256[] tokenIds,Royalty[] royalties,bool unwrapWeth,address authorizedBidder)Royalty(address recipient,uint256 bps)"
     )
   );
 
@@ -189,7 +189,7 @@ describe("Market", () => {
           "uint256",
           "uint256",
           "uint8",
-          "uint256",
+          "bytes32",
           "bytes32",
           "bytes32",
         ],
@@ -200,7 +200,9 @@ describe("Market", () => {
           bid.deadline,
           bid.price,
           bid.bidType,
-          bid.tokenId,
+          ethers.utils.keccak256(
+            ethers.utils.solidityPack(["uint256[]"], [bid.tokenIds])
+          ),
           ethers.utils.keccak256(
             ethers.utils.solidityPack(["uint256[]"], [bid.traitset])
           ),
@@ -223,7 +225,7 @@ describe("Market", () => {
           "uint256",
           "uint256",
           "uint256",
-          "uint256",
+          "bytes32",
           "bytes32",
           "bool",
           "address",
@@ -234,7 +236,9 @@ describe("Market", () => {
           ask.created,
           ask.deadline,
           ask.price,
-          ask.tokenId,
+          ethers.utils.keccak256(
+            ethers.utils.solidityPack(["uint256[]"], [ask.tokenIds])
+          ),
           ethers.utils.keccak256(
             ethers.utils.solidityPack(
               ["bytes32[]"],
@@ -347,7 +351,7 @@ describe("Market", () => {
         const { market, signers, weth, nft, asker, bidder } = setupData;
         expect(await nft.ownerOf(0)).to.equal(asker.address);
         expect(await weth.balanceOf(bidder.address)).to.equal(exa.mul(2));
-        const bid = tokenIdBid();
+        const bid = tokenIdsBid();
         const ask = newAsk();
 
         const signatureSetupData = { ...setupData, bid, ask };
@@ -411,7 +415,7 @@ describe("Market", () => {
 
       it("rejects if asker/bidder is not approved in contract storage", async () => {
         const { market, asker, bidder } = await setup();
-        const bid = tokenIdBid();
+        const bid = tokenIdsBid();
         const ask = newAsk();
 
         // do not set on-chain ask approval
@@ -426,7 +430,7 @@ describe("Market", () => {
 
       it("rejects if ask is only approved in contract storage by a third party", async () => {
         const { market, asker, bidder, otherSigner } = await setup();
-        const bid = tokenIdBid();
+        const bid = tokenIdsBid();
         const ask = newAsk();
 
         await market.connect(otherSigner).setOnChainAskApproval(ask, true);
@@ -440,17 +444,52 @@ describe("Market", () => {
       });
     });
 
+    describe("bundles", () => {
+      it("doesn't yet support bids with multiple tokenIds", async () => {
+        const { market, signers, weth, nft, asker, bidder } = await setup();
+        const bid = tokenIdsBid({ tokenIds: [1, 2] });
+        const ask = newAsk();
+        await expect(
+          fillOrder(market, bid, bidder, ask, asker)
+        ).to.be.revertedWith("bundles not yet supported");
+      });
+      it("doesn't yet support asks with multiple tokenIds", async () => {
+        const { market, signers, weth, nft, asker, bidder } = await setup();
+        const bid = tokenIdsBid();
+        const ask = newAsk({ tokenIds: [1, 2] });
+        await expect(
+          fillOrder(market, bid, bidder, ask, asker)
+        ).to.be.revertedWith("bundles not yet supported");
+      });
+      it("doesn't yet support empty-bundle bids", async () => {
+        const { market, signers, weth, nft, asker, bidder } = await setup();
+        const bid = tokenIdsBid({ tokenIds: [] });
+        const ask = newAsk();
+        await expect(
+          fillOrder(market, bid, bidder, ask, asker)
+        ).to.be.revertedWith("bundles not yet supported");
+      });
+      it("doesn't yet support empty-bundle asks", async () => {
+        const { market, signers, weth, nft, asker, bidder } = await setup();
+        const bid = tokenIdsBid();
+        const ask = newAsk({ tokenIds: [] });
+        await expect(
+          fillOrder(market, bid, bidder, ask, asker)
+        ).to.be.revertedWith("bundles not yet supported");
+      });
+    });
+
     describe("authorizedBidder", () => {
       it("allows bids from the ask's authorized bidder", async () => {
         const { market, signers, weth, nft, asker, bidder } = await setup();
-        const bid = tokenIdBid();
+        const bid = tokenIdsBid();
         const ask = newAsk({ authorizedBidder: bidder.address });
         await fillOrder(market, bid, bidder, ask, asker);
       });
 
       it("disallows bids from non-authorized bidders", async () => {
         const { market, signers, weth, nft, asker, bidder } = await setup();
-        const bid = tokenIdBid();
+        const bid = tokenIdsBid();
         const ask = newAsk({ authorizedBidder: asker.address });
         const fail = fillOrder(market, bid, bidder, ask, asker);
         await expect(fail).to.be.revertedWith("bidder is not authorized");
@@ -458,7 +497,7 @@ describe("Market", () => {
     });
     it("unwraps weth->eth for the asker, if specified", async () => {
       const { market, signers, weth, nft, asker, bidder } = await setup();
-      const bid = tokenIdBid();
+      const bid = tokenIdsBid();
       const ask = newAsk({ unwrapWeth: true });
       const askerBalanceBefore = await asker.getBalance();
       await fillOrder(market, bid, bidder, ask, asker);
@@ -469,20 +508,20 @@ describe("Market", () => {
 
     it("emits expected events when an order fills", async () => {
       const { market, asker, bidder } = await setup();
-      const bid = tokenIdBid();
+      const bid = tokenIdsBid();
       const ask = newAsk();
       const tradeId = computeTradeId(bid, bidder, ask, asker);
       await expect(fillOrder(market, bid, bidder, ask, asker))
         .to.emit(market, "Trade")
         .withArgs(tradeId, bidder.address, asker.address, bid.price)
         .to.emit(market, "TokenTraded")
-        .withArgs(tradeId, bid.tokenId);
+        .withArgs(tradeId, bid.tokenIds[0]);
     });
 
     describe("order filling in ETH", () => {
       it("bidder can top-off their weth with eth", async () => {
         const { market, bidder, asker, weth } = await setup();
-        const bid = tokenIdBid({ price: exa.mul(3) });
+        const bid = tokenIdsBid({ price: exa.mul(3) });
         const ask = newAsk({ price: exa.mul(3) });
         const bidSignature = await signBid(market.address, bid, bidder);
         const askSignature = await signAsk(market.address, ask, asker);
@@ -501,7 +540,7 @@ describe("Market", () => {
       });
       it("only bidder can call fillOrderEth", async () => {
         const { market, bidder, asker, weth } = await setup();
-        const bid = tokenIdBid({ price: exa.mul(3) });
+        const bid = tokenIdsBid({ price: exa.mul(3) });
         const ask = newAsk({ price: exa.mul(3) });
         const bidSignature = await signBid(market.address, bid, bidder);
         const askSignature = await signAsk(market.address, ask, asker);
@@ -520,7 +559,7 @@ describe("Market", () => {
       });
       it("bidder can over-fill if they choose", async () => {
         const { market, bidder, asker, weth } = await setup();
-        const bid = tokenIdBid();
+        const bid = tokenIdsBid();
         const ask = newAsk();
         const bidSignature = await signBid(market.address, bid, bidder);
         const askSignature = await signAsk(market.address, ask, asker);
@@ -541,7 +580,7 @@ describe("Market", () => {
       });
       it("still fails if there's insufficient weth", async () => {
         const { market, bidder, asker, weth } = await setup();
-        const bid = tokenIdBid({ price: exa.mul(10) });
+        const bid = tokenIdsBid({ price: exa.mul(10) });
         const ask = newAsk({ price: exa.mul(10) });
         const bidSignature = await signBid(market.address, bid, bidder);
         const askSignature = await signAsk(market.address, ask, asker);
@@ -609,7 +648,7 @@ describe("Market", () => {
       it("handles zero royalties correctly", async () => {
         const { market, signers, weth, asker, bidder } = await setup();
         const r0 = signers[3].address;
-        const bid = tokenIdBid();
+        const bid = tokenIdsBid();
         const ask = newAsk({ royalties: [{ recipient: r0, bps: 0 }] });
         await fillOrder(market, bid, bidder, ask, asker);
         expect(await weth.balanceOf(r0)).to.equal(0);
@@ -618,7 +657,7 @@ describe("Market", () => {
       it("handles a single royalty correctly", async () => {
         const { market, signers, weth, asker, bidder } = await setup();
         const r0 = signers[3].address;
-        const bid = tokenIdBid();
+        const bid = tokenIdsBid();
         const ask = newAsk({ royalties: [{ recipient: r0, bps: 5 }] });
         const roy = bp.mul(5);
         const tradeId = computeTradeId(bid, bidder, ask, asker);
@@ -632,7 +671,7 @@ describe("Market", () => {
         const { market, signers, weth, asker, bidder } = await setup();
         const r0 = signers[3].address;
         const r1 = signers[4].address;
-        const bid = tokenIdBid();
+        const bid = tokenIdsBid();
         const ask = newAsk({
           royalties: [
             { recipient: r0, bps: 5 },
@@ -656,7 +695,7 @@ describe("Market", () => {
         const { market, signers, weth, asker, bidder } = await setup();
         const r0 = signers[3].address;
         const r1 = signers[4].address;
-        const bid = tokenIdBid();
+        const bid = tokenIdsBid();
         const ask = newAsk({
           royalties: [
             { recipient: r0, bps: 8000 },
@@ -672,7 +711,7 @@ describe("Market", () => {
         const { market, signers, weth, asker, bidder } = await setup();
         const r0 = signers[3].address;
         const r1 = signers[4].address;
-        const bid = tokenIdBid();
+        const bid = tokenIdsBid();
         const ask = newAsk({
           royalties: [
             { recipient: r0, bps: 8000 },
@@ -688,7 +727,7 @@ describe("Market", () => {
         const { market, signers, weth, asker, bidder } = await setup();
         const roy = bp.mul(10);
         const r0 = signers[3].address;
-        const bid = tokenIdBid({ royalties: [{ recipient: r0, bps: 10 }] });
+        const bid = tokenIdsBid({ royalties: [{ recipient: r0, bps: 10 }] });
         const ask = newAsk();
         const tradeId = computeTradeId(bid, bidder, ask, asker);
         await expect(fillOrder(market, bid, bidder, ask, asker))
@@ -702,7 +741,7 @@ describe("Market", () => {
       it("transaction fails if bidder doesn't have enough for the bidder royalty", async () => {
         const { market, signers, weth, asker, bidder } = await setup();
         const r0 = signers[3].address;
-        const bid = tokenIdBid({
+        const bid = tokenIdsBid({
           royalties: [{ recipient: r0, bps: 10 }],
           price: exa.mul(2),
         });
@@ -716,7 +755,7 @@ describe("Market", () => {
         const { market, signers, weth, asker, bidder } = await setup();
         const r0 = signers[3].address;
         const r1 = signers[4].address;
-        const bid = tokenIdBid({
+        const bid = tokenIdsBid({
           royalties: [
             { recipient: r0, bps: 1 },
             { recipient: r1, bps: 2 },
@@ -742,7 +781,7 @@ describe("Market", () => {
       // nb: failrues due to cancellation are handled in a separate describe block.
       it("rejects expired bids", async () => {
         const { market, signers, weth, nft, asker, bidder } = await setup();
-        const bid = tokenIdBid({ deadline: 0 });
+        const bid = tokenIdsBid({ deadline: 0 });
         const ask = newAsk();
         await expect(
           fillOrder(market, bid, bidder, ask, asker)
@@ -751,7 +790,7 @@ describe("Market", () => {
 
       it("rejects expired asks", async () => {
         const { market, signers, weth, nft, asker, bidder } = await setup();
-        const bid = tokenIdBid();
+        const bid = tokenIdsBid();
         const ask = newAsk({ deadline: 0 });
         await expect(
           fillOrder(market, bid, bidder, ask, asker)
@@ -760,7 +799,7 @@ describe("Market", () => {
 
       it("rejects if bid and ask disagree about price", async () => {
         const { market, signers, asker, bidder } = await setup();
-        const bid = tokenIdBid({ price: exa.div(2) });
+        const bid = tokenIdsBid({ price: exa.div(2) });
         const ask = newAsk({ price: exa });
         await expect(
           fillOrder(market, bid, bidder, ask, asker)
@@ -769,8 +808,8 @@ describe("Market", () => {
 
       it("rejects if bid and ask disagree about tokenId", async () => {
         const { market, signers, asker, bidder } = await setup();
-        const bid = tokenIdBid({ tokenId: 0 });
-        const ask = newAsk({ tokenId: 1 });
+        const bid = tokenIdsBid({ tokenIds: [0] });
+        const ask = newAsk({ tokenIds: [1] });
         await expect(
           fillOrder(market, bid, bidder, ask, asker)
         ).to.be.revertedWith("tokenid mismatch");
@@ -779,7 +818,7 @@ describe("Market", () => {
       it("rejects if ERC-20 transfer returns `false`", async () => {
         const { market, signers, weth, asker, bidder } = await setup();
         await weth.setPaused(true);
-        const bid = tokenIdBid();
+        const bid = tokenIdsBid();
         const ask = newAsk();
         await expect(
           fillOrder(market, bid, bidder, ask, asker)
@@ -789,7 +828,7 @@ describe("Market", () => {
       it("rejects if ERC-20 transfer returns `false` (in unwrap mode)", async () => {
         const { market, signers, weth, asker, bidder } = await setup();
         await weth.setPaused(true);
-        const bid = tokenIdBid();
+        const bid = tokenIdsBid();
         const ask = newAsk({ unwrapWeth: true });
         await expect(
           fillOrder(market, bid, bidder, ask, asker)
@@ -801,7 +840,7 @@ describe("Market", () => {
       it("rejects if asker lacks approvals", async () => {
         const { market, signers, weth, nft, bidder } = await setup();
         const operator = signers[3];
-        const bid = tokenIdBid();
+        const bid = tokenIdsBid();
         const ask = newAsk();
         await expect(
           fillOrder(market, bid, bidder, ask, operator)
@@ -809,7 +848,7 @@ describe("Market", () => {
       });
       it("works if asker is owner", async () => {
         const { market, signers, weth, nft, bidder, asker } = await setup();
-        const bid = tokenIdBid();
+        const bid = tokenIdsBid();
         const ask = newAsk();
         await fillOrder(market, bid, bidder, ask, asker);
         expect(await nft.ownerOf(0)).to.equal(bidder.address);
@@ -819,7 +858,7 @@ describe("Market", () => {
         const { market, signers, weth, nft, bidder, asker } = await setup();
         const operator = signers[3];
         await nft.connect(asker).setApprovalForAll(operator.address, true);
-        const bid = tokenIdBid();
+        const bid = tokenIdsBid();
         const ask = newAsk();
         await fillOrder(market, bid, bidder, ask, operator);
         expect(await nft.ownerOf(0)).to.equal(bidder.address);
@@ -828,14 +867,14 @@ describe("Market", () => {
         const { market, signers, weth, nft, bidder, asker } = await setup();
         const operator = signers[3];
         await nft.connect(asker).approve(operator.address, 0);
-        const bid = tokenIdBid();
+        const bid = tokenIdsBid();
         const ask = newAsk();
         await fillOrder(market, bid, bidder, ask, operator);
       });
       it("fails if asker has not approved the market (for NFT)", async () => {
         const { market, signers, weth, nft, asker, bidder } = await setup();
         nft.connect(asker).setApprovalForAll(market.address, false);
-        const bid = tokenIdBid();
+        const bid = tokenIdsBid();
         const ask = newAsk();
 
         const fail = fillOrder(market, bid, bidder, ask, asker);
@@ -846,7 +885,7 @@ describe("Market", () => {
       it("fails if bidder has not approved the market (for WETH)", async () => {
         const { market, signers, weth, nft, asker, bidder } = await setup();
         weth.connect(bidder).approve(market.address, 0);
-        const bid = tokenIdBid();
+        const bid = tokenIdsBid();
         const ask = newAsk();
 
         const fail = fillOrder(market, bid, bidder, ask, asker);
@@ -858,7 +897,7 @@ describe("Market", () => {
         const { market, signers, weth, nft, asker, bidder } = await setup();
         nft.connect(asker).setApprovalForAll(market.address, false);
         nft.connect(asker).approve(market.address, 0);
-        const bid = tokenIdBid();
+        const bid = tokenIdsBid();
         const ask = newAsk();
         await fillOrder(market, bid, bidder, ask, asker);
         expect(await nft.ownerOf(0)).to.equal(bidder.address);
@@ -875,7 +914,7 @@ describe("Market", () => {
         } = await setup();
         const operator = signers[3];
         await nft.connect(owner).setApprovalForAll(operator.address, true);
-        const bid = tokenIdBid();
+        const bid = tokenIdsBid();
         const ask = newAsk();
         await fillOrder(market, bid, bidder, ask, operator);
         expect(await weth.balanceOf(owner.address)).to.equal(0);
@@ -893,7 +932,7 @@ describe("Market", () => {
         } = await setup();
         const operator = signers[3];
         await nft.connect(owner).setApprovalForAll(operator.address, true);
-        const bid = tokenIdBid();
+        const bid = tokenIdsBid();
         const ask = newAsk({ unwrapWeth: true });
         const balanceBefore = await operator.getBalance();
         const ownerBalanceBefore = await owner.getBalance();
@@ -907,7 +946,7 @@ describe("Market", () => {
   describe("cancellation mechanics", () => {
     it("orders may fail due to bid timestamp cancellation", async () => {
       const { market, signers, weth, nft, asker, bidder } = await setup();
-      const bid = tokenIdBid();
+      const bid = tokenIdsBid();
       const ask = newAsk();
       await market.connect(bidder).cancelBids(bid.created);
       await expect(
@@ -916,7 +955,7 @@ describe("Market", () => {
     });
     it("orders may fail due to ask timestamp cancellation", async () => {
       const { market, signers, weth, nft, asker, bidder } = await setup();
-      const bid = tokenIdBid();
+      const bid = tokenIdsBid();
       const ask = newAsk();
       await market.connect(asker).cancelAsks(ask.created);
       await expect(
@@ -925,7 +964,7 @@ describe("Market", () => {
     });
     it("orders may fail due to bid nonce cancellation", async () => {
       const { market, signers, weth, nft, asker, bidder } = await setup();
-      const bid = tokenIdBid();
+      const bid = tokenIdsBid();
       const ask = newAsk();
       await market.connect(bidder).cancelNonces([bid.nonce]);
       expect(
@@ -937,7 +976,7 @@ describe("Market", () => {
     });
     it("orders may fail due to ask nonce cancellation", async () => {
       const { market, signers, weth, nft, asker, bidder } = await setup();
-      const bid = tokenIdBid();
+      const bid = tokenIdsBid();
       const ask = newAsk();
       await market.connect(asker).cancelNonces([ask.nonce]);
       expect(await market.nonceCancellation(asker.address, ask.nonce)).to.equal(
@@ -960,7 +999,7 @@ describe("Market", () => {
     });
     it("fills result in cancellation of any other bids/asks with same nonce", async () => {
       const { market, signers, weth, nft, asker, bidder } = await setup();
-      const bid = tokenIdBid();
+      const bid = tokenIdsBid();
       const ask = newAsk();
       await fillOrder(market, bid, bidder, ask, asker);
       expect(
