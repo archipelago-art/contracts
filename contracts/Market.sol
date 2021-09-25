@@ -42,7 +42,7 @@ contract Market {
     event RoyaltyPaid(
         uint256 indexed tradeId,
         address indexed recipient,
-        uint256 bps,
+        uint256 micros,
         uint256 amount
     );
 
@@ -319,26 +319,36 @@ contract Market {
 
         for (uint256 _i = 0; _i < ask.royalties.length; _i++) {
             Royalty memory _royalty = ask.royalties[_i];
-            uint256 _amt = (_royalty.bps * _price) / 10000;
+            uint256 _amt = (_royalty.micros * _price) / 1000000;
             // Proceeds to the seller are decreased by all Ask royalties
             _proceeds -= _amt;
             require(
                 weth.transferFrom(bidder, _royalty.recipient, _amt),
                 TRANSFER_FAILED
             );
-            emit RoyaltyPaid(_tradeId, _royalty.recipient, _royalty.bps, _amt);
+            emit RoyaltyPaid(
+                _tradeId,
+                _royalty.recipient,
+                _royalty.micros,
+                _amt
+            );
         }
 
         for (uint256 _i = 0; _i < bid.royalties.length; _i++) {
             Royalty memory _royalty = bid.royalties[_i];
-            uint256 _amt = (_royalty.bps * _price) / 10000;
+            uint256 _amt = (_royalty.micros * _price) / 1000000;
             // Proceeds to the seller are *not* decreased by Bid royalties,
             // meaning the bidder pays them on top of the bid price.
             require(
                 weth.transferFrom(bidder, _royalty.recipient, _amt),
                 TRANSFER_FAILED
             );
-            emit RoyaltyPaid(_tradeId, _royalty.recipient, _royalty.bps, _amt);
+            emit RoyaltyPaid(
+                _tradeId,
+                _royalty.recipient,
+                _royalty.micros,
+                _amt
+            );
         }
 
         token.safeTransferFrom(tokenOwner, bidder, tokenId);

@@ -13,9 +13,9 @@ enum BidType {
 
 struct Royalty {
     address recipient;
-    // Basis points of the sale price this recipient should receive
-    // one bp is 1/10,000
-    uint256 bps;
+    // Millionths of the sale price that this recipient should get.
+    // I.e. the royalty will be price * micros * 10^-6
+    uint256 micros;
 }
 
 struct Bid {
@@ -83,14 +83,14 @@ library MarketMessages {
 
     bytes32 internal constant TYPEHASH_BID =
         keccak256(
-            "Bid(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint8 bidType,uint256[] tokenIds,uint256[] traitset,Royalty[] royalties)Royalty(address recipient,uint256 bps)"
+            "Bid(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint8 bidType,uint256[] tokenIds,uint256[] traitset,Royalty[] royalties)Royalty(address recipient,uint256 micros)"
         );
     bytes32 internal constant TYPEHASH_ASK =
         keccak256(
-            "Ask(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint256[] tokenIds,Royalty[] royalties,bool unwrapWeth,address authorizedBidder)Royalty(address recipient,uint256 bps)"
+            "Ask(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint256[] tokenIds,Royalty[] royalties,bool unwrapWeth,address authorizedBidder)Royalty(address recipient,uint256 micros)"
         );
     bytes32 internal constant TYPEHASH_ROYALTY =
-        keccak256("Royalty(address recipient,uint256 bps)");
+        keccak256("Royalty(address recipient,uint256 micros)");
 
     function structHash(Bid memory _self) internal pure returns (bytes32) {
         return
@@ -128,7 +128,9 @@ library MarketMessages {
 
     function structHash(Royalty memory _self) internal pure returns (bytes32) {
         return
-            keccak256(abi.encode(TYPEHASH_ROYALTY, _self.recipient, _self.bps));
+            keccak256(
+                abi.encode(TYPEHASH_ROYALTY, _self.recipient, _self.micros)
+            );
     }
 
     function structHash(Royalty[] memory _self)

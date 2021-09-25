@@ -33,7 +33,7 @@ const Ask = [
 ];
 const Royalty = [
   { type: "address", name: "recipient" },
-  { type: "uint256", name: "bps" },
+  { type: "uint256", name: "micros" },
 ];
 
 const sign712 = Object.freeze({

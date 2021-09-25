@@ -158,16 +158,16 @@ describe("Market", () => {
   }
 
   const TYPEHASH_ROYALTY = ethers.utils.keccak256(
-    ethers.utils.toUtf8Bytes("Royalty(address recipient,uint256 bps)")
+    ethers.utils.toUtf8Bytes("Royalty(address recipient,uint256 micros)")
   );
   const TYPEHASH_BID = ethers.utils.keccak256(
     ethers.utils.toUtf8Bytes(
-      "Bid(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint8 bidType,uint256[] tokenIds,uint256[] traitset,Royalty[] royalties)Royalty(address recipient,uint256 bps)"
+      "Bid(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint8 bidType,uint256[] tokenIds,uint256[] traitset,Royalty[] royalties)Royalty(address recipient,uint256 micros)"
     )
   );
   const TYPEHASH_ASK = ethers.utils.keccak256(
     ethers.utils.toUtf8Bytes(
-      "Ask(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint256[] tokenIds,Royalty[] royalties,bool unwrapWeth,address authorizedBidder)Royalty(address recipient,uint256 bps)"
+      "Ask(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint256[] tokenIds,Royalty[] royalties,bool unwrapWeth,address authorizedBidder)Royalty(address recipient,uint256 micros)"
     )
   );
 
@@ -175,7 +175,7 @@ describe("Market", () => {
     return ethers.utils.keccak256(
       ethers.utils.defaultAbiCoder.encode(
         ["bytes32", "address", "uint256"],
-        [TYPEHASH_ROYALTY, royalty.recipient, royalty.bps]
+        [TYPEHASH_ROYALTY, royalty.recipient, royalty.micros]
       )
     );
   }
@@ -644,12 +644,12 @@ describe("Market", () => {
     });
 
     describe("royalties", () => {
-      const bp = BN.from("10").pow(14);
+      const micro = BN.from("10").pow(12);
       it("handles zero royalties correctly", async () => {
         const { market, signers, weth, asker, bidder } = await setup();
         const r0 = signers[3].address;
         const bid = tokenIdsBid();
-        const ask = newAsk({ royalties: [{ recipient: r0, bps: 0 }] });
+        const ask = newAsk({ royalties: [{ recipient: r0, micros: 0 }] });
         await fillOrder(market, bid, bidder, ask, asker);
         expect(await weth.balanceOf(r0)).to.equal(0);
         expect(await weth.balanceOf(asker.address)).to.equal(exa);
@@ -658,8 +658,8 @@ describe("Market", () => {
         const { market, signers, weth, asker, bidder } = await setup();
         const r0 = signers[3].address;
         const bid = tokenIdsBid();
-        const ask = newAsk({ royalties: [{ recipient: r0, bps: 5 }] });
-        const roy = bp.mul(5);
+        const ask = newAsk({ royalties: [{ recipient: r0, micros: 5 }] });
+        const roy = micro.mul(5);
         const tradeId = computeTradeId(bid, bidder, ask, asker);
         await expect(fillOrder(market, bid, bidder, ask, asker))
           .to.emit(market, "RoyaltyPaid")
@@ -674,21 +674,21 @@ describe("Market", () => {
         const bid = tokenIdsBid();
         const ask = newAsk({
           royalties: [
-            { recipient: r0, bps: 5 },
-            { recipient: r1, bps: 1 },
+            { recipient: r0, micros: 5 },
+            { recipient: r1, micros: 1 },
           ],
         });
-        const roy = bp.mul(5);
+        const roy = micro.mul(5);
         const tradeId = computeTradeId(bid, bidder, ask, asker);
         await expect(fillOrder(market, bid, bidder, ask, asker))
           .to.emit(market, "RoyaltyPaid")
           .withArgs(tradeId, r0, 5, roy)
           .to.emit(market, "RoyaltyPaid")
-          .withArgs(tradeId, r1, 1, bp);
+          .withArgs(tradeId, r1, 1, micro);
         expect(await weth.balanceOf(r0)).to.equal(roy);
-        expect(await weth.balanceOf(r1)).to.equal(bp);
+        expect(await weth.balanceOf(r1)).to.equal(micro);
         expect(await weth.balanceOf(asker.address)).to.equal(
-          exa.sub(roy).sub(bp)
+          exa.sub(roy).sub(micro)
         );
       });
       it("handles the edge case where royalties sum to 100%", async () => {
@@ -698,13 +698,13 @@ describe("Market", () => {
         const bid = tokenIdsBid();
         const ask = newAsk({
           royalties: [
-            { recipient: r0, bps: 8000 },
-            { recipient: r1, bps: 2000 },
+            { recipient: r0, micros: 800000 },
+            { recipient: r1, micros: 200000 },
           ],
         });
         await fillOrder(market, bid, bidder, ask, asker);
-        expect(await weth.balanceOf(r0)).to.equal(bp.mul(8000));
-        expect(await weth.balanceOf(r1)).to.equal(bp.mul(2000));
+        expect(await weth.balanceOf(r0)).to.equal(micro.mul(800000));
+        expect(await weth.balanceOf(r1)).to.equal(micro.mul(200000));
         expect(await weth.balanceOf(asker.address)).to.equal(0);
       });
       it("reverts if royalties sum to >100%", async () => {
@@ -714,8 +714,8 @@ describe("Market", () => {
         const bid = tokenIdsBid();
         const ask = newAsk({
           royalties: [
-            { recipient: r0, bps: 8000 },
-            { recipient: r1, bps: 2001 },
+            { recipient: r0, micros: 800000 },
+            { recipient: r1, micros: 200001 },
           ],
         });
         await expect(
@@ -725,9 +725,9 @@ describe("Market", () => {
 
       it("bidder royalty works (if specified)", async () => {
         const { market, signers, weth, asker, bidder } = await setup();
-        const roy = bp.mul(10);
+        const roy = micro.mul(10);
         const r0 = signers[3].address;
-        const bid = tokenIdsBid({ royalties: [{ recipient: r0, bps: 10 }] });
+        const bid = tokenIdsBid({ royalties: [{ recipient: r0, micros: 10 }] });
         const ask = newAsk();
         const tradeId = computeTradeId(bid, bidder, ask, asker);
         await expect(fillOrder(market, bid, bidder, ask, asker))
@@ -742,7 +742,7 @@ describe("Market", () => {
         const { market, signers, weth, asker, bidder } = await setup();
         const r0 = signers[3].address;
         const bid = tokenIdsBid({
-          royalties: [{ recipient: r0, bps: 10 }],
+          royalties: [{ recipient: r0, micros: 10 }],
           price: exa.mul(2),
         });
         const ask = newAsk({ price: exa.mul(2) });
@@ -757,22 +757,22 @@ describe("Market", () => {
         const r1 = signers[4].address;
         const bid = tokenIdsBid({
           royalties: [
-            { recipient: r0, bps: 1 },
-            { recipient: r1, bps: 2 },
+            { recipient: r0, micros: 1 },
+            { recipient: r1, micros: 2 },
           ],
         });
         const ask = newAsk();
         const tradeId = computeTradeId(bid, bidder, ask, asker);
         await expect(fillOrder(market, bid, bidder, ask, asker))
           .to.emit(market, "RoyaltyPaid")
-          .withArgs(tradeId, r0, 1, bp)
+          .withArgs(tradeId, r0, 1, micro)
           .to.emit(market, "RoyaltyPaid")
-          .withArgs(tradeId, r1, 2, bp.mul(2));
+          .withArgs(tradeId, r1, 2, micro.mul(2));
         expect(await weth.balanceOf(asker.address)).to.equal(exa);
-        expect(await weth.balanceOf(r0)).to.equal(bp);
-        expect(await weth.balanceOf(r1)).to.equal(bp.mul(2));
+        expect(await weth.balanceOf(r0)).to.equal(micro);
+        expect(await weth.balanceOf(r1)).to.equal(micro.mul(2));
         expect(await weth.balanceOf(bidder.address)).to.equal(
-          exa.sub(bp.mul(3))
+          exa.sub(micro.mul(3))
         );
       });
     });
@@ -1058,8 +1058,8 @@ describe("Market", () => {
         price: exa,
         traitset: [0x1234, 0x5678],
         royalties: [
-          { recipient: signers[3].address, bps: 10 },
-          { recipient: signers[4].address, bps: 100 },
+          { recipient: signers[3].address, micros: 10 },
+          { recipient: signers[4].address, micros: 100 },
         ],
       });
       const hash = await market.bidHash(bid);
@@ -1083,8 +1083,8 @@ describe("Market", () => {
         tokenId: 0x12345678,
         price: exa,
         royalties: [
-          { recipient: signers[3].address, bps: 10 },
-          { recipient: signers[4].address, bps: 100 },
+          { recipient: signers[3].address, micros: 10 },
+          { recipient: signers[4].address, micros: 100 },
         ],
       });
       const hash = await market.askHash(ask);
