@@ -190,7 +190,7 @@ describe("Market", () => {
           "uint256",
           "uint8",
           "uint256",
-          "uint256",
+          "bytes32",
           "bytes32",
         ],
         [
@@ -369,6 +369,20 @@ describe("Market", () => {
           bidder: SignatureKind.ETHEREUM_SIGNED_MESSAGE,
           asker: SignatureKind.ETHEREUM_SIGNED_MESSAGE,
         }));
+      });
+      it("supports legacy bid signatures on traitset bids", async () => {
+        const { market, signers, weth, nft, asker, bidder, oracle } =
+          await setup();
+        await oracle.setTrait(0, 42);
+        const bid = traitsetBid({ traitset: [42] });
+        const ask = newAsk();
+        await fillOrder(market, bid, bidder, ask, asker, {
+          bidder: SignatureKind.ETHEREUM_SIGNED_MESSAGE,
+          asker: SignatureKind.ETHEREUM_SIGNED_MESSAGE,
+        });
+        expect(await nft.ownerOf(0)).to.equal(bidder.address);
+        expect(await weth.balanceOf(bidder.address)).to.equal(exa);
+        expect(await weth.balanceOf(asker.address)).to.equal(exa);
       });
       it("supports a legacy bid signature only", async () => {
         await expectSuccess(async () => ({
