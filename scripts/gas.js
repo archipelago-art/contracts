@@ -1,8 +1,11 @@
 const hre = require("hardhat");
 const { ethers } = hre;
 
+const BN = ethers.BigNumber;
+
 const sdk = require("../sdk");
 const { EIP_712 } = sdk.SignatureKind;
+const { sign712, BidType } = sdk.market;
 
 const TEST_CASES = [];
 
@@ -101,6 +104,233 @@ TEST_CASES.push(async function* oracleTraitMemberships(props) {
   }
 });
 
+TEST_CASES.push(async function* marketFills(props) {
+  const signer = props.signers[0];
+  const bob = props.signers[1];
+  const alice = props.signers[2];
+  const exa = BN.from("10").pow(18);
+  const chainId = await ethers.provider.send("eth_chainId");
+  const market = await props.factories.Market.deploy();
+  const domainInfo = { marketAddress: market.address, chainId };
+  const weth = await props.factories.TestWeth.deploy();
+  const token = await props.factories.TestERC721.deploy();
+  const oracle = await props.factories.ArtblocksTraitOracle.deploy();
+  await Promise.all([
+    oracle.deployed(),
+    market.deployed(),
+    weth.deployed(),
+    token.deployed(),
+  ]);
+  await market.initialize(token.address, weth.address, oracle.address);
+
+  // Oracle setup
+  const domain = {
+    oracleAddress: oracle.address,
+    chainId,
+  };
+  await oracle.setOracleSigner(signer.address);
+  const projectId = 23;
+  const baseTokenId = 23000000;
+  let paddleIds = [467, 36, 45, 3, 70, 237, 449, 491, 135, 54, 250, 314].map(
+    (x) => x + baseTokenId
+  );
+  const featureName = "Palette: Paddle";
+  const version = 0;
+
+  const featureMsg = { projectId, featureName, version };
+  const featureSig = await sdk.oracle.sign712.setFeatureInfo(
+    signer,
+    domain,
+    featureMsg
+  );
+  await oracle.setFeatureInfo(featureMsg, featureSig, EIP_712);
+
+  const traitId = sdk.oracle.featureTraitId(projectId, featureName, version);
+  const msg = { traitId, words: sdk.oracle.traitMembershipWords(paddleIds) };
+  const sig = await sdk.oracle.sign712.addTraitMemberships(signer, domain, msg);
+  await oracle.addTraitMemberships(msg, sig, EIP_712);
+
+  // Token and weth setup
+  const tokenId = baseTokenId + 250;
+  await token.connect(alice).setApprovalForAll(market.address, true);
+  await token.connect(bob).setApprovalForAll(market.address, true);
+  await token.mint(alice.address, tokenId);
+  await weth.connect(bob).approve(market.address, ethers.constants.MaxUint256);
+  await weth
+    .connect(alice)
+    .approve(market.address, ethers.constants.MaxUint256);
+  await weth.connect(alice).deposit({ value: exa.mul(10) });
+  await weth.connect(bob).deposit({ value: exa.mul(10) });
+
+  {
+    const bid = {
+      nonce: 0,
+      created: 1,
+      deadline: ethers.constants.MaxUint256,
+      price: exa,
+      tokenIds: [tokenId],
+      traitset: [],
+      bidType: BidType.TOKEN_IDS,
+      royalties: [],
+    };
+    const ask = {
+      nonce: 0,
+      created: 1,
+      deadline: ethers.constants.MaxUint256,
+      price: exa,
+      tokenIds: [tokenId],
+      royalties: [],
+      unwrapWeth: false,
+      authorizedBidder: ethers.constants.AddressZero,
+    };
+    const bidSignature = sign712.bid(bob, domainInfo, bid);
+    const askSignature = sign712.ask(alice, domainInfo, ask);
+    const tx = await market.fillOrder(
+      bid,
+      bidSignature,
+      EIP_712,
+      ask,
+      askSignature,
+      EIP_712
+    );
+    yield ["fillSingleTokenOrder", await tx.wait()];
+  }
+
+  {
+    const bid = {
+      nonce: 1,
+      created: 1,
+      deadline: ethers.constants.MaxUint256,
+      price: exa,
+      tokenIds: [],
+      traitset: [traitId],
+      bidType: BidType.TRAITSET,
+      royalties: [],
+    };
+    const ask = {
+      nonce: 1,
+      created: 1,
+      deadline: ethers.constants.MaxUint256,
+      price: exa,
+      tokenIds: [tokenId],
+      royalties: [],
+      unwrapWeth: false,
+      authorizedBidder: ethers.constants.AddressZero,
+    };
+    const bidSignature = sign712.bid(alice, domainInfo, bid);
+    const askSignature = sign712.ask(bob, domainInfo, ask);
+    const tx = await market.fillOrder(
+      bid,
+      bidSignature,
+      EIP_712,
+      ask,
+      askSignature,
+      EIP_712
+    );
+    yield ["fillSingleTraitsetOrder", await tx.wait()];
+  }
+
+  {
+    const bid = {
+      nonce: 2,
+      created: 1,
+      deadline: ethers.constants.MaxUint256,
+      price: exa,
+      tokenIds: [tokenId],
+      traitset: [],
+      bidType: BidType.TOKEN_IDS,
+      royalties: [],
+    };
+    const ask = {
+      nonce: 2,
+      created: 1,
+      deadline: ethers.constants.MaxUint256,
+      price: exa,
+      tokenIds: [tokenId],
+      royalties: [],
+      unwrapWeth: true,
+      authorizedBidder: ethers.constants.AddressZero,
+    };
+    const bidSignature = sign712.bid(bob, domainInfo, bid);
+    const askSignature = sign712.ask(alice, domainInfo, ask);
+    const tx = await market.fillOrder(
+      bid,
+      bidSignature,
+      EIP_712,
+      ask,
+      askSignature,
+      EIP_712
+    );
+    yield ["fillOrder With autoUnwrap", await tx.wait()];
+  }
+
+  {
+    const r = { recipient: props.signers[0].address, micros: 1000 };
+    const bid = {
+      nonce: 3,
+      created: 1,
+      deadline: ethers.constants.MaxUint256,
+      price: exa,
+      tokenIds: [tokenId],
+      traitset: [],
+      bidType: BidType.TOKEN_IDS,
+      royalties: [r, r, r, r],
+    };
+    const ask = {
+      nonce: 3,
+      created: 1,
+      deadline: ethers.constants.MaxUint256,
+      price: exa,
+      tokenIds: [tokenId],
+      royalties: [],
+      unwrapWeth: true,
+      authorizedBidder: ethers.constants.AddressZero,
+    };
+    const bidSignature = sign712.bid(alice, domainInfo, bid);
+    const askSignature = sign712.ask(bob, domainInfo, ask);
+    const tx = await market
+      .connect(alice)
+      .fillOrderEth(bid, bidSignature, EIP_712, ask, askSignature, EIP_712, {
+        value: exa,
+      });
+    yield ["fillOrder in Eth", await tx.wait()];
+  }
+
+  {
+    const bid = {
+      nonce: 4,
+      created: 1,
+      deadline: ethers.constants.MaxUint256,
+      price: exa,
+      tokenIds: [tokenId],
+      traitset: [],
+      bidType: BidType.TOKEN_IDS,
+      royalties: [],
+    };
+    const ask = {
+      nonce: 4,
+      created: 1,
+      deadline: ethers.constants.MaxUint256,
+      price: exa,
+      tokenIds: [tokenId],
+      royalties: [],
+      unwrapWeth: true,
+      authorizedBidder: ethers.constants.AddressZero,
+    };
+    const bidSignature = sign712.bid(bob, domainInfo, bid);
+    const askSignature = sign712.ask(alice, domainInfo, ask);
+    const tx = await market.fillOrder(
+      bid,
+      bidSignature,
+      EIP_712,
+      ask,
+      askSignature,
+      EIP_712
+    );
+    yield ["fillOrder with 4 royalties", await tx.wait()];
+  }
+});
+
 const Mode = Object.freeze({
   TEXT: "TEXT",
   JSON: "JSON",
@@ -113,10 +343,14 @@ async function main() {
     if (patterns.length === 0) return true;
     return patterns.some((p) => name.match(p));
   }
-  const [ArtblocksTraitOracle, Market] = await Promise.all([
-    ethers.getContractFactory("ArtblocksTraitOracle"),
-    ethers.getContractFactory("Market"),
-  ]);
+  const [ArtblocksTraitOracle, Market, TestTraitOracle, TestWeth, TestERC721] =
+    await Promise.all([
+      ethers.getContractFactory("ArtblocksTraitOracle"),
+      ethers.getContractFactory("Market"),
+      ethers.getContractFactory("TestTraitOracle"),
+      ethers.getContractFactory("TestWeth"),
+      ethers.getContractFactory("TestERC721"),
+    ]);
   let allPassed = true;
   for (const testCase of TEST_CASES) {
     if (!testCaseMatches(testCase.name)) continue;
@@ -125,6 +359,9 @@ async function main() {
         factories: {
           ArtblocksTraitOracle,
           Market,
+          TestTraitOracle,
+          TestWeth,
+          TestERC721,
         },
         signers: await ethers.getSigners(),
       });
