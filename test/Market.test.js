@@ -507,13 +507,23 @@ describe("Market", () => {
     });
 
     it("emits expected events when an order fills", async () => {
-      const { market, asker, bidder } = await setup();
-      const bid = tokenIdsBid();
-      const ask = newAsk();
+      const { market, asker, bidder, signers } = await setup();
+      const r0 = signers[3].address;
+      const bid = tokenIdsBid({
+        royalties: [{ recipient: r0, micros: 1000000 }],
+      });
+      const ask = newAsk({ royalties: [{ recipient: r0, micros: 500000 }] });
       const tradeId = computeTradeId(bid, bidder, ask, asker);
       await expect(fillOrder(market, bid, bidder, ask, asker))
         .to.emit(market, "Trade")
-        .withArgs(tradeId, bidder.address, asker.address, bid.price)
+        .withArgs(
+          tradeId,
+          bidder.address,
+          asker.address,
+          bid.price,
+          bid.price.div(2),
+          bid.price.mul(2)
+        )
         .to.emit(market, "TokenTraded")
         .withArgs(tradeId, bid.tokenIds[0]);
     });
@@ -680,7 +690,10 @@ describe("Market", () => {
         });
         const roy = micro.mul(5);
         const tradeId = computeTradeId(bid, bidder, ask, asker);
+        const proceeds = exa.sub(roy).sub(micro);
         await expect(fillOrder(market, bid, bidder, ask, asker))
+          .to.emit(market, "Trade")
+          .withArgs(tradeId, bidder.address, asker.address, exa, proceeds, exa)
           .to.emit(market, "RoyaltyPaid")
           .withArgs(tradeId, r0, 5, roy)
           .to.emit(market, "RoyaltyPaid")
@@ -730,7 +743,10 @@ describe("Market", () => {
         const bid = tokenIdsBid({ royalties: [{ recipient: r0, micros: 10 }] });
         const ask = newAsk();
         const tradeId = computeTradeId(bid, bidder, ask, asker);
+        const cost = exa.add(roy);
         await expect(fillOrder(market, bid, bidder, ask, asker))
+          .to.emit(market, "Trade")
+          .withArgs(tradeId, bidder.address, asker.address, exa, exa, cost)
           .to.emit(market, "RoyaltyPaid")
           .withArgs(tradeId, r0, 10, roy);
         expect(await weth.balanceOf(asker.address)).to.equal(exa); // seller got full price

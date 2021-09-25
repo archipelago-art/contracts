@@ -33,7 +33,9 @@ contract Market {
         uint256 indexed tradeId,
         address indexed buyer,
         address indexed seller,
-        uint256 price
+        uint256 price,
+        uint256 proceeds,
+        uint256 cost
     );
     // Emitted once for every token that's transferred as part of a trade,
     // i.e. a Trade event will correspond to zero-or-more TokenTraded events.
@@ -303,7 +305,10 @@ contract Market {
             keccak256(abi.encode(bidder, bid.nonce, asker, ask.nonce))
         );
         uint256 _price = bid.price;
-        uint256 _proceeds = _price; // amount that goes to the asker, after royalties
+        // amount paid to seller, after subtracting asker royalties
+        uint256 _proceeds = _price;
+        // amount spent by the buyer, after including bidder royalties
+        uint256 _cost = _price;
         require(_price == ask.price, "price mismatch");
 
         if (bid.bidType == BidType.TOKEN_IDS) {
@@ -337,6 +342,7 @@ contract Market {
         for (uint256 _i = 0; _i < bid.royalties.length; _i++) {
             Royalty memory _royalty = bid.royalties[_i];
             uint256 _amt = (_royalty.micros * _price) / 1000000;
+            _cost += _amt;
             // Proceeds to the seller are *not* decreased by Bid royalties,
             // meaning the bidder pays them on top of the bid price.
             require(
@@ -369,7 +375,7 @@ contract Market {
             );
         }
 
-        emit Trade(_tradeId, bidder, asker, _price);
+        emit Trade(_tradeId, bidder, asker, _price, _proceeds, _cost);
         emit TokenTraded(_tradeId, tokenId);
     }
 }
