@@ -1,14 +1,38 @@
+const ethers = require("ethers");
+
 const BidType = Object.freeze({
   TOKEN_IDS: 0,
   TRAITSET: 1,
 });
 
-function domainSeparator({ marketAddress, chainId }) {
+function domainSeparator({
+  chainId,
+  tokenAddress,
+  wethAddress,
+  traitOracleAddress,
+}) {
   return {
     name: "ArchipelagoMarket",
     chainId,
-    verifyingContract: marketAddress,
+    salt: domainSeparatorSalt({
+      tokenAddress,
+      wethAddress,
+      traitOracleAddress,
+    }),
   };
+}
+
+function domainSeparatorSalt({
+  tokenAddress,
+  wethAddress,
+  traitOracleAddress,
+}) {
+  return ethers.utils.keccak256(
+    ethers.utils.defaultAbiCoder.encode(
+      ["address", "address", "address"],
+      [tokenAddress, wethAddress, traitOracleAddress]
+    )
+  );
 }
 
 const Bid = [

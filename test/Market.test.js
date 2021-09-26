@@ -26,27 +26,30 @@ describe("Market", () => {
     await clock.deployed();
   });
 
-  async function domainInfo(marketAddress) {
+  async function domainInfo(market) {
     const chainId = await ethers.provider.send("eth_chainId");
-    return { marketAddress, chainId };
+    const tokenAddress = await market.token();
+    const wethAddress = await market.weth();
+    const traitOracleAddress = await market.traitOracle();
+    return { chainId, tokenAddress, wethAddress, traitOracleAddress };
   }
 
-  async function rawDomainSeparator(address) {
-    const { name, chainId, verifyingContract } = sdk.market.domainSeparator(
-      await domainInfo(address)
+  async function rawDomainSeparator(market) {
+    const { name, chainId, salt } = sdk.market.domainSeparator(
+      await domainInfo(market)
     );
     return ethers.utils.keccak256(
       ethers.utils.defaultAbiCoder.encode(
-        ["bytes32", "bytes32", "uint256", "address"],
+        ["bytes32", "bytes32", "uint256", "bytes32"],
         [
           ethers.utils.keccak256(
             ethers.utils.toUtf8Bytes(
-              "EIP712Domain(string name,uint256 chainId,address verifyingContract)"
+              "EIP712Domain(string name,uint256 chainId,bytes32 salt)"
             )
           ),
           ethers.utils.keccak256(ethers.utils.toUtf8Bytes(name)),
           chainId,
-          verifyingContract,
+          salt,
         ]
       )
     );
@@ -252,12 +255,12 @@ describe("Market", () => {
     );
   }
 
-  async function signBid(marketAddress, bid, signer) {
-    return sdk.market.sign712.bid(signer, await domainInfo(marketAddress), bid);
+  async function signBid(market, bid, signer) {
+    return sdk.market.sign712.bid(signer, await domainInfo(market), bid);
   }
 
-  async function signBidLegacy(marketAddress, bid, signer) {
-    const domain = await rawDomainSeparator(marketAddress);
+  async function signBidLegacy(market, bid, signer) {
+    const domain = await rawDomainSeparator(market);
     const blob = ethers.utils.arrayify(
       ethers.utils.keccak256(
         ethers.utils.defaultAbiCoder.encode(
@@ -269,12 +272,12 @@ describe("Market", () => {
     return await signer.signMessage(blob);
   }
 
-  async function signAsk(marketAddress, ask, signer) {
-    return sdk.market.sign712.ask(signer, await domainInfo(marketAddress), ask);
+  async function signAsk(market, ask, signer) {
+    return sdk.market.sign712.ask(signer, await domainInfo(market), ask);
   }
 
-  async function signAskLegacy(marketAddress, ask, signer) {
-    const domain = await rawDomainSeparator(marketAddress);
+  async function signAskLegacy(market, ask, signer) {
+    const domain = await rawDomainSeparator(market);
     const blob = ethers.utils.arrayify(
       ethers.utils.keccak256(
         ethers.utils.defaultAbiCoder.encode(
@@ -306,10 +309,10 @@ describe("Market", () => {
         );
         break;
       case SignatureKind.ETHEREUM_SIGNED_MESSAGE:
-        bidSignature = await signBidLegacy(market.address, bid, bidder);
+        bidSignature = await signBidLegacy(market, bid, bidder);
         break;
       case SignatureKind.EIP_712:
-        bidSignature = await signBid(market.address, bid, bidder);
+        bidSignature = await signBid(market, bid, bidder);
         break;
       default:
         throw new Error(
@@ -324,10 +327,10 @@ describe("Market", () => {
         );
         break;
       case SignatureKind.ETHEREUM_SIGNED_MESSAGE:
-        askSignature = await signAskLegacy(market.address, ask, asker);
+        askSignature = await signAskLegacy(market, ask, asker);
         break;
       case SignatureKind.EIP_712:
-        askSignature = await signAsk(market.address, ask, asker);
+        askSignature = await signAsk(market, ask, asker);
         break;
       default:
         throw new Error(
@@ -559,8 +562,8 @@ describe("Market", () => {
         const { market, bidder, asker, weth } = await setup();
         const bid = tokenIdsBid({ price: exa.mul(3) });
         const ask = newAsk({ price: exa.mul(3) });
-        const bidSignature = await signBid(market.address, bid, bidder);
-        const askSignature = await signAsk(market.address, ask, asker);
+        const bidSignature = await signBid(market, bid, bidder);
+        const askSignature = await signAsk(market, ask, asker);
         await market
           .connect(bidder)
           .fillOrderEth(
@@ -578,8 +581,8 @@ describe("Market", () => {
         const { market, bidder, asker, weth } = await setup();
         const bid = tokenIdsBid({ price: exa.mul(3) });
         const ask = newAsk({ price: exa.mul(3) });
-        const bidSignature = await signBid(market.address, bid, bidder);
-        const askSignature = await signAsk(market.address, ask, asker);
+        const bidSignature = await signBid(market, bid, bidder);
+        const askSignature = await signAsk(market, ask, asker);
         const fail = market
           .connect(asker)
           .fillOrderEth(
@@ -597,8 +600,8 @@ describe("Market", () => {
         const { market, bidder, asker, weth } = await setup();
         const bid = tokenIdsBid();
         const ask = newAsk();
-        const bidSignature = await signBid(market.address, bid, bidder);
-        const askSignature = await signAsk(market.address, ask, asker);
+        const bidSignature = await signBid(market, bid, bidder);
+        const askSignature = await signAsk(market, ask, asker);
         await market
           .connect(bidder)
           .fillOrderEth(
@@ -618,8 +621,8 @@ describe("Market", () => {
         const { market, bidder, asker, weth } = await setup();
         const bid = tokenIdsBid({ price: exa.mul(10) });
         const ask = newAsk({ price: exa.mul(10) });
-        const bidSignature = await signBid(market.address, bid, bidder);
-        const askSignature = await signAsk(market.address, ask, asker);
+        const bidSignature = await signBid(market, bid, bidder);
+        const askSignature = await signAsk(market, ask, asker);
         const fail = market
           .connect(bidder)
           .fillOrderEth(

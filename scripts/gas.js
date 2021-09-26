@@ -111,7 +111,6 @@ TEST_CASES.push(async function* marketFills(props) {
   const exa = BN.from("10").pow(18);
   const chainId = await ethers.provider.send("eth_chainId");
   const market = await props.factories.Market.deploy();
-  const domainInfo = { marketAddress: market.address, chainId };
   const weth = await props.factories.TestWeth.deploy();
   const token = await props.factories.TestERC721.deploy();
   const oracle = await props.factories.ArtblocksTraitOracle.deploy();
@@ -122,6 +121,12 @@ TEST_CASES.push(async function* marketFills(props) {
     token.deployed(),
   ]);
   await market.initialize(token.address, weth.address, oracle.address);
+  const domainInfo = {
+    chainId,
+    tokenAddress: token.address,
+    wethAddress: weth.address,
+    traitOracleAddress: oracle.address,
+  };
 
   // Oracle setup
   const domain = {

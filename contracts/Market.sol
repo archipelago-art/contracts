@@ -5,12 +5,14 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 import "./ITraitOracle.sol";
 import "./IWeth.sol";
+import "./MarketEip712Salt.sol";
 import "./MarketMessages.sol";
 import "./SignatureChecker.sol";
 
 contract Market {
     using MarketMessages for Bid;
     using MarketMessages for Ask;
+    using MarketEip712SaltSerialization for MarketEip712Salt;
 
     event BidCancellation(address indexed participant, uint256 timestamp);
     event AskCancellation(address indexed participant, uint256 timestamp);
@@ -70,9 +72,7 @@ contract Market {
     string constant TRANSFER_FAILED = "Market: transfer failed";
 
     bytes32 constant TYPEHASH_DOMAIN_SEPARATOR =
-        keccak256(
-            "EIP712Domain(string name,uint256 chainId,address verifyingContract)"
-        );
+        keccak256("EIP712Domain(string name,uint256 chainId,bytes32 salt)");
 
     receive() external payable {
         // only accept ETH from the WETH contract (so we can unwrap for users)
@@ -96,13 +96,18 @@ contract Market {
     }
 
     function _computeDomainSeparator() internal view returns (bytes32) {
+        MarketEip712Salt memory _salt = MarketEip712Salt({
+            tokenContract: token,
+            weth: weth,
+            traitOracle: traitOracle
+        });
         return
             keccak256(
                 abi.encode(
                     TYPEHASH_DOMAIN_SEPARATOR,
                     keccak256("ArchipelagoMarket"),
                     block.chainid,
-                    address(this)
+                    _salt.serialize()
                 )
             );
     }
