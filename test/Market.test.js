@@ -160,116 +160,12 @@ describe("Market", () => {
     };
   }
 
-  const TYPEHASH_ROYALTY = ethers.utils.keccak256(
-    ethers.utils.toUtf8Bytes("Royalty(address recipient,uint256 micros)")
-  );
-  const TYPEHASH_BID = ethers.utils.keccak256(
-    ethers.utils.toUtf8Bytes(
-      "Bid(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint8 bidType,uint256[] tokenIds,uint256[] traitset,Royalty[] royalties)Royalty(address recipient,uint256 micros)"
-    )
-  );
-  const TYPEHASH_ASK = ethers.utils.keccak256(
-    ethers.utils.toUtf8Bytes(
-      "Ask(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint256[] tokenIds,Royalty[] royalties,bool unwrapWeth,address authorizedBidder)Royalty(address recipient,uint256 micros)"
-    )
-  );
-
-  function royaltyStructHash(royalty) {
-    return ethers.utils.keccak256(
-      ethers.utils.defaultAbiCoder.encode(
-        ["bytes32", "address", "uint256"],
-        [TYPEHASH_ROYALTY, royalty.recipient, royalty.micros]
-      )
-    );
-  }
-  function bidStructHash(bid) {
-    return ethers.utils.keccak256(
-      ethers.utils.defaultAbiCoder.encode(
-        [
-          "bytes32",
-          "uint256",
-          "uint256",
-          "uint256",
-          "uint256",
-          "uint8",
-          "bytes32",
-          "bytes32",
-          "bytes32",
-        ],
-        [
-          TYPEHASH_BID,
-          bid.nonce,
-          bid.created,
-          bid.deadline,
-          bid.price,
-          bid.bidType,
-          ethers.utils.keccak256(
-            ethers.utils.solidityPack(["uint256[]"], [bid.tokenIds])
-          ),
-          ethers.utils.keccak256(
-            ethers.utils.solidityPack(["uint256[]"], [bid.traitset])
-          ),
-          ethers.utils.keccak256(
-            ethers.utils.solidityPack(
-              ["bytes32[]"],
-              [bid.royalties.map(royaltyStructHash)]
-            )
-          ),
-        ]
-      )
-    );
-  }
-  function askStructHash(ask) {
-    return ethers.utils.keccak256(
-      ethers.utils.defaultAbiCoder.encode(
-        [
-          "bytes32",
-          "uint256",
-          "uint256",
-          "uint256",
-          "uint256",
-          "bytes32",
-          "bytes32",
-          "bool",
-          "address",
-        ],
-        [
-          TYPEHASH_ASK,
-          ask.nonce,
-          ask.created,
-          ask.deadline,
-          ask.price,
-          ethers.utils.keccak256(
-            ethers.utils.solidityPack(["uint256[]"], [ask.tokenIds])
-          ),
-          ethers.utils.keccak256(
-            ethers.utils.solidityPack(
-              ["bytes32[]"],
-              [ask.royalties.map(royaltyStructHash)]
-            )
-          ),
-          ask.unwrapWeth,
-          ask.authorizedBidder,
-        ]
-      )
-    );
-  }
-
   async function signBid(market, bid, signer) {
     return sdk.market.sign712.bid(signer, await domainInfo(market), bid);
   }
 
   async function signBidLegacy(market, bid, signer) {
-    const domain = await rawDomainSeparator(market);
-    const blob = ethers.utils.arrayify(
-      ethers.utils.keccak256(
-        ethers.utils.defaultAbiCoder.encode(
-          ["bytes32", "bytes32"],
-          [domain, bidStructHash(bid)]
-        )
-      )
-    );
-    return await signer.signMessage(blob);
+    return sdk.market.signLegacy.bid(signer, await domainInfo(market), bid);
   }
 
   async function signAsk(market, ask, signer) {
@@ -277,16 +173,7 @@ describe("Market", () => {
   }
 
   async function signAskLegacy(market, ask, signer) {
-    const domain = await rawDomainSeparator(market);
-    const blob = ethers.utils.arrayify(
-      ethers.utils.keccak256(
-        ethers.utils.defaultAbiCoder.encode(
-          ["bytes32", "bytes32"],
-          [domain, askStructHash(ask)]
-        )
-      )
-    );
-    return await signer.signMessage(blob);
+    return sdk.market.signLegacy.ask(signer, await domainInfo(market), ask);
   }
 
   async function fillOrder(
