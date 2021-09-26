@@ -253,22 +253,20 @@ contract Market {
         Ask memory ask,
         address asker
     ) internal {
-        bool ownerOrApproved;
-        require(ask.tokenIds.length == 1, "bundles not yet supported");
-        require(
-            bid.tokenIds.length == 1 || bid.bidType == BidType.TRAITSET,
-            "bundles not yet supported"
-        );
-        uint256 tokenId = ask.tokenIds[0];
-        address tokenOwner = token.ownerOf(tokenId);
-        if (tokenOwner == asker) {
-            ownerOrApproved = true;
-        } else if (token.getApproved(tokenId) == asker) {
-            ownerOrApproved = true;
-        } else if (token.isApprovedForAll(tokenOwner, asker)) {
-            ownerOrApproved = true;
+        for (uint256 i = 0; i < ask.tokenIds.length; i++) {
+            bool ownerOrApproved;
+            uint256 tokenId = ask.tokenIds[i];
+            address tokenOwner = token.ownerOf(tokenId);
+            if (tokenOwner == asker) {
+                ownerOrApproved = true;
+            } else if (token.getApproved(tokenId) == asker) {
+                ownerOrApproved = true;
+            } else if (token.isApprovedForAll(tokenOwner, asker)) {
+                ownerOrApproved = true;
+            }
+            require(ownerOrApproved, "asker is not owner or approved");
         }
-        require(ownerOrApproved, "asker is not owner or approved");
+
         require(
             ask.authorizedBidder == address(0) ||
                 ask.authorizedBidder == bidder,
@@ -312,8 +310,22 @@ contract Market {
         require(_price == ask.price, "price mismatch");
 
         if (bid.bidType == BidType.TOKEN_IDS) {
-            require(bid.tokenIds[0] == tokenId, "tokenid mismatch");
+            require(
+                bid.tokenIds.length == ask.tokenIds.length,
+                "tokenId length mismatch"
+            );
+            for (uint256 _i = 0; _i < ask.tokenIds.length; _i++) {
+                require(
+                    bid.tokenIds[_i] == ask.tokenIds[_i],
+                    "tokenId mismatch"
+                );
+            }
         } else {
+            require(
+                ask.tokenIds.length == 1,
+                "traitset bids only match single-token asks"
+            );
+            uint256 tokenId = ask.tokenIds[0];
             for (uint256 _i = 0; _i < bid.traitset.length; _i++) {
                 require(
                     traitOracle.hasTrait(tokenId, bid.traitset[_i]),
@@ -357,7 +369,16 @@ contract Market {
             );
         }
 
-        token.safeTransferFrom(tokenOwner, bidder, tokenId);
+        emit Trade(_tradeId, bidder, asker, _price, _proceeds, _cost);
+        for (uint256 i = 0; i < ask.tokenIds.length; i++) {
+            uint256 tokenId = ask.tokenIds[i];
+            // Duplicated call to token.ownerOf(tokenId).
+            // We could remove the extra call by checking owner/approved status here,
+            // just before transfer, but we should think carefully about the security
+            // implications of re-ordering.
+            token.safeTransferFrom(token.ownerOf(tokenId), bidder, tokenId);
+            emit TokenTraded(_tradeId, tokenId);
+        }
         if (ask.unwrapWeth) {
             require(
                 weth.transferFrom(bidder, address(this), _proceeds),
@@ -374,8 +395,5 @@ contract Market {
                 TRANSFER_FAILED
             );
         }
-
-        emit Trade(_tradeId, bidder, asker, _price, _proceeds, _cost);
-        emit TokenTraded(_tradeId, tokenId);
     }
 }

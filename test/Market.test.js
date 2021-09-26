@@ -445,37 +445,63 @@ describe("Market", () => {
     });
 
     describe("bundles", () => {
-      it("doesn't yet support bids with multiple tokenIds", async () => {
-        const { market, signers, weth, nft, asker, bidder } = await setup();
-        const bid = tokenIdsBid({ tokenIds: [1, 2] });
-        const ask = newAsk();
-        await expect(
-          fillOrder(market, bid, bidder, ask, asker)
-        ).to.be.revertedWith("bundles not yet supported");
-      });
-      it("doesn't yet support asks with multiple tokenIds", async () => {
-        const { market, signers, weth, nft, asker, bidder } = await setup();
-        const bid = tokenIdsBid();
-        const ask = newAsk({ tokenIds: [1, 2] });
-        await expect(
-          fillOrder(market, bid, bidder, ask, asker)
-        ).to.be.revertedWith("bundles not yet supported");
-      });
-      it("doesn't yet support empty-bundle bids", async () => {
+      it("empty-bundle transactions are allowed", async () => {
         const { market, signers, weth, nft, asker, bidder } = await setup();
         const bid = tokenIdsBid({ tokenIds: [] });
-        const ask = newAsk();
-        await expect(
-          fillOrder(market, bid, bidder, ask, asker)
-        ).to.be.revertedWith("bundles not yet supported");
-      });
-      it("doesn't yet support empty-bundle asks", async () => {
-        const { market, signers, weth, nft, asker, bidder } = await setup();
-        const bid = tokenIdsBid();
         const ask = newAsk({ tokenIds: [] });
+        const tradeId = computeTradeId(bid, bidder, ask, asker);
+        await expect(fillOrder(market, bid, bidder, ask, asker))
+          .to.emit(market, "Trade")
+          .withArgs(tradeId, bidder.address, asker.address, exa, exa, exa);
+      });
+      it("multiple tokenId trades succeed", async () => {
+        const { market, signers, weth, nft, asker, bidder } = await setup();
+        const bid = tokenIdsBid({ tokenIds: [0, 1] });
+        const ask = newAsk({ tokenIds: [0, 1] });
+        const tradeId = computeTradeId(bid, bidder, ask, asker);
+        await expect(fillOrder(market, bid, bidder, ask, asker))
+          .to.emit(market, "Trade")
+          .withArgs(tradeId, bidder.address, asker.address, exa, exa, exa)
+          .to.emit(market, "TokenTraded")
+          .withArgs(tradeId, 0)
+          .to.emit(market, "TokenTraded")
+          .withArgs(tradeId, 1);
+        expect(await nft.ownerOf(0)).to.equal(bidder.address);
+        expect(await nft.ownerOf(1)).to.equal(bidder.address);
+      });
+      it("fails if the bid and ask disagree about token order", async () => {
+        const { market, signers, weth, nft, asker, bidder } = await setup();
+        const bid = tokenIdsBid({ tokenIds: [0, 1] });
+        const ask = newAsk({ tokenIds: [1, 0] });
         await expect(
           fillOrder(market, bid, bidder, ask, asker)
-        ).to.be.revertedWith("bundles not yet supported");
+        ).to.be.revertedWith("tokenId mismatch");
+      });
+      it("may succeed if the same token is included multiple times", async () => {
+        // This behavior is a bit weird, but the bidder ends up owning every
+        // token they bid for, so I think it's acceptable.
+        // Note this only succeeds because the bidder approved the market to
+        // transfer their NFTs -- if not for that, the transaction would revert
+        const { market, signers, weth, nft, asker, bidder } = await setup();
+        await nft.connect(bidder).setApprovalForAll(market.address, true);
+        const bid = tokenIdsBid({ tokenIds: [0, 0] });
+        const ask = newAsk({ tokenIds: [0, 0] });
+        const tradeId = computeTradeId(bid, bidder, ask, asker);
+        await expect(fillOrder(market, bid, bidder, ask, asker))
+          .to.emit(market, "Trade")
+          .withArgs(tradeId, bidder.address, asker.address, exa, exa, exa)
+          .to.emit(market, "TokenTraded")
+          .withArgs(tradeId, 0)
+          .to.emit(market, "TokenTraded")
+          .withArgs(tradeId, 0);
+      });
+      it("fails if the bid and ask disagree about tokens", async () => {
+        const { market, signers, weth, nft, asker, bidder } = await setup();
+        const bid = tokenIdsBid({ tokenIds: [0, 2] });
+        const ask = newAsk({ tokenIds: [0, 1] });
+        await expect(
+          fillOrder(market, bid, bidder, ask, asker)
+        ).to.be.revertedWith("tokenId mismatch");
       });
     });
 
@@ -650,6 +676,26 @@ describe("Market", () => {
         await oracle.setTrait(0, 69); // it has one trait but not both
         const fail = fillOrder(market, bid, bidder, ask, asker);
         await expect(fail).to.be.revertedWith("missing trait");
+      });
+      it("a traitset bid can't match 0 pieces", async () => {
+        const { market, bidder, asker, oracle } = await setup();
+        const bid = traitsetBid({ traitset: [42, 69] });
+        const ask = newAsk({ tokenIds: [] });
+        const fail = fillOrder(market, bid, bidder, ask, asker);
+        await expect(fail).to.be.revertedWith(
+          "traitset bids only match single-token asks"
+        );
+      });
+      it("a traitset bid can't match multiple pieces", async () => {
+        const { market, bidder, asker, oracle } = await setup();
+        const bid = traitsetBid({ traitset: [42] });
+        const ask = newAsk({ tokenIds: [0, 1] });
+        await oracle.setTrait(0, 42);
+        await oracle.setTrait(1, 42);
+        const fail = fillOrder(market, bid, bidder, ask, asker);
+        await expect(fail).to.be.revertedWith(
+          "traitset bids only match single-token asks"
+        );
       });
     });
 
@@ -828,7 +874,7 @@ describe("Market", () => {
         const ask = newAsk({ tokenIds: [1] });
         await expect(
           fillOrder(market, bid, bidder, ask, asker)
-        ).to.be.revertedWith("tokenid mismatch");
+        ).to.be.revertedWith("tokenId mismatch");
       });
 
       it("rejects if ERC-20 transfer returns `false`", async () => {
