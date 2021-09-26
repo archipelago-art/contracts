@@ -48,9 +48,9 @@ contract Market {
         uint256 amount
     );
 
-    IERC721 token;
-    IWeth weth;
-    ITraitOracle traitOracle;
+    IERC721 public token;
+    IWeth public weth;
+    ITraitOracle public traitOracle;
     mapping(address => uint256) public bidTimestampCancellation;
     mapping(address => uint256) public askTimestampCancellation;
     mapping(address => mapping(uint256 => bool)) public nonceCancellation;
