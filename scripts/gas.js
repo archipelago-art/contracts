@@ -5,7 +5,7 @@ const BN = ethers.BigNumber;
 
 const sdk = require("../sdk");
 const { EIP_712 } = sdk.SignatureKind;
-const { sign712, BidType } = sdk.market;
+const { BidType } = sdk.market;
 
 const TEST_CASES = [];
 
@@ -183,8 +183,8 @@ TEST_CASES.push(async function* marketFills(props) {
       unwrapWeth: false,
       authorizedBidder: ethers.constants.AddressZero,
     };
-    const bidSignature = sign712.bid(bob, domainInfo, bid);
-    const askSignature = sign712.ask(alice, domainInfo, ask);
+    const bidSignature = sdk.market.sign712.bid(bob, domainInfo, bid);
+    const askSignature = sdk.market.sign712.ask(alice, domainInfo, ask);
     const tx = await market.fillOrder(
       bid,
       bidSignature,
@@ -217,8 +217,8 @@ TEST_CASES.push(async function* marketFills(props) {
       unwrapWeth: false,
       authorizedBidder: ethers.constants.AddressZero,
     };
-    const bidSignature = sign712.bid(alice, domainInfo, bid);
-    const askSignature = sign712.ask(bob, domainInfo, ask);
+    const bidSignature = sdk.market.sign712.bid(alice, domainInfo, bid);
+    const askSignature = sdk.market.sign712.ask(bob, domainInfo, ask);
     const tx = await market.fillOrder(
       bid,
       bidSignature,
@@ -251,8 +251,8 @@ TEST_CASES.push(async function* marketFills(props) {
       unwrapWeth: true,
       authorizedBidder: ethers.constants.AddressZero,
     };
-    const bidSignature = sign712.bid(bob, domainInfo, bid);
-    const askSignature = sign712.ask(alice, domainInfo, ask);
+    const bidSignature = sdk.market.sign712.bid(bob, domainInfo, bid);
+    const askSignature = sdk.market.sign712.ask(alice, domainInfo, ask);
     const tx = await market.fillOrder(
       bid,
       bidSignature,
@@ -286,8 +286,8 @@ TEST_CASES.push(async function* marketFills(props) {
       unwrapWeth: true,
       authorizedBidder: ethers.constants.AddressZero,
     };
-    const bidSignature = sign712.bid(alice, domainInfo, bid);
-    const askSignature = sign712.ask(bob, domainInfo, ask);
+    const bidSignature = sdk.market.sign712.bid(alice, domainInfo, bid);
+    const askSignature = sdk.market.sign712.ask(bob, domainInfo, ask);
     const tx = await market
       .connect(alice)
       .fillOrderEth(bid, bidSignature, EIP_712, ask, askSignature, EIP_712, {
@@ -317,8 +317,8 @@ TEST_CASES.push(async function* marketFills(props) {
       unwrapWeth: true,
       authorizedBidder: ethers.constants.AddressZero,
     };
-    const bidSignature = sign712.bid(bob, domainInfo, bid);
-    const askSignature = sign712.ask(alice, domainInfo, ask);
+    const bidSignature = sdk.market.sign712.bid(bob, domainInfo, bid);
+    const askSignature = sdk.market.sign712.ask(alice, domainInfo, ask);
     const tx = await market.fillOrder(
       bid,
       bidSignature,
@@ -354,8 +354,8 @@ TEST_CASES.push(async function* marketFills(props) {
       unwrapWeth: false,
       authorizedBidder: ethers.constants.AddressZero,
     };
-    const bidSignature = sign712.bid(bob, domainInfo, bid);
-    const askSignature = sign712.ask(alice, domainInfo, ask);
+    const bidSignature = sdk.market.sign712.bid(bob, domainInfo, bid);
+    const askSignature = sdk.market.sign712.ask(alice, domainInfo, ask);
     const tx = await market.fillOrder(
       bid,
       bidSignature,
@@ -389,8 +389,8 @@ TEST_CASES.push(async function* marketFills(props) {
       unwrapWeth: true,
       authorizedBidder: ethers.constants.AddressZero,
     };
-    const bidSignature = sign712.bid(alice, domainInfo, bid);
-    const askSignature = sign712.ask(bob, domainInfo, ask);
+    const bidSignature = sdk.market.sign712.bid(alice, domainInfo, bid);
+    const askSignature = sdk.market.sign712.ask(bob, domainInfo, ask);
     const tx = await market
       .connect(alice)
       .fillOrderEth(bid, bidSignature, EIP_712, ask, askSignature, EIP_712, {
