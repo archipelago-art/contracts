@@ -33,49 +33,6 @@ async function addTraitMemberships(oracle, signer, msg) {
   return oracle.addTraitMemberships(msg, sig, SignatureKind.EIP_712);
 }
 
-async function signSetProjectInfoLegacy(oracle, signer, msg) {
-  const domain = sdk.oracle.domainSeparator(await domainInfo(oracle.address));
-  const rawDomainSeparator = ethers.utils.keccak256(
-    ethers.utils.defaultAbiCoder.encode(
-      ["bytes32", "bytes32", "uint256", "address"],
-      [
-        ethers.utils.keccak256(
-          ethers.utils.toUtf8Bytes(
-            "EIP712Domain(string name,uint256 chainId,address verifyingContract)"
-          )
-        ),
-        ethers.utils.keccak256(ethers.utils.toUtf8Bytes(domain.name)),
-        domain.chainId,
-        domain.verifyingContract,
-      ]
-    )
-  );
-
-  const typeHash = ethers.utils.keccak256(
-    ethers.utils.toUtf8Bytes(
-      "SetProjectInfoMessage(uint256 projectId,uint256 version,string projectName,uint256 size)"
-    )
-  );
-  const structHash = ethers.utils.keccak256(
-    ethers.utils.defaultAbiCoder.encode(
-      ["bytes32", "uint256", "uint256", "bytes32", "uint256"],
-      [
-        typeHash,
-        msg.projectId,
-        msg.version,
-        ethers.utils.keccak256(ethers.utils.toUtf8Bytes(msg.projectName)),
-        msg.size,
-      ]
-    )
-  );
-  const message = ethers.utils.arrayify(
-    ethers.utils.keccak256(
-      ethers.utils.concat([rawDomainSeparator, structHash])
-    )
-  );
-  return signer.signMessage(message);
-}
-
 describe("ArtblocksTraitOracle", () => {
   let ArtblocksTraitOracle, signers;
   before(async () => {
@@ -135,22 +92,81 @@ describe("ArtblocksTraitOracle", () => {
     });
   });
 
-  it("accepts non-EIP-712 signed messages", async () => {
+  describe("accepts non-EIP-712 signed messages", async () => {
     // Internally, this uses `SignatureChecker` (separately tested) everywhere,
-    // so just smoke-test one of the endpoints.
-    const oracle = await ArtblocksTraitOracle.deploy();
-    await oracle.deployed();
-    await oracle.setOracleSigner(signers[1].address);
-    const msg = {
-      projectId: 23,
-      version: 0,
-      projectName: "Archetype",
-      size: 600,
-    };
-    const sig = await signSetProjectInfoLegacy(oracle, signers[1], msg);
-    await expect(
-      oracle.setProjectInfo(msg, sig, SignatureKind.ETHEREUM_SIGNED_MESSAGE)
-    ).to.emit(oracle, "ProjectInfoSet");
+    // but we test multiple endpoints to cover the `sdk.oracle.signLegacy` APIs.
+    async function setUp() {
+      const signer = signers[1];
+      const oracle = await ArtblocksTraitOracle.deploy();
+      await oracle.deployed();
+      await oracle.setOracleSigner(signer.address);
+      return { oracle, signer };
+    }
+
+    it("for `setProjectInfo`", async () => {
+      const { oracle, signer } = await setUp();
+      const msg = {
+        projectId: 23,
+        version: 0,
+        projectName: "Archetype",
+        size: 600,
+      };
+      const sig = await sdk.oracle.signLegacy.setProjectInfo(
+        signer,
+        await domainInfo(oracle.address),
+        msg
+      );
+      await expect(
+        oracle.setProjectInfo(msg, sig, SignatureKind.ETHEREUM_SIGNED_MESSAGE)
+      ).to.emit(oracle, "ProjectInfoSet");
+    });
+
+    it("for `setFeatureInfo`", async () => {
+      const { oracle, signer } = await setUp();
+      const msg = {
+        projectId: 23,
+        featureName: "Palette: Paddle",
+        version: 0,
+      };
+      const sig = await sdk.oracle.signLegacy.setFeatureInfo(
+        signer,
+        await domainInfo(oracle.address),
+        msg
+      );
+      await expect(
+        oracle.setFeatureInfo(msg, sig, SignatureKind.ETHEREUM_SIGNED_MESSAGE)
+      ).to.emit(oracle, "FeatureInfoSet");
+    });
+
+    it("for `addTraitMemberships`", async () => {
+      const { oracle, signer } = await setUp();
+      const projectId = 23;
+      const baseTokenId = projectId * PROJECT_STRIDE;
+      const featureName = "Palette: Paddle";
+      const version = 0;
+      const traitId = sdk.oracle.featureTraitId(
+        projectId,
+        featureName,
+        version
+      );
+      await setFeatureInfo(oracle, signer, { projectId, featureName, version });
+      const msg = {
+        traitId,
+        words: sdk.oracle.traitMembershipWords([baseTokenId, baseTokenId + 1]),
+      };
+      const sig = await sdk.oracle.signLegacy.addTraitMemberships(
+        signer,
+        await domainInfo(oracle.address),
+        msg
+      );
+      await expect(
+        oracle.addTraitMemberships(
+          msg,
+          sig,
+          SignatureKind.ETHEREUM_SIGNED_MESSAGE
+        )
+      ).to.emit(oracle, "TraitMembershipExpanded");
+    });
   });
 
   describe("sets trait info exactly once", () => {
