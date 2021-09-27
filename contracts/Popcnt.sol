@@ -2,6 +2,24 @@
 pragma solidity ^0.8.0;
 
 library Popcnt {
+    /// Computes the population count of `_x`: i.e., the number of bits that
+    /// are set. Also known as the Hamming weight.
+    ///
+    /// Implementation is the standard contraction algorithm.
+    function popcnt(uint256 _x) internal pure returns (uint256) {
+        _x = (_x & MASK_0) + ((_x >> 1) & MASK_0);
+        _x = (_x & MASK_1) + ((_x >> 2) & MASK_1);
+        _x = (_x & MASK_2) + ((_x >> 4) & MASK_2);
+        _x = (_x & MASK_3) + ((_x >> 8) & MASK_3);
+        _x = (_x & MASK_4) + ((_x >> 16) & MASK_4);
+        _x = (_x & MASK_5) + ((_x >> 32) & MASK_5);
+        _x = (_x & MASK_6) + ((_x >> 64) & MASK_6);
+        _x = (_x & MASK_7) + ((_x >> 128) & MASK_7);
+        return _x;
+    }
+
+    /// To compute these constants:
+    ///
     /// ```python3
     /// for i in range(8):
     ///     pow = 2 ** i
@@ -26,20 +44,4 @@ library Popcnt {
         0x0000000000000000ffffffffffffffff0000000000000000ffffffffffffffff;
     uint256 constant MASK_7 =
         0x00000000000000000000000000000000ffffffffffffffffffffffffffffffff;
-
-    /// Computes the population count of `_x`: i.e., the number of bits that
-    /// are set. Also known as the Hamming weight.
-    ///
-    /// Implementation is the standard contraction algorithm.
-    function popcnt(uint256 _x) internal pure returns (uint256) {
-        _x = (_x & MASK_0) + ((_x >> 1) & MASK_0);
-        _x = (_x & MASK_1) + ((_x >> 2) & MASK_1);
-        _x = (_x & MASK_2) + ((_x >> 4) & MASK_2);
-        _x = (_x & MASK_3) + ((_x >> 8) & MASK_3);
-        _x = (_x & MASK_4) + ((_x >> 16) & MASK_4);
-        _x = (_x & MASK_5) + ((_x >> 32) & MASK_5);
-        _x = (_x & MASK_6) + ((_x >> 64) & MASK_6);
-        _x = (_x & MASK_7) + ((_x >> 128) & MASK_7);
-        return _x;
-    }
 }
