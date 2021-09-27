@@ -438,6 +438,7 @@ describe("ArtblocksTraitOracle", () => {
 
     it("allows basic finalization and reverts on later modifications", async () => {
       const { oracle, signer } = await setUp();
+      expect(await oracle.traitMembershipFinalizations(traitId, 0)).to.equal(0);
       await expect(
         addTraitMemberships(oracle, signer, {
           traitId,
@@ -446,6 +447,9 @@ describe("ArtblocksTraitOracle", () => {
       )
         .to.emit(oracle, "TraitMembershipFinalized")
         .withArgs(traitId, 0);
+      expect(await oracle.traitMembershipFinalizations(traitId, 0)).to.equal(
+        0x01
+      );
       await expect(
         addTraitMemberships(oracle, signer, {
           traitId,
@@ -460,6 +464,9 @@ describe("ArtblocksTraitOracle", () => {
         traitId,
         words: [{ wordIndex: 0, mask: 0b101, finalized: true }],
       });
+      expect(await oracle.traitMembershipFinalizations(traitId, 0)).to.equal(
+        0x01
+      );
       await expect(
         addTraitMemberships(oracle, signer, {
           traitId,
@@ -523,6 +530,9 @@ describe("ArtblocksTraitOracle", () => {
         .withArgs(traitId, 0)
         .to.emit(oracle, "TraitMembershipFinalized")
         .withArgs(traitId, 2);
+      expect(await oracle.traitMembershipFinalizations(traitId, 0)).to.equal(
+        0x05
+      );
       await expect(
         addTraitMemberships(oracle, signer, {
           traitId,
@@ -550,6 +560,12 @@ describe("ArtblocksTraitOracle", () => {
           { wordIndex: 257, mask: 0b010, finalized: true },
         ],
       });
+      expect(await oracle.traitMembershipFinalizations(traitId, 0)).to.equal(
+        0x01
+      );
+      expect(await oracle.traitMembershipFinalizations(traitId, 1)).to.equal(
+        0x02
+      );
       await expect(
         addTraitMemberships(oracle, signer, {
           traitId,
@@ -570,6 +586,53 @@ describe("ArtblocksTraitOracle", () => {
         traitId,
         words: [{ wordIndex: 256, mask: 0b1000, finalized: false }],
       });
+    });
+
+    it("computes finalized-up-to incrementally", async () => {
+      const { oracle, signer } = await setUp();
+      await addTraitMemberships(oracle, signer, {
+        traitId,
+        words: [
+          { wordIndex: 0, mask: 0, finalized: true },
+          { wordIndex: 2, mask: 0, finalized: true },
+        ],
+      });
+      expect(await oracle.traitMembershipFinalizedUpTo(traitId, 600)).to.equal(
+        256
+      );
+      await addTraitMemberships(oracle, signer, {
+        traitId,
+        words: [{ wordIndex: 1, mask: 0, finalized: true }],
+      });
+      expect(await oracle.traitMembershipFinalizedUpTo(traitId, 600)).to.equal(
+        600
+      );
+      expect(
+        await oracle.traitMembershipFinalizedUpTo(traitId, 256 * 3)
+      ).to.equal(256 * 3);
+      expect(
+        await oracle.traitMembershipFinalizedUpTo(traitId, 256 * 3 + 1)
+      ).to.equal(256 * 3);
+    });
+
+    it("computes finalized-up-to when more than 256 word indices are final", async () => {
+      const { oracle, signer } = await setUp();
+      await addTraitMemberships(oracle, signer, {
+        traitId,
+        words: Array(258)
+          .fill()
+          .map((_, i) => ({ wordIndex: i, mask: 0, finalized: true })),
+      });
+      expect(await oracle.traitMembershipFinalizedUpTo(traitId, 1e6)).to.equal(
+        256 * 258
+      );
+    });
+
+    it("computes finalized-up-to when no word indices are final", async () => {
+      const { oracle, signer } = await setUp();
+      expect(await oracle.traitMembershipFinalizedUpTo(traitId, 1e6)).to.equal(
+        0
+      );
     });
   });
 

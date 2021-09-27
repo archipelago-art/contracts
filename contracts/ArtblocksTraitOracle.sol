@@ -324,6 +324,57 @@ contract ArtblocksTraitOracle is ITraitOracle {
         return (traitFinalizations[_traitId][_wordIndex >> 8] & _mask) != 0;
     }
 
+    /// Returns a 256-bit mask whose `_i`th (from LSB) bit is set if tokens
+    /// `_start` through `_start + 255` are finalized for feature trait
+    /// `_traitId`, where `_start == 256 * (_page * 256 + _i)`, with token IDs
+    /// relative to start of project.
+    ///
+    /// For instance, if `traitMembershipFinalizations(_t, 0) == 0x05`, then
+    /// among those tokens with IDs 0 through 65535 (relative to start of
+    /// project), the `_t`-membership statuses are finalized for those with IDs
+    /// 0 through 255 and 512 through 767.
+    function traitMembershipFinalizations(uint256 _traitId, uint256 _page)
+        external
+        view
+        returns (uint256)
+    {
+        return traitFinalizations[_traitId][_page];
+    }
+
+    /// Computes the largest number `_i <= _limit` such that the membership
+    /// statuses of tokens `0` (inclusive) through `_i` (exclusive) in feature
+    /// trait `_traitId` are finalized. (Token IDs relative to start of
+    /// project.)
+    ///
+    /// If `_traitId` is a feature trait for a project with `_size` total
+    /// tokens, then `traitMembershipFinalizedUpTo(_traitId, _size) == _size`
+    /// if and only if the relevant memberships are finalized for *all* tokens.
+    function traitMembershipFinalizedUpTo(uint256 _traitId, uint256 _limit)
+        external
+        view
+        returns (uint256)
+    {
+        uint256 _result = 0;
+        uint256 _wordIndex = 0;
+        uint256 _finalization;
+        while (_result < _limit) {
+            if (_wordIndex & 0xff == 0) {
+                _finalization = traitFinalizations[_traitId][_wordIndex >> 8];
+            }
+            // Lazy one-bit-at-a-time implementation here instead of using a
+            // count-trailing-ones function, just for clarity of correctness
+            // and because the gas wastage shouldn't be too high.
+            if ((_finalization & (1 << (_wordIndex & 0xff))) != 0) {
+                _result += 256;
+            } else {
+                break;
+            }
+            _wordIndex++;
+        }
+        if (_result > _limit) _result = _limit;
+        return _result;
+    }
+
     function hasTrait(uint256 _tokenId, uint256 _traitId)
         external
         view
