@@ -55,6 +55,7 @@ const AddTraitMembershipsMessage = [
 const TraitMembershipWord = [
   { type: "uint256", name: "wordIndex" },
   { type: "uint256", name: "mask" },
+  { type: "bool", name: "finalized" },
 ];
 
 const sign712 = Object.freeze({
@@ -82,7 +83,7 @@ const sign712 = Object.freeze({
 });
 
 const TYPENAME_TRAIT_MEMBERSHIP_WORD =
-  "TraitMembershipWord(uint256 wordIndex,uint256 mask)";
+  "TraitMembershipWord(uint256 wordIndex,uint256 mask,bool finalized)";
 const TYPENAME_SET_PROJECT_INFO =
   "SetProjectInfoMessage(uint256 projectId,uint256 version,string projectName,uint256 size)";
 const TYPENAME_SET_FEATURE_INFO =
@@ -100,8 +101,13 @@ const TYPEHASH_ADD_TRAIT_MEMBERSHIPS = utf8Hash(
 function traitMembershipWordStructHash(word) {
   return ethers.utils.keccak256(
     ethers.utils.defaultAbiCoder.encode(
-      ["bytes32", "uint256", "uint256"],
-      [TYPEHASH_TRAIT_MEMBERSHIP_WORD, word.wordIndex, word.mask]
+      ["bytes32", "uint256", "uint256", "bool"],
+      [
+        TYPEHASH_TRAIT_MEMBERSHIP_WORD,
+        word.wordIndex,
+        word.mask,
+        word.finalized,
+      ]
     )
   );
 }
@@ -194,6 +200,7 @@ function traitMembershipWords(tokenIds) {
   return Object.values(wordsByIndex).map((o) => ({
     wordIndex: ethers.BigNumber.from(o.wordIndex),
     mask: ethers.BigNumber.from(o.mask),
+    finalized: false,
   }));
 }
 
