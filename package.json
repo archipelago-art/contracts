@@ -7,7 +7,7 @@
     "test": "hardhat test && node scripts/gas.js",
     "lint": "npm run prettier:check",
     "fix": "npm run prettier:write",
-    "prettier": "prettier '**/*.json' '**/*.js' '**/*.sol'",
+    "prettier": "prettier '**/*.json' '**/*.js' '**/*.sol' '**/*.md'",
     "prettier:check": "npm run prettier -- --check",
     "prettier:write": "npm run prettier -- --write"
   },
