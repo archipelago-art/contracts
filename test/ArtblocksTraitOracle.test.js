@@ -420,6 +420,159 @@ describe("ArtblocksTraitOracle", () => {
     });
   });
 
+  describe("finalizing traits", async () => {
+    const projectId = 23;
+    const featureName = "Palette: Paddle";
+    const version = 0;
+    const baseTokenId = projectId * PROJECT_STRIDE;
+    const traitId = sdk.oracle.featureTraitId(projectId, featureName, version);
+
+    async function setUp() {
+      const [, admin, signer, nonSigner] = signers;
+      const oracle = await ArtblocksTraitOracle.connect(admin).deploy();
+      await oracle.deployed();
+      await oracle.connect(admin).setOracleSigner(signer.address);
+      await setFeatureInfo(oracle, signer, { projectId, featureName, version });
+      return { oracle, admin, signer, nonSigner };
+    }
+
+    it("allows basic finalization and reverts on later modifications", async () => {
+      const { oracle, signer } = await setUp();
+      await expect(
+        addTraitMemberships(oracle, signer, {
+          traitId,
+          words: [{ wordIndex: 0, mask: 0b101, finalized: true }],
+        })
+      )
+        .to.emit(oracle, "TraitMembershipFinalized")
+        .withArgs(traitId, 0);
+      await expect(
+        addTraitMemberships(oracle, signer, {
+          traitId,
+          words: [{ wordIndex: 0, mask: 0b111, finalized: false }],
+        })
+      ).to.be.revertedWith(Errors.IMMUTABLE);
+    });
+
+    it("allows additions after finalization of an unrelated word", async () => {
+      const { oracle, signer } = await setUp();
+      await addTraitMemberships(oracle, signer, {
+        traitId,
+        words: [{ wordIndex: 0, mask: 0b101, finalized: true }],
+      });
+      await expect(
+        addTraitMemberships(oracle, signer, {
+          traitId,
+          words: [{ wordIndex: 1, mask: 0b111, finalized: false }],
+        })
+      )
+        .to.emit(oracle, "TraitMembershipExpanded")
+        .withArgs(traitId, 5);
+    });
+
+    it("requires the finalizing word to include all known members", async () => {
+      const { oracle, signer } = await setUp();
+      await addTraitMemberships(oracle, signer, {
+        traitId,
+        words: [{ wordIndex: 0, mask: 0b111, finalized: true }],
+      });
+      await expect(
+        addTraitMemberships(oracle, signer, {
+          traitId,
+          words: [{ wordIndex: 0, mask: 0b101, finalized: true }],
+        })
+      ).to.be.revertedWith(Errors.INVALID_ARGUMENT);
+    });
+
+    it("permits non-final no-op additions after finalization", async () => {
+      const { oracle, signer } = await setUp();
+      await addTraitMemberships(oracle, signer, {
+        traitId,
+        words: [{ wordIndex: 0, mask: 0b111, finalized: true }],
+      });
+      await addTraitMemberships(oracle, signer, {
+        traitId,
+        words: [{ wordIndex: 0, mask: 0b101, finalized: false }],
+      });
+    });
+
+    it("permits final no-op additions after finalization", async () => {
+      const { oracle, signer } = await setUp();
+      await addTraitMemberships(oracle, signer, {
+        traitId,
+        words: [{ wordIndex: 0, mask: 0b111, finalized: true }],
+      });
+      await addTraitMemberships(oracle, signer, {
+        traitId,
+        words: [{ wordIndex: 0, mask: 0b111, finalized: true }],
+      });
+    });
+
+    it("may finalize multiple words at once, leaving other words alone", async () => {
+      const { oracle, signer } = await setUp();
+      await expect(
+        addTraitMemberships(oracle, signer, {
+          traitId,
+          words: [
+            { wordIndex: 0, mask: 0b101, finalized: true },
+            { wordIndex: 2, mask: 0b010, finalized: true },
+          ],
+        })
+      )
+        .to.emit(oracle, "TraitMembershipFinalized")
+        .withArgs(traitId, 0)
+        .to.emit(oracle, "TraitMembershipFinalized")
+        .withArgs(traitId, 2);
+      await expect(
+        addTraitMemberships(oracle, signer, {
+          traitId,
+          words: [{ wordIndex: 0, mask: 0b1000, finalized: false }],
+        })
+      ).to.be.revertedWith(Errors.IMMUTABLE);
+      await expect(
+        addTraitMemberships(oracle, signer, {
+          traitId,
+          words: [{ wordIndex: 2, mask: 0b1000, finalized: false }],
+        })
+      ).to.be.revertedWith(Errors.IMMUTABLE);
+      await addTraitMemberships(oracle, signer, {
+        traitId,
+        words: [{ wordIndex: 1, mask: 0b1000, finalized: false }],
+      });
+    });
+
+    it("finalizes words with indices greater than 255", async () => {
+      const { oracle, signer } = await setUp();
+      await addTraitMemberships(oracle, signer, {
+        traitId,
+        words: [
+          { wordIndex: 0, mask: 0b101, finalized: true },
+          { wordIndex: 257, mask: 0b010, finalized: true },
+        ],
+      });
+      await expect(
+        addTraitMemberships(oracle, signer, {
+          traitId,
+          words: [{ wordIndex: 0, mask: 0b1000, finalized: false }],
+        })
+      ).to.be.revertedWith(Errors.IMMUTABLE);
+      await expect(
+        addTraitMemberships(oracle, signer, {
+          traitId,
+          words: [{ wordIndex: 257, mask: 0b1000, finalized: false }],
+        })
+      ).to.be.revertedWith(Errors.IMMUTABLE);
+      await addTraitMemberships(oracle, signer, {
+        traitId,
+        words: [{ wordIndex: 1, mask: 0b1000, finalized: false }],
+      });
+      await addTraitMemberships(oracle, signer, {
+        traitId,
+        words: [{ wordIndex: 256, mask: 0b1000, finalized: false }],
+      });
+    });
+  });
+
   describe("project trait membership testing", async () => {
     let oracle;
 

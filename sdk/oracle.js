@@ -7,6 +7,7 @@ const TraitType = Object.freeze({
 
 const Errors = Object.freeze({
   ALREADY_EXISTS: "ArtblocksTraitOracle: ALREADY_EXISTS",
+  IMMUTABLE: "ArtblocksTraitOracle: IMMUTABLE",
   INVALID_ARGUMENT: "ArtblocksTraitOracle: INVALID_ARGUMENT",
   UNAUTHORIZED: "ArtblocksTraitOracle: UNAUTHORIZED",
 });

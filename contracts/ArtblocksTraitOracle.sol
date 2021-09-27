@@ -60,8 +60,10 @@ contract ArtblocksTraitOracle is ITraitOracle {
         uint256 version
     );
     event TraitMembershipExpanded(uint256 indexed traitId, uint256 newSize);
+    event TraitMembershipFinalized(uint256 indexed traitId, uint256 wordIndex);
 
     string constant ERR_ALREADY_EXISTS = "ArtblocksTraitOracle: ALREADY_EXISTS";
+    string constant ERR_IMMUTABLE = "ArtblocksTraitOracle: IMMUTABLE";
     string constant ERR_INVALID_ARGUMENT =
         "ArtblocksTraitOracle: INVALID_ARGUMENT";
     string constant ERR_UNAUTHORIZED = "ArtblocksTraitOracle: UNAUTHORIZED";
@@ -96,6 +98,16 @@ contract ArtblocksTraitOracle is ITraitOracle {
     /// that have trait `_traitId`. In terms of encoding, it's the sum of the
     /// population counts of all `traitMembers[_traitId][_]` values.
     mapping(uint256 => uint256) traitMembersCount;
+    /// For each trait ID, a set of words in `traitMembers[_]` that are
+    /// finalized. Encoded by packing 256 word indices into each word: the
+    /// `_wordIndex % 256`th bit (counting form the LSB) of
+    /// `traitMembers[_traitId][_wordIndex / 256]` represents whether
+    /// `traitMembers[_traitId][_wordIndex]` is finalized. For instance, if
+    /// `traitFinalizations[_t][0] == 0x05`, then `traitMembers[_t][0]` and
+    /// `traitMembers[_t][2]` are finalized, meaning that the `_t`-membership
+    /// statuses of tokens with IDs between 0 and 255 or between 512 and 767
+    /// (relative to start of project) are finalized.
+    mapping(uint256 => mapping(uint256 => uint256)) traitFinalizations;
 
     constructor() {
         admin = msg.sender;
@@ -239,6 +251,22 @@ contract ArtblocksTraitOracle is ITraitOracle {
             TraitMembershipWord memory _word = _words[_i];
             uint256 _oldWord = traitMembers[_traitId][_word.wordIndex];
             uint256 _newWord = _oldWord | _word.mask;
+            bool _wasAlreadyFinal = _isFinal(_traitId, _word.wordIndex);
+            if (_wasAlreadyFinal) {
+                require(_oldWord == _newWord, ERR_IMMUTABLE);
+            }
+            if (_word.finalized) {
+                // If this is the final set, then the given `_word.mask` must
+                // cover all the bits set in existing storage.
+                require(_newWord == _word.mask, ERR_INVALID_ARGUMENT);
+                if (!_wasAlreadyFinal) {
+                    emit TraitMembershipFinalized({
+                        traitId: _traitId,
+                        wordIndex: _word.wordIndex
+                    });
+                }
+                _finalize(_traitId, _word.wordIndex);
+            }
             _newSize += (_newWord ^ _oldWord).popcnt();
             traitMembers[_traitId][_word.wordIndex] = _newWord;
         }
@@ -276,6 +304,24 @@ contract ArtblocksTraitOracle is ITraitOracle {
         _inRange = true;
         _wordIndex = _tokenIndex >> 8;
         _mask = 1 << (_tokenIndex & 0xff);
+    }
+
+    /// Marks tokens `_wordIndex * 256` to `_wordIndex * 256 + 255` (relative
+    /// to start of project) as finalized for `_traitId`.
+    function _finalize(uint256 _traitId, uint256 _wordIndex) internal {
+        uint256 _mask = 1 << (_wordIndex & 0xff);
+        traitFinalizations[_traitId][_wordIndex >> 8] |= _mask;
+    }
+
+    /// Tests whether tokens `_wordIndex * 256` to `_wordIndex * 256 + 255`
+    /// (relative to start of project) have been finalized for `_traitId`.
+    function _isFinal(uint256 _traitId, uint256 _wordIndex)
+        internal
+        view
+        returns (bool)
+    {
+        uint256 _mask = 1 << (_wordIndex & 0xff);
+        return (traitFinalizations[_traitId][_wordIndex >> 8] & _mask) != 0;
     }
 
     function hasTrait(uint256 _tokenId, uint256 _traitId)

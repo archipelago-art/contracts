@@ -51,7 +51,9 @@ library ArtblocksTraitOracleMessages {
             "AddTraitMembershipsMessage(uint256 traitId,TraitMembershipWord[] words)TraitMembershipWord(uint256 wordIndex,uint256 mask,bool finalized)"
         );
     bytes32 internal constant TYPEHASH_TRAIT_MEMBERSHIP_WORD =
-        keccak256("TraitMembershipWord(uint256 wordIndex,uint256 mask,bool finalized)");
+        keccak256(
+            "TraitMembershipWord(uint256 wordIndex,uint256 mask,bool finalized)"
+        );
 
     function structHash(SetProjectInfoMessage memory _self)
         internal
