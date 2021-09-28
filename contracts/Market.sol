@@ -248,7 +248,7 @@ contract Market {
         );
         require(msg.sender == bidder, "only bidder may fill with ETH");
         weth.deposit{value: msg.value}();
-        weth.transfer(bidder, msg.value);
+        require(weth.transfer(bidder, msg.value), TRANSFER_FAILED);
         _fillOrder(bid, bidder, ask, asker);
     }
 
