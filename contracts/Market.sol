@@ -258,20 +258,6 @@ contract Market {
         Ask memory ask,
         address asker
     ) internal {
-        for (uint256 i = 0; i < ask.tokenIds.length; i++) {
-            bool ownerOrApproved;
-            uint256 tokenId = ask.tokenIds[i];
-            address tokenOwner = token.ownerOf(tokenId);
-            if (tokenOwner == asker) {
-                ownerOrApproved = true;
-            } else if (token.getApproved(tokenId) == asker) {
-                ownerOrApproved = true;
-            } else if (token.isApprovedForAll(tokenOwner, asker)) {
-                ownerOrApproved = true;
-            }
-            require(ownerOrApproved, "asker is not owner or approved");
-        }
-
         require(
             ask.authorizedBidder == address(0) ||
                 ask.authorizedBidder == bidder,
@@ -377,11 +363,8 @@ contract Market {
         emit Trade(_tradeId, bidder, asker, _price, _proceeds, _cost);
         for (uint256 i = 0; i < ask.tokenIds.length; i++) {
             uint256 tokenId = ask.tokenIds[i];
-            // Duplicated call to token.ownerOf(tokenId).
-            // We could remove the extra call by checking owner/approved status here,
-            // just before transfer, but we should think carefully about the security
-            // implications of re-ordering.
-            token.safeTransferFrom(token.ownerOf(tokenId), bidder, tokenId);
+            address owner = _checkAuthorizationAndGetOwner(tokenId, asker);
+            token.safeTransferFrom(owner, bidder, tokenId);
             emit TokenTraded(_tradeId, tokenId);
         }
         if (ask.unwrapWeth) {
@@ -400,5 +383,25 @@ contract Market {
                 TRANSFER_FAILED
             );
         }
+    }
+
+    /// Verifies that `_operator` is the owner of or approved operator for
+    /// `_tokenId`, reverting if not. Returns the token's owner.
+    function _checkAuthorizationAndGetOwner(uint256 _tokenId, address _operator)
+        internal
+        view
+        returns (address _owner)
+    {
+        bool _ownerOrApproved;
+        _owner = token.ownerOf(_tokenId);
+        if (_owner == _operator) {
+            _ownerOrApproved = true;
+        } else if (token.getApproved(_tokenId) == _operator) {
+            _ownerOrApproved = true;
+        } else if (token.isApprovedForAll(_owner, _operator)) {
+            _ownerOrApproved = true;
+        }
+        require(_ownerOrApproved, "asker is not owner or approved");
+        return _owner;
     }
 }
