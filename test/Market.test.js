@@ -8,6 +8,7 @@ const { SignatureKind } = sdk;
 
 describe("Market", () => {
   const exa = BN.from("10").pow(18);
+  let BundleToctouAttacker;
   let Clock;
   let Market;
   let TestWeth;
@@ -15,7 +16,15 @@ describe("Market", () => {
 
   let clock;
   before(async () => {
-    [Clock, Market, TestWeth, TestERC721, TestTraitOracle] = await Promise.all([
+    [
+      BundleToctouAttacker,
+      Clock,
+      Market,
+      TestWeth,
+      TestERC721,
+      TestTraitOracle,
+    ] = await Promise.all([
+      ethers.getContractFactory("BundleToctouAttacker"),
       ethers.getContractFactory("Clock"),
       ethers.getContractFactory("Market"),
       ethers.getContractFactory("TestWeth"),
@@ -367,24 +376,6 @@ describe("Market", () => {
           fillOrder(market, bid, bidder, ask, asker)
         ).to.be.revertedWith("tokenId mismatch");
       });
-      it("may succeed if the same token is included multiple times", async () => {
-        // This behavior is a bit weird, but the bidder ends up owning every
-        // token they bid for, so I think it's acceptable.
-        // Note this only succeeds because the bidder approved the market to
-        // transfer their NFTs -- if not for that, the transaction would revert
-        const { market, signers, weth, nft, asker, bidder } = await setup();
-        await nft.connect(bidder).setApprovalForAll(market.address, true);
-        const bid = tokenIdsBid({ tokenIds: [0, 0] });
-        const ask = newAsk({ tokenIds: [0, 0] });
-        const tradeId = computeTradeId(bid, bidder, ask, asker);
-        await expect(fillOrder(market, bid, bidder, ask, asker))
-          .to.emit(market, "Trade")
-          .withArgs(tradeId, bidder.address, asker.address, exa, exa, exa)
-          .to.emit(market, "TokenTraded")
-          .withArgs(tradeId, 0)
-          .to.emit(market, "TokenTraded")
-          .withArgs(tradeId, 0);
-      });
       it("fails if the bid and ask disagree about tokens", async () => {
         const { market, signers, weth, nft, asker, bidder } = await setup();
         const bid = tokenIdsBid({ tokenIds: [0, 2] });
@@ -392,6 +383,66 @@ describe("Market", () => {
         await expect(
           fillOrder(market, bid, bidder, ask, asker)
         ).to.be.revertedWith("tokenId mismatch");
+      });
+      it("fails if the second token is transferred while processing the first one", async () => {
+        const { market, weth, nft, bidder } = await setup();
+        await nft.connect(bidder).setApprovalForAll(market.address, true);
+
+        const token1 = 1001;
+        const token2 = 1002;
+        const token2Bid = tokenIdsBid({ price: exa, tokenIds: [token2] });
+        const config = {
+          market: market.address,
+          bundleAsk: newAsk({
+            nonce: 0,
+            price: ethers.constants.Zero,
+            tokenIds: [token1, token2],
+          }),
+          bundleBid: tokenIdsBid({
+            nonce: 9,
+            price: ethers.constants.Zero,
+            tokenIds: [token1, token2],
+          }),
+          token1,
+          token2Ask: newAsk({ nonce: 1, price: exa, tokenIds: [token2] }),
+          token2Bid,
+          token2Signature: await signBid(market, token2Bid, bidder),
+          token2SignatureKind: SignatureKind.EIP_712,
+        };
+
+        const attacker = await BundleToctouAttacker.deploy(config);
+        await attacker.deployed();
+
+        await nft.mint(attacker.address, token1);
+        await nft.mint(attacker.address, token2);
+
+        const attackerAddressSig = ethers.utils.defaultAbiCoder.encode(
+          ["address"],
+          [attacker.address]
+        );
+
+        let orderSucceeded = false;
+        try {
+          await market.fillOrder(
+            config.bundleBid,
+            attackerAddressSig,
+            SignatureKind.NO_SIGNATURE,
+            config.bundleAsk,
+            attackerAddressSig,
+            SignatureKind.NO_SIGNATURE
+          );
+          orderSucceeded = true;
+        } catch (e) {
+          await expect(Promise.reject(e)).to.be.revertedWith(
+            "asker is not owner or approved"
+          );
+        }
+        if (orderSucceeded) {
+          expect(await nft.ownerOf(token1)).to.equal(attacker.address);
+          expect(await nft.ownerOf(token2)).to.equal(attacker.address);
+          expect(await weth.balanceOf(attacker.address)).to.equal(exa);
+          throw new Error("successfully executed TOCTOU attack");
+        }
       });
     });
 
