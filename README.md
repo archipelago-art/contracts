@@ -13,8 +13,8 @@ The key features of Archipelago markets are:
   are initially valid but only at most `k` may execute.
 - On-chain, nonce-based order cancellation, to cancel groups of orders
   simultaneously
-- "Panic button" timestamp order cancellation, enabling killing all open bids
-  or asks immediately.
+- "Panic button" timestamp order cancellation, enabling killing all open bids or
+  asks immediately.
 - Allows user-specified royalties, including both asker royalties (seller pays)
   and bidder royalties (buyer pays)
 
