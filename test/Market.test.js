@@ -660,7 +660,7 @@ describe("Market", () => {
         const tradeId = computeTradeId(bid, bidder, ask, asker);
         await expect(fillOrder(market, bid, bidder, ask, asker))
           .to.emit(market, "RoyaltyPaid")
-          .withArgs(tradeId, r0, 5, roy);
+          .withArgs(tradeId, asker.address, r0, 5, roy);
         expect(await weth.balanceOf(r0)).to.equal(roy);
         expect(await weth.balanceOf(asker.address)).to.equal(exa.sub(roy));
       });
@@ -682,9 +682,9 @@ describe("Market", () => {
           .to.emit(market, "Trade")
           .withArgs(tradeId, bidder.address, asker.address, exa, proceeds, exa)
           .to.emit(market, "RoyaltyPaid")
-          .withArgs(tradeId, r0, 5, roy)
+          .withArgs(tradeId, asker.address, r0, 5, roy)
           .to.emit(market, "RoyaltyPaid")
-          .withArgs(tradeId, r1, 1, micro);
+          .withArgs(tradeId, asker.address, r1, 1, micro);
         expect(await weth.balanceOf(r0)).to.equal(roy);
         expect(await weth.balanceOf(r1)).to.equal(micro);
         expect(await weth.balanceOf(asker.address)).to.equal(
@@ -735,7 +735,7 @@ describe("Market", () => {
           .to.emit(market, "Trade")
           .withArgs(tradeId, bidder.address, asker.address, exa, exa, cost)
           .to.emit(market, "RoyaltyPaid")
-          .withArgs(tradeId, r0, 10, roy);
+          .withArgs(tradeId, bidder.address, r0, 10, roy);
         expect(await weth.balanceOf(asker.address)).to.equal(exa); // seller got full price
         expect(await weth.balanceOf(r0)).to.equal(roy); // recipient got "extra"
         expect(await weth.balanceOf(bidder.address)).to.equal(exa.sub(roy)); // bidder started with 2 weth
@@ -768,9 +768,9 @@ describe("Market", () => {
         const tradeId = computeTradeId(bid, bidder, ask, asker);
         await expect(fillOrder(market, bid, bidder, ask, asker))
           .to.emit(market, "RoyaltyPaid")
-          .withArgs(tradeId, r0, 1, micro)
+          .withArgs(tradeId, bidder.address, r0, 1, micro)
           .to.emit(market, "RoyaltyPaid")
-          .withArgs(tradeId, r1, 2, micro.mul(2));
+          .withArgs(tradeId, bidder.address, r1, 2, micro.mul(2));
         expect(await weth.balanceOf(asker.address)).to.equal(exa);
         expect(await weth.balanceOf(r0)).to.equal(micro);
         expect(await weth.balanceOf(r1)).to.equal(micro.mul(2));

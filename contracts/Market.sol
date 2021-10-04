@@ -45,6 +45,7 @@ contract Market {
 
     event RoyaltyPaid(
         uint256 indexed tradeId,
+        address indexed payer,
         address indexed recipient,
         uint256 micros,
         uint256 amount
@@ -336,6 +337,7 @@ contract Market {
             );
             emit RoyaltyPaid(
                 _tradeId,
+                asker,
                 _royalty.recipient,
                 _royalty.micros,
                 _amt
@@ -354,6 +356,7 @@ contract Market {
             );
             emit RoyaltyPaid(
                 _tradeId,
+                bidder,
                 _royalty.recipient,
                 _royalty.micros,
                 _amt
