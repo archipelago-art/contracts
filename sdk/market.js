@@ -11,6 +11,7 @@ function utf8Hash(s) {
 
 function domainSeparator({
   chainId,
+  marketAddress,
   tokenAddress,
   wethAddress,
   traitOracleAddress,
@@ -18,6 +19,7 @@ function domainSeparator({
   return {
     name: "ArchipelagoMarket",
     chainId,
+    verifyingContract: marketAddress,
     salt: domainSeparatorSalt({
       tokenAddress,
       wethAddress,
@@ -40,12 +42,14 @@ function domainSeparatorSalt({
 }
 
 function rawDomainSeparator(domainInfo) {
-  const type = "EIP712Domain(string name,uint256 chainId,bytes32 salt)";
-  const { name, chainId, salt } = domainSeparator(domainInfo);
+  const type =
+    "EIP712Domain(string name,uint256 chainId,address verifyingContract,bytes32 salt)";
+  const { name, chainId, verifyingContract, salt } =
+    domainSeparator(domainInfo);
   return ethers.utils.keccak256(
     ethers.utils.defaultAbiCoder.encode(
-      ["bytes32", "bytes32", "uint256", "bytes32"],
-      [utf8Hash(type), utf8Hash(name), chainId, salt]
+      ["bytes32", "bytes32", "uint256", "address", "bytes32"],
+      [utf8Hash(type), utf8Hash(name), chainId, verifyingContract, salt]
     )
   );
 }

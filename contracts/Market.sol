@@ -73,7 +73,9 @@ contract Market {
     string constant TRANSFER_FAILED = "Market: transfer failed";
 
     bytes32 constant TYPEHASH_DOMAIN_SEPARATOR =
-        keccak256("EIP712Domain(string name,uint256 chainId,bytes32 salt)");
+        keccak256(
+            "EIP712Domain(string name,uint256 chainId,address verifyingContract,bytes32 salt)"
+        );
 
     receive() external payable {
         // only accept ETH from the WETH contract (so we can unwrap for users)
@@ -108,6 +110,7 @@ contract Market {
                     TYPEHASH_DOMAIN_SEPARATOR,
                     keccak256("ArchipelagoMarket"),
                     block.chainid,
+                    address(this),
                     _salt.serialize()
                 )
             );

@@ -37,10 +37,17 @@ describe("Market", () => {
 
   async function domainInfo(market) {
     const chainId = await ethers.provider.send("eth_chainId");
+    const marketAddress = market.address;
     const tokenAddress = await market.token();
     const wethAddress = await market.weth();
     const traitOracleAddress = await market.traitOracle();
-    return { chainId, tokenAddress, wethAddress, traitOracleAddress };
+    return {
+      chainId,
+      marketAddress,
+      tokenAddress,
+      wethAddress,
+      traitOracleAddress,
+    };
   }
 
   async function rawDomainSeparator(market) {

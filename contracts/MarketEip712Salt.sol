@@ -14,14 +14,6 @@ import "./IWeth.sol";
 /// EIP-712 domain itself.
 struct MarketEip712Salt {
     /// Address of the NFT contract whose tokens may be traded in this market.
-    ///
-    /// We depend on this instead of the `verifyingContract` address of the
-    /// market itself so that different instantiations of markets for the same
-    /// token contract can share a signing domain. In particular, this provides
-    /// a natural way to upgrade the protocol or its implementation while still
-    /// honoring old signatures. If we want to upgrade the protocol and *not*
-    /// honor old signatures, we can just require a higher value of the
-    /// `version` field.
     IERC721 tokenContract;
     /// Address of the ERC-20 token used as currency by this market.
     IWeth weth;

@@ -123,6 +123,7 @@ TEST_CASES.push(async function* marketFills(props) {
   await market.initialize(token.address, weth.address, oracle.address);
   const domainInfo = {
     chainId,
+    marketAddress: market.address,
     tokenAddress: token.address,
     wethAddress: weth.address,
     traitOracleAddress: oracle.address,
