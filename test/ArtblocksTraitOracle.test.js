@@ -47,6 +47,35 @@ describe("ArtblocksTraitOracle", () => {
     await oracle.deployed();
   });
 
+  describe("EIP-165 `supportsInterface`", async () => {
+    let oracle;
+    before(async () => {
+      oracle = await ArtblocksTraitOracle.deploy();
+      await oracle.deployed();
+    });
+
+    it("accepts the EIP-165 interface", async () => {
+      const interfaceId = "0x01ffc9a7";
+      expect(await oracle.supportsInterface(interfaceId)).to.equal(true);
+    });
+
+    it("accepts the token oracle interface", async () => {
+      const interfaceId = ethers.utils.hexDataSlice(
+        ethers.utils.keccak256(
+          ethers.utils.toUtf8Bytes("hasTrait(uint256,uint256)")
+        ),
+        0,
+        4
+      );
+      expect(await oracle.supportsInterface(interfaceId)).to.equal(true);
+    });
+
+    it("rejects `bytes4(-1)`", async () => {
+      const interfaceId = "0xffffffff";
+      expect(await oracle.supportsInterface(interfaceId)).to.equal(false);
+    });
+  });
+
   it("permits changing admin", async () => {
     const oracle = await ArtblocksTraitOracle.deploy();
     await oracle.deployed();

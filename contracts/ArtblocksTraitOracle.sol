@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+
 import "./ArtblocksTraitOracleMessages.sol";
 import "./ITraitOracle.sol";
 import "./Popcnt.sol";
@@ -37,7 +39,7 @@ struct FeatureInfo {
     string name;
 }
 
-contract ArtblocksTraitOracle is ITraitOracle {
+contract ArtblocksTraitOracle is IERC165, ITraitOracle {
     using ArtblocksTraitOracleMessages for SetProjectInfoMessage;
     using ArtblocksTraitOracleMessages for SetFeatureInfoMessage;
     using ArtblocksTraitOracleMessages for AddTraitMembershipsMessage;
@@ -112,6 +114,17 @@ contract ArtblocksTraitOracle is ITraitOracle {
     constructor() {
         admin = msg.sender;
         emit AdminChanged(msg.sender);
+    }
+
+    function supportsInterface(bytes4 _interfaceId)
+        external
+        pure
+        override
+        returns (bool)
+    {
+        if (_interfaceId == type(ITraitOracle).interfaceId) return true;
+        if (_interfaceId == type(IERC165).interfaceId) return true;
+        return false;
     }
 
     modifier onlyAdmin() {
