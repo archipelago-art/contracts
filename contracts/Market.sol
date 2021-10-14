@@ -262,17 +262,7 @@ contract Market {
         Ask memory ask,
         address asker
     ) internal {
-        bool ownerOrApproved;
         uint256 tokenId = ask.tokenId;
-        address tokenOwner = token.ownerOf(tokenId);
-        if (tokenOwner == asker) {
-            ownerOrApproved = true;
-        } else if (token.getApproved(tokenId) == asker) {
-            ownerOrApproved = true;
-        } else if (token.isApprovedForAll(tokenOwner, asker)) {
-            ownerOrApproved = true;
-        }
-        require(ownerOrApproved, "asker is not owner or approved");
         require(
             ask.authorizedBidder == address(0) ||
                 ask.authorizedBidder == bidder,
@@ -363,6 +353,16 @@ contract Market {
             );
         }
 
+        bool ownerOrApproved;
+        address tokenOwner = token.ownerOf(tokenId);
+        if (tokenOwner == asker) {
+            ownerOrApproved = true;
+        } else if (token.getApproved(tokenId) == asker) {
+            ownerOrApproved = true;
+        } else if (token.isApprovedForAll(tokenOwner, asker)) {
+            ownerOrApproved = true;
+        }
+        require(ownerOrApproved, "asker is not owner or approved");
         token.safeTransferFrom(tokenOwner, bidder, tokenId);
         if (ask.unwrapWeth) {
             require(
