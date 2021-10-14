@@ -174,9 +174,9 @@ TEST_CASES.push(async function* marketFills(props) {
       created: 1,
       deadline: ethers.constants.MaxUint256,
       price: exa,
-      tokenIds: [tokenId],
+      tokenId: tokenId,
       traitset: [],
-      bidType: BidType.TOKEN_IDS,
+      bidType: BidType.TOKEN_ID,
       royalties: [],
     };
     const ask = {
@@ -184,7 +184,7 @@ TEST_CASES.push(async function* marketFills(props) {
       created: 1,
       deadline: ethers.constants.MaxUint256,
       price: exa,
-      tokenIds: [tokenId],
+      tokenId: tokenId,
       royalties: [],
       unwrapWeth: false,
       authorizedBidder: ethers.constants.AddressZero,
@@ -208,7 +208,7 @@ TEST_CASES.push(async function* marketFills(props) {
       created: 1,
       deadline: ethers.constants.MaxUint256,
       price: exa,
-      tokenIds: [],
+      tokenId: 0,
       traitset: [traitId],
       bidType: BidType.TRAITSET,
       royalties: [],
@@ -218,7 +218,7 @@ TEST_CASES.push(async function* marketFills(props) {
       created: 1,
       deadline: ethers.constants.MaxUint256,
       price: exa,
-      tokenIds: [tokenId],
+      tokenId: tokenId,
       royalties: [],
       unwrapWeth: false,
       authorizedBidder: ethers.constants.AddressZero,
@@ -242,9 +242,9 @@ TEST_CASES.push(async function* marketFills(props) {
       created: 1,
       deadline: ethers.constants.MaxUint256,
       price: exa,
-      tokenIds: [tokenId],
+      tokenId: tokenId,
       traitset: [],
-      bidType: BidType.TOKEN_IDS,
+      bidType: BidType.TOKEN_ID,
       royalties: [],
     };
     const ask = {
@@ -252,7 +252,7 @@ TEST_CASES.push(async function* marketFills(props) {
       created: 1,
       deadline: ethers.constants.MaxUint256,
       price: exa,
-      tokenIds: [tokenId],
+      tokenId: tokenId,
       royalties: [],
       unwrapWeth: true,
       authorizedBidder: ethers.constants.AddressZero,
@@ -277,9 +277,9 @@ TEST_CASES.push(async function* marketFills(props) {
       created: 1,
       deadline: ethers.constants.MaxUint256,
       price: exa,
-      tokenIds: [tokenId],
+      tokenId: tokenId,
       traitset: [],
-      bidType: BidType.TOKEN_IDS,
+      bidType: BidType.TOKEN_ID,
       royalties: [r, r, r, r],
     };
     const ask = {
@@ -287,7 +287,7 @@ TEST_CASES.push(async function* marketFills(props) {
       created: 1,
       deadline: ethers.constants.MaxUint256,
       price: exa,
-      tokenIds: [tokenId],
+      tokenId: tokenId,
       royalties: [],
       unwrapWeth: true,
       authorizedBidder: ethers.constants.AddressZero,
@@ -308,9 +308,9 @@ TEST_CASES.push(async function* marketFills(props) {
       created: 1,
       deadline: ethers.constants.MaxUint256,
       price: exa,
-      tokenIds: [tokenId],
+      tokenId: tokenId,
       traitset: [],
-      bidType: BidType.TOKEN_IDS,
+      bidType: BidType.TOKEN_ID,
       royalties: [],
     };
     const ask = {
@@ -318,7 +318,7 @@ TEST_CASES.push(async function* marketFills(props) {
       created: 1,
       deadline: ethers.constants.MaxUint256,
       price: exa,
-      tokenIds: [tokenId],
+      tokenId: tokenId,
       royalties: [],
       unwrapWeth: true,
       authorizedBidder: ethers.constants.AddressZero,
@@ -334,78 +334,6 @@ TEST_CASES.push(async function* marketFills(props) {
       EIP_712
     );
     yield ["fillOrder with 4 royalties", await tx.wait()];
-  }
-
-  {
-    await token.mint(alice.address, 1337);
-    await token.mint(alice.address, 1338);
-    await token.mint(alice.address, 1339);
-    const bid = {
-      nonce: 5,
-      created: 1,
-      deadline: ethers.constants.MaxUint256,
-      price: exa,
-      tokenIds: [1337, 1338, 1339],
-      traitset: [],
-      bidType: BidType.TOKEN_IDS,
-      royalties: [],
-    };
-    const ask = {
-      nonce: 5,
-      created: 1,
-      deadline: ethers.constants.MaxUint256,
-      price: exa,
-      tokenIds: [1337, 1338, 1339],
-      royalties: [],
-      unwrapWeth: false,
-      authorizedBidder: ethers.constants.AddressZero,
-    };
-    const bidSignature = sdk.market.sign712.bid(bob, domainInfo, bid);
-    const askSignature = sdk.market.sign712.ask(alice, domainInfo, ask);
-    const tx = await market.fillOrder(
-      bid,
-      bidSignature,
-      EIP_712,
-      ask,
-      askSignature,
-      EIP_712
-    );
-    yield ["fillOrder with 3 token bundle", await tx.wait()];
-  }
-
-  {
-    const r = { recipient: props.signers[0].address, micros: 1000 };
-    const bid = {
-      nonce: 6,
-      created: 1,
-      deadline: ethers.constants.MaxUint256,
-      price: exa,
-      tokenIds: [1337, 1338, 1339],
-      traitset: [],
-      bidType: BidType.TOKEN_IDS,
-      royalties: [],
-    };
-    const ask = {
-      nonce: 6,
-      created: 1,
-      deadline: ethers.constants.MaxUint256,
-      price: exa,
-      tokenIds: [1337, 1338, 1339],
-      royalties: [r, r, r],
-      unwrapWeth: true,
-      authorizedBidder: ethers.constants.AddressZero,
-    };
-    const bidSignature = sdk.market.sign712.bid(alice, domainInfo, bid);
-    const askSignature = sdk.market.sign712.ask(bob, domainInfo, ask);
-    const tx = await market
-      .connect(alice)
-      .fillOrderEth(bid, bidSignature, EIP_712, ask, askSignature, EIP_712, {
-        value: exa,
-      });
-    yield [
-      "fillOrder with 3 royalties, 3 tokens, paid in ETH, unwrap to ETH",
-      await tx.wait(),
-    ];
   }
 });
 

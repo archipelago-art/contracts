@@ -262,6 +262,17 @@ contract Market {
         Ask memory ask,
         address asker
     ) internal {
+        bool ownerOrApproved;
+        uint256 tokenId = ask.tokenId;
+        address tokenOwner = token.ownerOf(tokenId);
+        if (tokenOwner == asker) {
+            ownerOrApproved = true;
+        } else if (token.getApproved(tokenId) == asker) {
+            ownerOrApproved = true;
+        } else if (token.isApprovedForAll(tokenOwner, asker)) {
+            ownerOrApproved = true;
+        }
+        require(ownerOrApproved, "asker is not owner or approved");
         require(
             ask.authorizedBidder == address(0) ||
                 ask.authorizedBidder == bidder,
@@ -304,23 +315,9 @@ contract Market {
         uint256 _cost = _price;
         require(_price == ask.price, "price mismatch");
 
-        if (bid.bidType == BidType.TOKEN_IDS) {
-            require(
-                bid.tokenIds.length == ask.tokenIds.length,
-                "tokenId length mismatch"
-            );
-            for (uint256 _i = 0; _i < ask.tokenIds.length; _i++) {
-                require(
-                    bid.tokenIds[_i] == ask.tokenIds[_i],
-                    "tokenId mismatch"
-                );
-            }
+        if (bid.bidType == BidType.TOKEN_ID) {
+            require(bid.tokenId == tokenId, "tokenid mismatch");
         } else {
-            require(
-                ask.tokenIds.length == 1,
-                "traitset bids only match single-token asks"
-            );
-            uint256 tokenId = ask.tokenIds[0];
             for (uint256 _i = 0; _i < bid.traitset.length; _i++) {
                 require(
                     traitOracle.hasTrait(tokenId, bid.traitset[_i]),
@@ -366,13 +363,7 @@ contract Market {
             );
         }
 
-        emit Trade(_tradeId, bidder, asker, _price, _proceeds, _cost);
-        for (uint256 i = 0; i < ask.tokenIds.length; i++) {
-            uint256 tokenId = ask.tokenIds[i];
-            address owner = _checkAuthorizationAndGetOwner(tokenId, asker);
-            token.safeTransferFrom(owner, bidder, tokenId);
-            emit TokenTraded(_tradeId, tokenId);
-        }
+        token.safeTransferFrom(tokenOwner, bidder, tokenId);
         if (ask.unwrapWeth) {
             require(
                 weth.transferFrom(bidder, address(this), _proceeds),
@@ -389,25 +380,8 @@ contract Market {
                 TRANSFER_FAILED
             );
         }
-    }
 
-    /// Verifies that `_operator` is the owner of or approved operator for
-    /// `_tokenId`, reverting if not. Returns the token's owner.
-    function _checkAuthorizationAndGetOwner(uint256 _tokenId, address _operator)
-        internal
-        view
-        returns (address _owner)
-    {
-        bool _ownerOrApproved;
-        _owner = token.ownerOf(_tokenId);
-        if (_owner == _operator) {
-            _ownerOrApproved = true;
-        } else if (token.getApproved(_tokenId) == _operator) {
-            _ownerOrApproved = true;
-        } else if (token.isApprovedForAll(_owner, _operator)) {
-            _ownerOrApproved = true;
-        }
-        require(_ownerOrApproved, "asker is not owner or approved");
-        return _owner;
+        emit Trade(_tradeId, bidder, asker, _price, _proceeds, _cost);
+        emit TokenTraded(_tradeId, tokenId);
     }
 }

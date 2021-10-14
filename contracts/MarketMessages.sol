@@ -2,12 +2,9 @@
 pragma solidity ^0.8.0;
 
 enum BidType {
-    /// A bid for specific token ids
-    TOKEN_IDS,
-    // A blanket bid for any single token that matches *all* of the specified
-    // traits.
-    // A traitset bid will never match an Ask that is not selling exactly one
-    // token.
+    /// A bid for a specific token, keyed by token ID.
+    TOKEN_ID,
+    /// A blanket bid for any token that matches *all* of the specified traits.
     TRAITSET
 }
 
@@ -28,12 +25,9 @@ struct Bid {
     /// Offer price, in wei.
     uint256 price;
     BidType bidType;
-    /// For `TOKEN_IDS` bids, this is the list of token ids the Bid is requesting.
-    /// For `TRAITSET` bids, this will be an empty array.
-    /// For TOKEN_IDS bids orders to match successfully, the bid and ask must exactly
-    /// agree on the token ids, including ordering. By convention, token ids should be
-    /// included in ascending order.
-    uint256[] tokenIds;
+    /// For `TOKEN_ID` bids, this is the token that the bid applies to. For
+    /// other bids, this is zero.
+    uint256 tokenId;
     /// For `TRAITSET` bids, this is an array of trait IDs, sorted in strictly
     /// increasing order. A token must have *every* trait in this array to match
     /// the bid. The array may be empty, in which case this naturally represents
@@ -56,11 +50,7 @@ struct Ask {
     uint256 deadline;
     /// List price, in wei.
     uint256 price;
-    // The tokenIds being offered in this ask (may be more than one for bundles).
-    // A traitset bid can only match asks with exactly one token id.
-    // For token id bids, the ids of the bid and the ask must match exactly, including
-    // ordering. By convention, the token ids should be included in ascending order.
-    uint256[] tokenIds;
+    uint256 tokenId;
     // Royalties that are paid by the asker, i.e. are subtracted from the amount
     // of the sale price that is given to the asker when the sale completes.
     // Artist or platform royalties (e.g. to ArtBlocks or the Archipelago protocol)
@@ -83,11 +73,11 @@ library MarketMessages {
 
     bytes32 internal constant TYPEHASH_BID =
         keccak256(
-            "Bid(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint8 bidType,uint256[] tokenIds,uint256[] traitset,Royalty[] royalties)Royalty(address recipient,uint256 micros)"
+            "Bid(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint8 bidType,uint256 tokenId,uint256[] traitset,Royalty[] royalties)Royalty(address recipient,uint256 micros)"
         );
     bytes32 internal constant TYPEHASH_ASK =
         keccak256(
-            "Ask(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint256[] tokenIds,Royalty[] royalties,bool unwrapWeth,address authorizedBidder)Royalty(address recipient,uint256 micros)"
+            "Ask(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint256 tokenId,Royalty[] royalties,bool unwrapWeth,address authorizedBidder)Royalty(address recipient,uint256 micros)"
         );
     bytes32 internal constant TYPEHASH_ROYALTY =
         keccak256("Royalty(address recipient,uint256 micros)");
@@ -102,7 +92,7 @@ library MarketMessages {
                     _self.deadline,
                     _self.price,
                     _self.bidType,
-                    keccak256(abi.encodePacked(_self.tokenIds)),
+                    _self.tokenId,
                     keccak256(abi.encodePacked(_self.traitset)),
                     _self.royalties.structHash()
                 )
@@ -118,7 +108,7 @@ library MarketMessages {
                     _self.created,
                     _self.deadline,
                     _self.price,
-                    keccak256(abi.encodePacked(_self.tokenIds)),
+                    _self.tokenId,
                     _self.royalties.structHash(),
                     _self.unwrapWeth,
                     _self.authorizedBidder
