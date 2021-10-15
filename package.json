@@ -14,7 +14,7 @@
   "author": "William Chargin <wchargin@gmail.com>",
   "license": "AGPL-3.0-or-later",
   "dependencies": {
-    "ethers": "^5.4.6"
+    "ethers": "5.4.6"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
