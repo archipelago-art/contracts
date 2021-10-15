@@ -1,5 +1,7 @@
 const ethers = require("ethers");
 
+const { hashLegacyMessage } = require("./signatureChecker");
+
 const TraitType = Object.freeze({
   PROJECT: 0,
   FEATURE: 1,
@@ -161,14 +163,7 @@ function addTraitMembershipsStructHash(msg) {
 }
 
 async function signLegacyMessage(signer, domainInfo, structHash) {
-  const blob = ethers.utils.arrayify(
-    ethers.utils.keccak256(
-      ethers.utils.defaultAbiCoder.encode(
-        ["bytes32", "bytes32"],
-        [rawDomainSeparator(domainInfo), structHash]
-      )
-    )
-  );
+  const blob = hashLegacyMessage(rawDomainSeparator(domainInfo), structHash);
   return await signer.signMessage(blob);
 }
 

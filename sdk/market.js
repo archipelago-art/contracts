@@ -1,5 +1,7 @@
 const ethers = require("ethers");
 
+const { hashLegacyMessage } = require("./signatureChecker");
+
 const BidType = Object.freeze({
   TOKEN_ID: 0,
   TRAITSET: 1,
@@ -96,6 +98,25 @@ const sign712 = Object.freeze({
   },
 });
 
+const verify712 = Object.freeze({
+  bid(signature, domainInfo, msg) {
+    return ethers.utils.verifyTypedData(
+      domainSeparator(domainInfo),
+      { Bid, Royalty },
+      msg,
+      signature
+    );
+  },
+  ask(signature, domainInfo, msg) {
+    return ethers.utils.verifyTypedData(
+      domainSeparator(domainInfo),
+      { Ask, Royalty },
+      msg,
+      signature
+    );
+  },
+});
+
 const TYPENAME_ROYALTY = "Royalty(address recipient,uint256 micros)";
 const TYPENAME_BID =
   "Bid(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint8 bidType,uint256 tokenId,uint256[] traitset,Royalty[] royalties)";
@@ -186,15 +207,13 @@ function askStructHash(ask) {
 }
 
 async function signLegacyMessage(signer, domainInfo, structHash) {
-  const blob = ethers.utils.arrayify(
-    ethers.utils.keccak256(
-      ethers.utils.defaultAbiCoder.encode(
-        ["bytes32", "bytes32"],
-        [rawDomainSeparator(domainInfo), structHash]
-      )
-    )
-  );
+  const blob = hashLegacyMessage(rawDomainSeparator(domainInfo), structHash);
   return await signer.signMessage(blob);
+}
+
+function verifyLegacyMessage(signature, domainInfo, structHash) {
+  const blob = hashLegacyMessage(rawDomainSeparator(domainInfo), structHash);
+  return ethers.utils.verifyMessage(blob, signature);
 }
 
 const signLegacy = Object.freeze({
@@ -203,6 +222,15 @@ const signLegacy = Object.freeze({
   },
   ask(signer, domainInfo, msg) {
     return signLegacyMessage(signer, domainInfo, askStructHash(msg));
+  },
+});
+
+const verifyLegacy = Object.freeze({
+  bid(signer, domainInfo, msg) {
+    return verifyLegacyMessage(signer, domainInfo, bidStructHash(msg));
+  },
+  ask(signer, domainInfo, msg) {
+    return verifyLegacyMessage(signer, domainInfo, askStructHash(msg));
   },
 });
 
@@ -253,6 +281,8 @@ module.exports = {
   BidType,
   domainSeparator,
   sign712,
+  verify712,
   signLegacy,
+  verifyLegacy,
   computeSale,
 };

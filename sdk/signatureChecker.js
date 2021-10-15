@@ -4,4 +4,15 @@ const SignatureKind = Object.freeze({
   EIP_712: 2,
 });
 
-module.exports = { SignatureKind };
+function hashLegacyMessage(domainSeparator, structHash) {
+  return ethers.utils.arrayify(
+    ethers.utils.keccak256(
+      ethers.utils.defaultAbiCoder.encode(
+        ["bytes32", "bytes32"],
+        [domainSeparator, structHash]
+      )
+    )
+  );
+}
+
+module.exports = { SignatureKind, hashLegacyMessage };

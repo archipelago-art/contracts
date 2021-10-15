@@ -241,6 +241,50 @@ describe("Market", () => {
     );
   }
 
+  describe("SDK signature verification", () => {
+    let market, signers;
+    before(async () => {
+      signers = await ethers.getSigners();
+      market = await Market.deploy();
+    });
+
+    it("verifies EIP-712 bid signatures", async () => {
+      const bidder = signers[1];
+      const bid = tokenIdBid();
+      const signature = await signBid(market, bid, bidder);
+      expect(
+        sdk.market.verify712.bid(signature, await domainInfo(market), bid)
+      ).to.equal(bidder.address);
+    });
+
+    it("verifies EIP-712 ask signatures", async () => {
+      const asker = signers[1];
+      const ask = newAsk();
+      const signature = await signAsk(market, ask, asker);
+      expect(
+        sdk.market.verify712.ask(signature, await domainInfo(market), ask)
+      ).to.equal(asker.address);
+    });
+
+    it("verifies legacy bid signatures", async () => {
+      const bidder = signers[1];
+      const bid = tokenIdBid();
+      const signature = await signBidLegacy(market, bid, bidder);
+      expect(
+        sdk.market.verifyLegacy.bid(signature, await domainInfo(market), bid)
+      ).to.equal(bidder.address);
+    });
+
+    it("verifies legacy ask signatures", async () => {
+      const asker = signers[1];
+      const ask = newAsk();
+      const signature = await signAskLegacy(market, ask, asker);
+      expect(
+        sdk.market.verifyLegacy.ask(signature, await domainInfo(market), ask)
+      ).to.equal(asker.address);
+    });
+  });
+
   describe("order filling", () => {
     describe("authorization", () => {
       async function expectSuccess(setUpSignatures) {
