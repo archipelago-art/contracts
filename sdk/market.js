@@ -206,9 +206,53 @@ const signLegacy = Object.freeze({
   },
 });
 
+function royaltyAmount(micros, price) {
+  return micros.mul(price).div(1e6);
+}
+
+function computeSale({ bid, ask }) {
+  const bidPrice = ethers.BigNumber.from(bid.price);
+  const askPrice = ethers.BigNumber.from(ask.price);
+  if (!bidPrice.eq(askPrice)) {
+    throw new Error(`price mismatch: bid = ${bidPrice}, ask = ${askPrice}`);
+  }
+  const price = bidPrice;
+  let proceeds = price;
+  let cost = price;
+  const buyerRoyalties = [];
+  const sellerRoyalties = [];
+
+  for (const r of ask.royalties) {
+    const micros = ethers.BigNumber.from(r.micros);
+    const recipient = ethers.utils.getAddress(r.recipient);
+    const amount = royaltyAmount(micros, price);
+    proceeds = proceeds.sub(amount);
+    sellerRoyalties.push({ recipient, micros, amount });
+  }
+  if (proceeds.lt(ethers.constants.Zero)) {
+    throw new Error("seller royalties exceed 100% of sale price");
+  }
+
+  for (const r of bid.royalties) {
+    const micros = ethers.BigNumber.from(r.micros);
+    const recipient = ethers.utils.getAddress(r.recipient);
+    const amount = royaltyAmount(micros, price);
+    cost = cost.add(amount);
+    buyerRoyalties.push({ recipient, micros, amount });
+  }
+
+  return {
+    cost,
+    proceeds,
+    buyerRoyalties,
+    sellerRoyalties,
+  };
+}
+
 module.exports = {
   BidType,
   domainSeparator,
   sign712,
   signLegacy,
+  computeSale,
 };
