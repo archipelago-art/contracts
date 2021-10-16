@@ -226,11 +226,11 @@ const signLegacy = Object.freeze({
 });
 
 const verifyLegacy = Object.freeze({
-  bid(signer, domainInfo, msg) {
-    return verifyLegacyMessage(signer, domainInfo, bidStructHash(msg));
+  bid(signature, domainInfo, msg) {
+    return verifyLegacyMessage(signature, domainInfo, bidStructHash(msg));
   },
-  ask(signer, domainInfo, msg) {
-    return verifyLegacyMessage(signer, domainInfo, askStructHash(msg));
+  ask(signature, domainInfo, msg) {
+    return verifyLegacyMessage(signature, domainInfo, askStructHash(msg));
   },
 });
 
