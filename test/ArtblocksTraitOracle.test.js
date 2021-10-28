@@ -719,6 +719,11 @@ describe("ArtblocksTraitOracle", () => {
       expect(await oracle.hasTrait(baseId + 777, traitIdV1)).to.be.false;
     });
 
+    it("excludes members from other projects", async () => {
+      expect(await oracle.hasTrait(baseId + PROJECT_STRIDE, traitIdV0)).to.be
+        .false;
+    });
+
     it("determines project size from the correct version", async () => {
       expect(await oracle.hasTrait(baseId + 250, traitIdV0)).to.be.false;
       expect(await oracle.hasTrait(baseId + 250, traitIdV1)).to.be.true;
