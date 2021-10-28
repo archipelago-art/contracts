@@ -348,6 +348,20 @@ describe("ArtblocksTraitOracle", () => {
       expect(await oracle.featureMembers(traitId)).to.equal(tokenIds.length);
     });
 
+    it("reports non-membership for token IDs out of range", async () => {
+      const { oracle, signer } = await setUp();
+      const msg1 = { projectId, featureName, version };
+      await setFeatureInfo(oracle, signer, msg1);
+      const msg2 = { traitId, tokenIds: [baseTokenId + 250] };
+      await addTraitMemberships(oracle, signer, msg2);
+
+      expect(await oracle.hasTrait(baseTokenId + 250, traitId)).to.equal(true);
+      expect(await oracle.hasTrait(250, traitId)).to.equal(false);
+      expect(await oracle.hasTrait(2 * baseTokenId + 250, traitId)).to.equal(
+        false
+      );
+    });
+
     it("keeps track of members that were added multiple times", async () => {
       const { oracle, signer } = await setUp();
       const msg = { projectId, featureName, version };

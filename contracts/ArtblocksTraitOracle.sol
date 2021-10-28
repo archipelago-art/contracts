@@ -311,7 +311,7 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle {
             uint256 _mask
         )
     {
-        if (_tokenId < _minTokenId) revert(ERR_INVALID_ARGUMENT);
+        if (_tokenId < _minTokenId) return (false, 0, 0);
         uint256 _tokenIndex = _tokenId - _minTokenId;
         if (_tokenIndex > PROJECT_STRIDE) return (false, 0, 0);
         _inRange = true;
