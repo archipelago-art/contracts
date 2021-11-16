@@ -11,32 +11,22 @@ function utf8Hash(s) {
   return ethers.utils.keccak256(ethers.utils.toUtf8Bytes(s));
 }
 
-function domainSeparator({ chainId, marketAddress, wethAddress }) {
+function domainSeparator({ chainId, marketAddress }) {
   return {
     name: "ArchipelagoMarket",
     chainId,
     verifyingContract: marketAddress,
-    salt: domainSeparatorSalt({
-      wethAddress,
-    }),
   };
-}
-
-function domainSeparatorSalt({ wethAddress }) {
-  return ethers.utils.keccak256(
-    ethers.utils.defaultAbiCoder.encode(["address"], [wethAddress])
-  );
 }
 
 function rawDomainSeparator(domainInfo) {
   const type =
-    "EIP712Domain(string name,uint256 chainId,address verifyingContract,bytes32 salt)";
-  const { name, chainId, verifyingContract, salt } =
-    domainSeparator(domainInfo);
+    "EIP712Domain(string name,uint256 chainId,address verifyingContract)";
+  const { name, chainId, verifyingContract } = domainSeparator(domainInfo);
   return ethers.utils.keccak256(
     ethers.utils.defaultAbiCoder.encode(
-      ["bytes32", "bytes32", "uint256", "address", "bytes32"],
-      [utf8Hash(type), utf8Hash(name), chainId, verifyingContract, salt]
+      ["bytes32", "bytes32", "uint256", "address"],
+      [utf8Hash(type), utf8Hash(name), chainId, verifyingContract]
     )
   );
 }

@@ -41,21 +41,20 @@ describe("Market", () => {
   }
 
   async function rawDomainSeparator(market) {
-    const { name, chainId, salt } = sdk.market.domainSeparator(
+    const { name, chainId } = sdk.market.domainSeparator(
       await domainInfo(market)
     );
     return ethers.utils.keccak256(
       ethers.utils.defaultAbiCoder.encode(
-        ["bytes32", "bytes32", "uint256", "bytes32"],
+        ["bytes32", "bytes32", "uint256"],
         [
           ethers.utils.keccak256(
             ethers.utils.toUtf8Bytes(
-              "EIP712Domain(string name,uint256 chainId,bytes32 salt)"
+              "EIP712Domain(string name,uint256 chainId)"
             )
           ),
           ethers.utils.keccak256(ethers.utils.toUtf8Bytes(name)),
           chainId,
-          salt,
         ]
       )
     );

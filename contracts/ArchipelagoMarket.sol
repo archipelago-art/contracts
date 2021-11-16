@@ -5,14 +5,12 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 import "./ITraitOracle.sol";
 import "./IWeth.sol";
-import "./MarketEip712Salt.sol";
 import "./MarketMessages.sol";
 import "./SignatureChecker.sol";
 
 contract ArchipelagoMarket {
     using MarketMessages for Bid;
     using MarketMessages for Ask;
-    using MarketEip712SaltSerialization for MarketEip712Salt;
 
     event BidCancellation(address indexed participant, uint256 timestamp);
     event AskCancellation(address indexed participant, uint256 timestamp);
@@ -73,7 +71,7 @@ contract ArchipelagoMarket {
 
     bytes32 constant TYPEHASH_DOMAIN_SEPARATOR =
         keccak256(
-            "EIP712Domain(string name,uint256 chainId,address verifyingContract,bytes32 salt)"
+            "EIP712Domain(string name,uint256 chainId,address verifyingContract)"
         );
 
     receive() external payable {
@@ -92,17 +90,13 @@ contract ArchipelagoMarket {
     }
 
     function _computeDomainSeparator() internal view returns (bytes32) {
-        MarketEip712Salt memory _salt = MarketEip712Salt({
-            weth: weth
-        });
         return
             keccak256(
                 abi.encode(
                     TYPEHASH_DOMAIN_SEPARATOR,
                     keccak256("ArchipelagoMarket"),
                     block.chainid,
-                    address(this),
-                    _salt.serialize()
+                    address(this)
                 )
             );
     }
