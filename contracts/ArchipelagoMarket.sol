@@ -40,7 +40,11 @@ contract ArchipelagoMarket {
     // Emitted once for every token that's transferred as part of a trade,
     // i.e. a Trade event will correspond to one TokenTraded events.
     // It's part of a separate event so that we can index more fields.
-    event TokenTraded(uint256 indexed tradeId, IERC721 indexed tokenAddress, uint256 indexed tokenId);
+    event TokenTraded(
+        uint256 indexed tradeId,
+        IERC721 indexed tokenAddress,
+        uint256 indexed tokenId
+    );
 
     event RoyaltyPaid(
         uint256 indexed tradeId,
