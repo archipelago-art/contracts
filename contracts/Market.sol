@@ -40,8 +40,9 @@ contract Market {
         uint256 cost
     );
     // Emitted once for every token that's transferred as part of a trade,
-    // i.e. a Trade event will correspond to zero-or-more TokenTraded events.
-    event TokenTraded(uint256 indexed tradeId, uint256 indexed tokenId);
+    // i.e. a Trade event will correspond to one TokenTraded events.
+    // It's part of a separate event so that we can index more fields.
+    event TokenTraded(uint256 indexed tradeId, IERC721 indexed tokenAddress, uint256 indexed tokenId);
 
     event RoyaltyPaid(
         uint256 indexed tradeId,
@@ -51,7 +52,6 @@ contract Market {
         uint256 amount
     );
 
-    IERC721 public token;
     IWeth public weth;
     ITraitOracle public traitOracle;
     mapping(address => uint256) public bidTimestampCancellation;
@@ -83,24 +83,20 @@ contract Market {
     }
 
     function initialize(
-        IERC721 _token,
         IWeth _weth,
         ITraitOracle _traitOracle
     ) external {
         require(
-            address(token) == address(0) &&
                 address(weth) == address(0) &&
                 address(traitOracle) == address(0),
             "already initialized"
         );
-        token = _token;
         weth = _weth;
         traitOracle = _traitOracle;
     }
 
     function _computeDomainSeparator() internal view returns (bytes32) {
         MarketEip712Salt memory _salt = MarketEip712Salt({
-            tokenContract: token,
             weth: weth,
             traitOracle: traitOracle
         });
@@ -263,6 +259,7 @@ contract Market {
         address asker
     ) internal {
         uint256 tokenId = ask.tokenId;
+        IERC721 token = ask.tokenAddress;
         require(
             ask.authorizedBidder == address(0) ||
                 ask.authorizedBidder == bidder,
@@ -305,6 +302,7 @@ contract Market {
         uint256 _cost = _price;
         require(_price == ask.price, "price mismatch");
 
+        require(token == bid.tokenAddress, "token address mismatch");
         if (bid.bidType == BidType.TOKEN_ID) {
             require(bid.tokenId == tokenId, "tokenid mismatch");
         } else {
@@ -382,6 +380,6 @@ contract Market {
         }
 
         emit Trade(_tradeId, bidder, asker, _price, _proceeds, _cost);
-        emit TokenTraded(_tradeId, tokenId);
+        emit TokenTraded(_tradeId, token, tokenId);
     }
 }

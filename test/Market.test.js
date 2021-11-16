@@ -29,13 +29,11 @@ describe("Market", () => {
   async function domainInfo(market) {
     const chainId = await ethers.provider.send("eth_chainId");
     const marketAddress = market.address;
-    const tokenAddress = await market.token();
     const wethAddress = await market.weth();
     const traitOracleAddress = await market.traitOracle();
     return {
       chainId,
       marketAddress,
-      tokenAddress,
       wethAddress,
       traitOracleAddress,
     };
@@ -86,7 +84,7 @@ describe("Market", () => {
       nft.deployed(),
       oracle.deployed(),
     ]);
-    await market.initialize(nft.address, weth.address, oracle.address);
+    await market.initialize(weth.address, oracle.address);
     const bidder = signers[1];
     const asker = signers[2];
     const otherSigner = signers[3];
@@ -492,7 +490,7 @@ describe("Market", () => {
           bid.price.mul(2)
         )
         .to.emit(market, "TokenTraded")
-        .withArgs(tradeId, bid.tokenId);
+        .withArgs(tradeId, bid.tokenAddress, bid.tokenId);
     });
 
     describe("order filling in ETH", () => {
@@ -922,6 +920,16 @@ describe("Market", () => {
         await expect(
           fillOrder(market, bid, bidder, ask, asker)
         ).to.be.revertedWith("tokenid mismatch");
+      });
+
+      it("rejects if bid and ask disagree about token address", async () => {
+        const { market, signers, asker, bidder, tokenIdBid, newAsk } =
+          await setup();
+        const bid = tokenIdBid({ tokenId: 0, tokenAddress: market.address });
+        const ask = newAsk({ tokenId: 1 });
+        await expect(
+          fillOrder(market, bid, bidder, ask, asker)
+        ).to.be.revertedWith("token address mismatch");
       });
 
       it("rejects if ERC-20 transfer returns `false`", async () => {

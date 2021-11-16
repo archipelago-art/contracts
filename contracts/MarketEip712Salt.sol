@@ -13,8 +13,6 @@ import "./IWeth.sol";
 /// we want to invalidate it, we'll upgrade the `version` field on the `Market`
 /// EIP-712 domain itself.
 struct MarketEip712Salt {
-    /// Address of the NFT contract whose tokens may be traded in this market.
-    IERC721 tokenContract;
     /// Address of the ERC-20 token used as currency by this market.
     IWeth weth;
     /// Address of the oracle used by this market to determine which tokens
@@ -30,7 +28,7 @@ library MarketEip712SaltSerialization {
     {
         return
             keccak256(
-                abi.encode(_self.tokenContract, _self.weth, _self.traitOracle)
+                abi.encode(_self.weth, _self.traitOracle)
             );
     }
 }

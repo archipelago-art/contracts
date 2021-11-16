@@ -14,7 +14,6 @@ function utf8Hash(s) {
 function domainSeparator({
   chainId,
   marketAddress,
-  tokenAddress,
   wethAddress,
   traitOracleAddress,
 }) {
@@ -23,22 +22,17 @@ function domainSeparator({
     chainId,
     verifyingContract: marketAddress,
     salt: domainSeparatorSalt({
-      tokenAddress,
       wethAddress,
       traitOracleAddress,
     }),
   };
 }
 
-function domainSeparatorSalt({
-  tokenAddress,
-  wethAddress,
-  traitOracleAddress,
-}) {
+function domainSeparatorSalt({ wethAddress, traitOracleAddress }) {
   return ethers.utils.keccak256(
     ethers.utils.defaultAbiCoder.encode(
-      ["address", "address", "address"],
-      [tokenAddress, wethAddress, traitOracleAddress]
+      ["address", "address"],
+      [wethAddress, traitOracleAddress]
     )
   );
 }
