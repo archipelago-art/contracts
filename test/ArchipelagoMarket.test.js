@@ -30,12 +30,10 @@ describe("Market", () => {
     const chainId = await ethers.provider.send("eth_chainId");
     const marketAddress = market.address;
     const wethAddress = await market.weth();
-    const traitOracleAddress = await market.traitOracle();
     return {
       chainId,
       marketAddress,
       wethAddress,
-      traitOracleAddress,
     };
   }
 
@@ -84,7 +82,7 @@ describe("Market", () => {
       nft.deployed(),
       oracle.deployed(),
     ]);
-    await market.initialize(weth.address, ethers.constants.AddressZero);
+    await market.initialize(weth.address);
     const bidder = signers[1];
     const asker = signers[2];
     const otherSigner = signers[3];

@@ -11,29 +11,20 @@ function utf8Hash(s) {
   return ethers.utils.keccak256(ethers.utils.toUtf8Bytes(s));
 }
 
-function domainSeparator({
-  chainId,
-  marketAddress,
-  wethAddress,
-  traitOracleAddress,
-}) {
+function domainSeparator({ chainId, marketAddress, wethAddress }) {
   return {
     name: "ArchipelagoMarket",
     chainId,
     verifyingContract: marketAddress,
     salt: domainSeparatorSalt({
       wethAddress,
-      traitOracleAddress,
     }),
   };
 }
 
-function domainSeparatorSalt({ wethAddress, traitOracleAddress }) {
+function domainSeparatorSalt({ wethAddress }) {
   return ethers.utils.keccak256(
-    ethers.utils.defaultAbiCoder.encode(
-      ["address", "address"],
-      [wethAddress, traitOracleAddress]
-    )
+    ethers.utils.defaultAbiCoder.encode(["address"], [wethAddress])
   );
 }
 

@@ -53,7 +53,6 @@ contract ArchipelagoMarket {
     );
 
     IWeth public weth;
-    ITraitOracle public traitOracle;
     mapping(address => uint256) public bidTimestampCancellation;
     mapping(address => uint256) public askTimestampCancellation;
     mapping(address => mapping(uint256 => bool)) public nonceCancellation;
@@ -83,22 +82,18 @@ contract ArchipelagoMarket {
     }
 
     function initialize(
-        IWeth _weth,
-        ITraitOracle _traitOracle
+        IWeth _weth
     ) external {
         require(
-                address(weth) == address(0) &&
-                address(traitOracle) == address(0),
+                address(weth) == address(0),
             "already initialized"
         );
         weth = _weth;
-        traitOracle = _traitOracle;
     }
 
     function _computeDomainSeparator() internal view returns (bytes32) {
         MarketEip712Salt memory _salt = MarketEip712Salt({
-            weth: weth,
-            traitOracle: traitOracle
+            weth: weth
         });
         return
             keccak256(

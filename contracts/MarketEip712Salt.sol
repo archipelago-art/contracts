@@ -15,9 +15,6 @@ import "./IWeth.sol";
 struct MarketEip712Salt {
     /// Address of the ERC-20 token used as currency by this market.
     IWeth weth;
-    /// Address of the oracle used by this market to determine which tokens
-    /// have which traits.
-    ITraitOracle traitOracle;
 }
 
 library MarketEip712SaltSerialization {
@@ -27,8 +24,6 @@ library MarketEip712SaltSerialization {
         returns (bytes32)
     {
         return
-            keccak256(
-                abi.encode(_self.weth, _self.traitOracle)
-            );
+            keccak256( abi.encode(_self.weth));
     }
 }
