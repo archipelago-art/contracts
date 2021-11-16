@@ -54,7 +54,6 @@ contract ArchipelagoMarket {
         uint256 amount
     );
 
-    IWeth public weth;
     mapping(address => uint256) public bidTimestampCancellation;
     mapping(address => uint256) public askTimestampCancellation;
     mapping(address => mapping(uint256 => bool)) public nonceCancellation;
@@ -78,20 +77,8 @@ contract ArchipelagoMarket {
             "EIP712Domain(string name,uint256 chainId,address verifyingContract)"
         );
 
-    receive() external payable {
-        // only accept ETH from the WETH contract (so we can unwrap for users)
-        require(msg.sender == address(weth), "only weth contract may pay");
-    }
-
-    function initialize(
-        IWeth _weth
-    ) external {
-        require(
-                address(weth) == address(0),
-            "already initialized"
-        );
-        weth = _weth;
-    }
+    /// TODO: ensure admin can skim any ETH that is mistakenly sent here.
+    receive() external payable {}
 
     function _computeDomainSeparator() internal view returns (bytes32) {
         return
@@ -240,7 +227,7 @@ contract ArchipelagoMarket {
             askSignatureKind
         );
         require(msg.sender == bidder, "only bidder may fill with ETH");
-        IWeth currency= IWeth(address(bid.currencyAddress));
+        IWeth currency = IWeth(address(bid.currencyAddress));
         currency.deposit{value: msg.value}();
         require(currency.transfer(bidder, msg.value), TRANSFER_FAILED);
         _fillOrder(bid, bidder, ask, asker);

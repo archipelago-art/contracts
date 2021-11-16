@@ -120,7 +120,6 @@ TEST_CASES.push(async function* marketFills(props) {
     weth.deployed(),
     token.deployed(),
   ]);
-  await market.initialize(weth.address);
   const domainInfo = {
     chainId,
     marketAddress: market.address,

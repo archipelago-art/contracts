@@ -32,11 +32,9 @@ describe("Market", () => {
   async function domainInfo(market) {
     const chainId = await ethers.provider.send("eth_chainId");
     const marketAddress = market.address;
-    const wethAddress = await market.weth();
     return {
       chainId,
       marketAddress,
-      wethAddress,
     };
   }
 
@@ -64,7 +62,6 @@ describe("Market", () => {
       nft.deployed(),
       oracle.deployed(),
     ]);
-    await market.initialize(weth.address);
     const bidder = signers[1];
     const asker = signers[2];
     const otherSigner = signers[3];
@@ -1342,10 +1339,5 @@ describe("Market", () => {
       ).to.emit(market, "AskApproval");
       expect(await market.onChainApprovals(addr, hash)).to.equal(false);
     });
-  });
-  it("rejects ether transfers that are not from the weth contract", async () => {
-    const { market, signers } = await setup();
-    const fail = signers[0].sendTransaction({ to: market.address, value: exa });
-    await expect(fail).to.be.revertedWith("only weth contract may pay");
   });
 });
