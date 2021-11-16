@@ -12,16 +12,19 @@ describe("Market", () => {
   let Market;
   let TestWeth;
   let TestERC721;
+  let TestERC20;
 
   let clock;
   before(async () => {
-    [Clock, Market, TestWeth, TestERC721, TestTraitOracle] = await Promise.all([
-      ethers.getContractFactory("Clock"),
-      ethers.getContractFactory("ArchipelagoMarket"),
-      ethers.getContractFactory("TestWeth"),
-      ethers.getContractFactory("TestERC721"),
-      ethers.getContractFactory("TestTraitOracle"),
-    ]);
+    [Clock, Market, TestWeth, TestERC721, TestTraitOracle, TestERC20] =
+      await Promise.all([
+        ethers.getContractFactory("Clock"),
+        ethers.getContractFactory("ArchipelagoMarket"),
+        ethers.getContractFactory("TestWeth"),
+        ethers.getContractFactory("TestERC721"),
+        ethers.getContractFactory("TestTraitOracle"),
+        ethers.getContractFactory("TestERC20"),
+      ]);
     clock = await Clock.deploy();
     await clock.deployed();
   });
@@ -476,6 +479,41 @@ describe("Market", () => {
       const askerBalanceAfter = await asker.getBalance();
       expect(askerBalanceAfter.sub(askerBalanceBefore)).to.equal(exa);
     });
+    it("allows using a currency that is not weth", async () => {
+      const { market, signers, nft, asker, bidder, tokenIdBid, newAsk } =
+        await setup();
+      const currency = await TestERC20.deploy();
+      await currency.deployed();
+      await currency.mint(bidder.address, exa);
+      await currency
+        .connect(bidder)
+        .approve(market.address, ethers.constants.MaxUint256);
+      const bid = tokenIdBid({ currencyAddress: currency.address });
+      const ask = newAsk({
+        currencyAddress: currency.address,
+      });
+      await fillOrder(market, bid, bidder, ask, asker);
+      expect(await currency.balanceOf(asker.address)).to.equal(exa);
+      expect(await currency.balanceOf(bidder.address)).to.equal(0);
+    });
+    it("fails if the currency is not weth and the asker wants weth unwrapped", async () => {
+      const { market, signers, nft, asker, bidder, tokenIdBid, newAsk } =
+        await setup();
+      const currency = await TestERC20.deploy();
+      await currency.deployed();
+      await currency.mint(bidder.address, exa);
+      await currency
+        .connect(bidder)
+        .approve(market.address, ethers.constants.MaxUint256);
+      const bid = tokenIdBid({ currencyAddress: currency.address });
+      const ask = newAsk({
+        currencyAddress: currency.address,
+        unwrapWeth: true,
+      });
+      await expect(
+        fillOrder(market, bid, bidder, ask, asker)
+      ).to.be.revertedWith("function selector was not recognized");
+    });
 
     it("emits expected events when an order fills", async () => {
       const { market, asker, bidder, signers, tokenIdBid, newAsk } =
@@ -520,6 +558,32 @@ describe("Market", () => {
             { value: exa }
           );
         expect(await weth.balanceOf(bidder.address)).to.equal(0);
+      });
+      it("filling with eth fails if the currency is not weth", async () => {
+        const { market, bidder, asker, tokenIdBid, newAsk } = await setup();
+        const currency = await TestERC20.deploy();
+        await currency.deployed();
+        const bid = tokenIdBid({
+          price: exa,
+          currencyAddress: currency.address,
+        });
+        const ask = newAsk({ price: exa, currencyAddress: currency.address });
+        const bidSignature = await signBid(market, bid, bidder);
+        const askSignature = await signAsk(market, ask, asker);
+        const fail = market
+          .connect(bidder)
+          .fillOrderEth(
+            bid,
+            bidSignature,
+            SignatureKind.EIP_712,
+            ask,
+            askSignature,
+            SignatureKind.EIP_712,
+            { value: exa }
+          );
+        await expect(fail).to.be.revertedWith(
+          "function selector was not recognized"
+        );
       });
       it("only bidder can call fillOrderEth", async () => {
         const { market, bidder, asker, weth, tokenIdBid, newAsk } =
@@ -932,11 +996,21 @@ describe("Market", () => {
       it("rejects if bid and ask disagree about token address", async () => {
         const { market, signers, asker, bidder, tokenIdBid, newAsk } =
           await setup();
-        const bid = tokenIdBid({ tokenId: 0, tokenAddress: market.address });
-        const ask = newAsk({ tokenId: 1 });
+        const bid = tokenIdBid({ tokenAddress: market.address });
+        const ask = newAsk();
         await expect(
           fillOrder(market, bid, bidder, ask, asker)
         ).to.be.revertedWith("token address mismatch");
+      });
+
+      it("rejects if bid and ask disagree about currency address", async () => {
+        const { market, signers, asker, bidder, tokenIdBid, newAsk } =
+          await setup();
+        const bid = tokenIdBid({ currencyAddress: market.address });
+        const ask = newAsk();
+        await expect(
+          fillOrder(market, bid, bidder, ask, asker)
+        ).to.be.revertedWith("currency address mismatch");
       });
 
       it("rejects if ERC-20 transfer returns `false`", async () => {

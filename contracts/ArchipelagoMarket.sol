@@ -242,8 +242,9 @@ contract ArchipelagoMarket {
             askSignatureKind
         );
         require(msg.sender == bidder, "only bidder may fill with ETH");
-        weth.deposit{value: msg.value}();
-        require(weth.transfer(bidder, msg.value), TRANSFER_FAILED);
+        IWeth currency= IWeth(address(bid.currencyAddress));
+        currency.deposit{value: msg.value}();
+        require(currency.transfer(bidder, msg.value), TRANSFER_FAILED);
         _fillOrder(bid, bidder, ask, asker);
     }
 
@@ -297,7 +298,10 @@ contract ArchipelagoMarket {
         uint256 _cost = _price;
         require(_price == ask.price, "price mismatch");
 
+        IERC20 currency = ask.currencyAddress;
+
         require(token == bid.tokenAddress, "token address mismatch");
+        require(currency == bid.currencyAddress, "currency address mismatch");
         if (bid.bidType == BidType.TOKEN_ID) {
             require(bid.tokenId == tokenId, "tokenid mismatch");
         } else {
@@ -315,7 +319,7 @@ contract ArchipelagoMarket {
             // Proceeds to the seller are decreased by all Ask royalties
             _proceeds -= _amt;
             require(
-                weth.transferFrom(bidder, _royalty.recipient, _amt),
+                currency.transferFrom(bidder, _royalty.recipient, _amt),
                 TRANSFER_FAILED
             );
             emit RoyaltyPaid(
@@ -334,7 +338,7 @@ contract ArchipelagoMarket {
             // Proceeds to the seller are *not* decreased by Bid royalties,
             // meaning the bidder pays them on top of the bid price.
             require(
-                weth.transferFrom(bidder, _royalty.recipient, _amt),
+                currency.transferFrom(bidder, _royalty.recipient, _amt),
                 TRANSFER_FAILED
             );
             emit RoyaltyPaid(
@@ -359,17 +363,17 @@ contract ArchipelagoMarket {
         token.safeTransferFrom(tokenOwner, bidder, tokenId);
         if (ask.unwrapWeth) {
             require(
-                weth.transferFrom(bidder, address(this), _proceeds),
+                currency.transferFrom(bidder, address(this), _proceeds),
                 TRANSFER_FAILED
             );
-            weth.withdraw(_proceeds);
+            IWeth(address(currency)).withdraw(_proceeds);
             // Note: This invokes the asker's fallback function. Be careful of
             // re-entrancy attacks. We deliberately invalidate the bid and ask
             // nonces before this point, to prevent replay attacks.
             payable(asker).transfer(_proceeds);
         } else {
             require(
-                weth.transferFrom(bidder, asker, _proceeds),
+                currency.transferFrom(bidder, asker, _proceeds),
                 TRANSFER_FAILED
             );
         }
