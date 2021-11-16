@@ -114,6 +114,7 @@ describe("Market", () => {
         tokenAddress,
         tokenId,
         traitset: [],
+        traitOracle: ethers.constants.AddressZero,
         bidType: sdk.market.BidType.TOKEN_ID,
         royalties,
       };
@@ -126,6 +127,7 @@ describe("Market", () => {
       price = exa,
       tokenAddress = nft.address,
       traitset = [],
+      traitOracle = oracle.address,
       royalties = [],
     } = {}) {
       return {
@@ -136,6 +138,7 @@ describe("Market", () => {
         tokenAddress,
         tokenId: 0,
         traitset,
+        traitOracle,
         bidType: sdk.market.BidType.TRAITSET,
         royalties,
       };

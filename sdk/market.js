@@ -59,6 +59,7 @@ const Bid = [
   { type: "address", name: "tokenAddress" },
   { type: "uint256", name: "tokenId" },
   { type: "uint256[]", name: "traitset" },
+  { type: "address", name: "traitOracle" },
   { type: "Royalty[]", name: "royalties" },
 ];
 const Ask = [
@@ -115,7 +116,7 @@ const verify712 = Object.freeze({
 
 const TYPENAME_ROYALTY = "Royalty(address recipient,uint256 micros)";
 const TYPENAME_BID =
-  "Bid(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint8 bidType,address tokenAddress,uint256 tokenId,uint256[] traitset,Royalty[] royalties)";
+  "Bid(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint8 bidType,address tokenAddress,uint256 tokenId,uint256[] traitset,address traitOracle,Royalty[] royalties)";
 const TYPENAME_ASK =
   "Ask(uint256 nonce,uint256 created,uint256 deadline,uint256 price,address tokenAddress,uint256 tokenId,Royalty[] royalties,bool unwrapWeth,address authorizedBidder)";
 
@@ -145,6 +146,7 @@ function bidStructHash(bid) {
         "address",
         "uint256",
         "bytes32",
+        "address",
         "bytes32",
       ],
       [
@@ -159,6 +161,7 @@ function bidStructHash(bid) {
         ethers.utils.keccak256(
           ethers.utils.solidityPack(["uint256[]"], [bid.traitset])
         ),
+        bid.traitOracle,
         ethers.utils.keccak256(
           ethers.utils.solidityPack(
             ["bytes32[]"],

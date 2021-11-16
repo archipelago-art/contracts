@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "./ITraitOracle.sol";
 
 enum BidType {
     /// A bid for a specific token, keyed by token ID.
@@ -37,6 +38,10 @@ struct Bid {
     /// the bid. The array may be empty, in which case this naturally represents
     /// a floor bid on all tokens. For non-`TRAITSET` bids, this array is empty.
     uint256[] traitset;
+    /// For `TRAITSET` bids, this must be the address of a Trait oracle that is
+    //trusted / to determine trait membership for this bid. for non-`TRAITSET`
+    //bids, this will / be the zero address.
+    ITraitOracle traitOracle;
     // Royalties specified by the bidder. These royalties are added _on top of_ the
     // sale price. These are paid to agents that directly helped the bidder, e.g.
     // a broker who is helping the bidder, or to the frontend marketplace that
@@ -79,7 +84,7 @@ library MarketMessages {
 
     bytes32 internal constant TYPEHASH_BID =
         keccak256(
-            "Bid(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint8 bidType,address tokenAddress,uint256 tokenId,uint256[] traitset,Royalty[] royalties)Royalty(address recipient,uint256 micros)"
+            "Bid(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint8 bidType,address tokenAddress,uint256 tokenId,uint256[] traitset,address traitOracle,Royalty[] royalties)Royalty(address recipient,uint256 micros)"
         );
     bytes32 internal constant TYPEHASH_ASK =
         keccak256(
@@ -101,6 +106,7 @@ library MarketMessages {
                     _self.tokenAddress,
                     _self.tokenId,
                     keccak256(abi.encodePacked(_self.traitset)),
+                    _self.traitOracle,
                     _self.royalties.structHash()
                 )
             );

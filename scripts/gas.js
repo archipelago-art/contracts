@@ -177,6 +177,8 @@ TEST_CASES.push(async function* marketFills(props) {
       tokenAddress: token.address,
       tokenId: tokenId,
       traitset: [],
+      traitOracle: ethers.constants.AddressZero,
+      traitOracle: ethers.constants.AddressZero,
       bidType: BidType.TOKEN_ID,
       royalties: [],
     };
@@ -213,6 +215,7 @@ TEST_CASES.push(async function* marketFills(props) {
       tokenId: 0,
       tokenAddress: token.address,
       traitset: [traitId],
+      traitOracle: oracle.address,
       bidType: BidType.TRAITSET,
       royalties: [],
     };
@@ -249,6 +252,7 @@ TEST_CASES.push(async function* marketFills(props) {
       tokenId: tokenId,
       tokenAddress: token.address,
       traitset: [],
+      traitOracle: ethers.constants.AddressZero,
       bidType: BidType.TOKEN_ID,
       royalties: [],
     };
@@ -286,6 +290,7 @@ TEST_CASES.push(async function* marketFills(props) {
       tokenId: tokenId,
       tokenAddress: token.address,
       traitset: [],
+      traitOracle: ethers.constants.AddressZero,
       bidType: BidType.TOKEN_ID,
       royalties: [r, r, r, r],
     };
@@ -319,6 +324,7 @@ TEST_CASES.push(async function* marketFills(props) {
       tokenId: tokenId,
       tokenAddress: token.address,
       traitset: [],
+      traitOracle: ethers.constants.AddressZero,
       bidType: BidType.TOKEN_ID,
       royalties: [],
     };
