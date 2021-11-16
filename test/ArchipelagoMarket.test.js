@@ -84,7 +84,7 @@ describe("Market", () => {
       nft.deployed(),
       oracle.deployed(),
     ]);
-    await market.initialize(weth.address, oracle.address);
+    await market.initialize(weth.address, ethers.constants.AddressZero);
     const bidder = signers[1];
     const asker = signers[2];
     const otherSigner = signers[3];

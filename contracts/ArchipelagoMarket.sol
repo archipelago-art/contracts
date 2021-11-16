@@ -308,7 +308,7 @@ contract ArchipelagoMarket {
         } else {
             for (uint256 _i = 0; _i < bid.traitset.length; _i++) {
                 require(
-                    traitOracle.hasTrait(tokenId, bid.traitset[_i]),
+                    bid.traitOracle.hasTrait(tokenId, bid.traitset[_i]),
                     "missing trait"
                 );
             }
