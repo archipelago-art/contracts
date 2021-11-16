@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "./ITraitOracle.sol";
 
@@ -25,6 +26,9 @@ struct Bid {
     uint256 created;
     /// Timestamp past which this bid is no longer valid.
     uint256 deadline;
+    /// Address of the ERC-20 contract being used as payment currency.
+    /// (typically WETH)
+    IERC20 currencyAddress;
     /// Offer price, in wei.
     uint256 price;
     BidType bidType;
@@ -59,6 +63,9 @@ struct Ask {
     uint256 deadline;
     /// List price, in wei.
     uint256 price;
+    /// Address of the ERC-20 contract being used as payment currency.
+    /// (typically WETH)
+    IERC20 currencyAddress;
     /// Address of the ERC-721 whose tokens are being traded
     IERC721 tokenAddress;
     uint256 tokenId;
@@ -84,11 +91,11 @@ library MarketMessages {
 
     bytes32 internal constant TYPEHASH_BID =
         keccak256(
-            "Bid(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint8 bidType,address tokenAddress,uint256 tokenId,uint256[] traitset,address traitOracle,Royalty[] royalties)Royalty(address recipient,uint256 micros)"
+            "Bid(uint256 nonce,uint256 created,uint256 deadline,address currencyAddress,uint256 price,uint8 bidType,address tokenAddress,uint256 tokenId,uint256[] traitset,address traitOracle,Royalty[] royalties)Royalty(address recipient,uint256 micros)"
         );
     bytes32 internal constant TYPEHASH_ASK =
         keccak256(
-            "Ask(uint256 nonce,uint256 created,uint256 deadline,uint256 price,address tokenAddress,uint256 tokenId,Royalty[] royalties,bool unwrapWeth,address authorizedBidder)Royalty(address recipient,uint256 micros)"
+            "Ask(uint256 nonce,uint256 created,uint256 deadline,address currencyAddress,uint256 price,address tokenAddress,uint256 tokenId,Royalty[] royalties,bool unwrapWeth,address authorizedBidder)Royalty(address recipient,uint256 micros)"
         );
     bytes32 internal constant TYPEHASH_ROYALTY =
         keccak256("Royalty(address recipient,uint256 micros)");
@@ -101,6 +108,7 @@ library MarketMessages {
                     _self.nonce,
                     _self.created,
                     _self.deadline,
+                    _self.currencyAddress,
                     _self.price,
                     _self.bidType,
                     _self.tokenAddress,
@@ -120,6 +128,7 @@ library MarketMessages {
                     _self.nonce,
                     _self.created,
                     _self.deadline,
+                    _self.currencyAddress,
                     _self.price,
                     _self.tokenAddress,
                     _self.tokenId,

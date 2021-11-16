@@ -45,6 +45,7 @@ const Bid = [
   { type: "uint256", name: "nonce" },
   { type: "uint256", name: "created" },
   { type: "uint256", name: "deadline" },
+  { type: "address", name: "currencyAddress" },
   { type: "uint256", name: "price" },
   { type: "uint8", name: "bidType" },
   { type: "address", name: "tokenAddress" },
@@ -57,6 +58,7 @@ const Ask = [
   { type: "uint256", name: "nonce" },
   { type: "uint256", name: "created" },
   { type: "uint256", name: "deadline" },
+  { type: "address", name: "currencyAddress" },
   { type: "uint256", name: "price" },
   { type: "address", name: "tokenAddress" },
   { type: "uint256", name: "tokenId" },
@@ -107,9 +109,9 @@ const verify712 = Object.freeze({
 
 const TYPENAME_ROYALTY = "Royalty(address recipient,uint256 micros)";
 const TYPENAME_BID =
-  "Bid(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint8 bidType,address tokenAddress,uint256 tokenId,uint256[] traitset,address traitOracle,Royalty[] royalties)";
+  "Bid(uint256 nonce,uint256 created,uint256 deadline,address currencyAddress,uint256 price,uint8 bidType,address tokenAddress,uint256 tokenId,uint256[] traitset,address traitOracle,Royalty[] royalties)";
 const TYPENAME_ASK =
-  "Ask(uint256 nonce,uint256 created,uint256 deadline,uint256 price,address tokenAddress,uint256 tokenId,Royalty[] royalties,bool unwrapWeth,address authorizedBidder)";
+  "Ask(uint256 nonce,uint256 created,uint256 deadline,address currencyAddress,uint256 price,address tokenAddress,uint256 tokenId,Royalty[] royalties,bool unwrapWeth,address authorizedBidder)";
 
 const TYPEHASH_ROYALTY = utf8Hash(TYPENAME_ROYALTY);
 const TYPEHASH_BID = utf8Hash(TYPENAME_BID + TYPENAME_ROYALTY);
@@ -132,6 +134,7 @@ function bidStructHash(bid) {
         "uint256",
         "uint256",
         "uint256",
+        "address",
         "uint256",
         "uint8",
         "address",
@@ -145,6 +148,7 @@ function bidStructHash(bid) {
         bid.nonce,
         bid.created,
         bid.deadline,
+        bid.currencyAddress,
         bid.price,
         bid.bidType,
         bid.tokenAddress,
@@ -172,6 +176,7 @@ function askStructHash(ask) {
         "uint256",
         "uint256",
         "uint256",
+        "address",
         "uint256",
         "address",
         "uint256",
@@ -184,6 +189,7 @@ function askStructHash(ask) {
         ask.nonce,
         ask.created,
         ask.deadline,
+        ask.currencyAddress,
         ask.price,
         ask.tokenAddress,
         ask.tokenId,
