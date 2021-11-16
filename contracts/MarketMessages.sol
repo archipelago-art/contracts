@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+
 enum BidType {
     /// A bid for a specific token, keyed by token ID.
     TOKEN_ID,
@@ -25,6 +27,8 @@ struct Bid {
     /// Offer price, in wei.
     uint256 price;
     BidType bidType;
+    /// Address of the ERC-721 whose tokens are being traded
+    IERC721 tokenAddress;
     /// For `TOKEN_ID` bids, this is the token that the bid applies to. For
     /// other bids, this is zero.
     uint256 tokenId;
@@ -50,6 +54,8 @@ struct Ask {
     uint256 deadline;
     /// List price, in wei.
     uint256 price;
+    /// Address of the ERC-721 whose tokens are being traded
+    IERC721 tokenAddress;
     uint256 tokenId;
     // Royalties that are paid by the asker, i.e. are subtracted from the amount
     // of the sale price that is given to the asker when the sale completes.
@@ -73,11 +79,11 @@ library MarketMessages {
 
     bytes32 internal constant TYPEHASH_BID =
         keccak256(
-            "Bid(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint8 bidType,uint256 tokenId,uint256[] traitset,Royalty[] royalties)Royalty(address recipient,uint256 micros)"
+            "Bid(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint8 bidType,address tokenAddress,uint256 tokenId,uint256[] traitset,Royalty[] royalties)Royalty(address recipient,uint256 micros)"
         );
     bytes32 internal constant TYPEHASH_ASK =
         keccak256(
-            "Ask(uint256 nonce,uint256 created,uint256 deadline,uint256 price,uint256 tokenId,Royalty[] royalties,bool unwrapWeth,address authorizedBidder)Royalty(address recipient,uint256 micros)"
+            "Ask(uint256 nonce,uint256 created,uint256 deadline,uint256 price,address tokenAddress,uint256 tokenId,Royalty[] royalties,bool unwrapWeth,address authorizedBidder)Royalty(address recipient,uint256 micros)"
         );
     bytes32 internal constant TYPEHASH_ROYALTY =
         keccak256("Royalty(address recipient,uint256 micros)");
@@ -92,6 +98,7 @@ library MarketMessages {
                     _self.deadline,
                     _self.price,
                     _self.bidType,
+                    _self.tokenAddress,
                     _self.tokenId,
                     keccak256(abi.encodePacked(_self.traitset)),
                     _self.royalties.structHash()
@@ -108,6 +115,7 @@ library MarketMessages {
                     _self.created,
                     _self.deadline,
                     _self.price,
+                    _self.tokenAddress,
                     _self.tokenId,
                     _self.royalties.structHash(),
                     _self.unwrapWeth,
