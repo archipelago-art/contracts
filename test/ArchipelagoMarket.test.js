@@ -17,7 +17,7 @@ describe("Market", () => {
   before(async () => {
     [Clock, Market, TestWeth, TestERC721, TestTraitOracle] = await Promise.all([
       ethers.getContractFactory("Clock"),
-      ethers.getContractFactory("Market"),
+      ethers.getContractFactory("ArchipelagoMarket"),
       ethers.getContractFactory("TestWeth"),
       ethers.getContractFactory("TestERC721"),
       ethers.getContractFactory("TestTraitOracle"),

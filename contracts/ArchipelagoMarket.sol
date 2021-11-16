@@ -9,7 +9,7 @@ import "./MarketEip712Salt.sol";
 import "./MarketMessages.sol";
 import "./SignatureChecker.sol";
 
-contract Market {
+contract ArchipelagoMarket {
     using MarketMessages for Bid;
     using MarketMessages for Ask;
     using MarketEip712SaltSerialization for MarketEip712Salt;

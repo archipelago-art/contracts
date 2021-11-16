@@ -10,7 +10,7 @@ const { BidType } = sdk.market;
 const TEST_CASES = [];
 
 TEST_CASES.push(async function* marketDeploy(props) {
-  const market = await props.factories.Market.deploy();
+  const market = await props.factories.ArchipelagoMarket.deploy();
   await market.deployed();
   yield ["Market deploy", await market.deployTransaction.wait()];
 });
@@ -110,7 +110,7 @@ TEST_CASES.push(async function* marketFills(props) {
   const alice = props.signers[2];
   const exa = BN.from("10").pow(18);
   const chainId = await ethers.provider.send("eth_chainId");
-  const market = await props.factories.Market.deploy();
+  const market = await props.factories.ArchipelagoMarket.deploy();
   const weth = await props.factories.TestWeth.deploy();
   const token = await props.factories.TestERC721.deploy();
   const oracle = await props.factories.ArtblocksTraitOracle.deploy();
@@ -359,14 +359,19 @@ async function main() {
     if (patterns.length === 0) return true;
     return patterns.some((p) => name.match(p));
   }
-  const [ArtblocksTraitOracle, Market, TestTraitOracle, TestWeth, TestERC721] =
-    await Promise.all([
-      ethers.getContractFactory("ArtblocksTraitOracle"),
-      ethers.getContractFactory("Market"),
-      ethers.getContractFactory("TestTraitOracle"),
-      ethers.getContractFactory("TestWeth"),
-      ethers.getContractFactory("TestERC721"),
-    ]);
+  const [
+    ArtblocksTraitOracle,
+    ArchipelagoMarket,
+    TestTraitOracle,
+    TestWeth,
+    TestERC721,
+  ] = await Promise.all([
+    ethers.getContractFactory("ArtblocksTraitOracle"),
+    ethers.getContractFactory("ArchipelagoMarket"),
+    ethers.getContractFactory("TestTraitOracle"),
+    ethers.getContractFactory("TestWeth"),
+    ethers.getContractFactory("TestERC721"),
+  ]);
   let allPassed = true;
   for (const testCase of TEST_CASES) {
     if (!testCaseMatches(testCase.name)) continue;
@@ -374,7 +379,7 @@ async function main() {
       const gen = testCase({
         factories: {
           ArtblocksTraitOracle,
-          Market,
+          ArchipelagoMarket,
           TestTraitOracle,
           TestWeth,
           TestERC721,
