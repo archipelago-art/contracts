@@ -40,26 +40,6 @@ describe("Market", () => {
     };
   }
 
-  async function rawDomainSeparator(market) {
-    const { name, chainId } = sdk.market.domainSeparator(
-      await domainInfo(market)
-    );
-    return ethers.utils.keccak256(
-      ethers.utils.defaultAbiCoder.encode(
-        ["bytes32", "bytes32", "uint256"],
-        [
-          ethers.utils.keccak256(
-            ethers.utils.toUtf8Bytes(
-              "EIP712Domain(string name,uint256 chainId)"
-            )
-          ),
-          ethers.utils.keccak256(ethers.utils.toUtf8Bytes(name)),
-          chainId,
-        ]
-      )
-    );
-  }
-
   function computeTradeId(bid, bidder, ask, asker) {
     const hash = ethers.utils.keccak256(
       ethers.utils.defaultAbiCoder.encode(
