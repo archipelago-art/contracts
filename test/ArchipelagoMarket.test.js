@@ -919,6 +919,44 @@ describe("Market", () => {
           sellerRoyalties: [],
         });
       });
+
+      describe("required royalty matching", () => {
+        it("errors if required royalties are a different length", async () => {
+          const { market, signers, weth, asker, bidder, tokenIdBid, newAsk } =
+            await setup();
+          const bid = tokenIdBid({
+            requiredRoyalties: [{ recipient: bidder.address, micros: 10 }],
+          });
+          const ask = newAsk();
+          await expect(
+            fillOrder(market, bid, bidder, ask, asker)
+          ).to.be.revertedWith("Market: required royalties don't match");
+        });
+        it("errors if required royalties disagree on a recipient", async () => {
+          const { market, asker, bidder, tokenIdBid, newAsk } = await setup();
+          const bid = tokenIdBid({
+            requiredRoyalties: [{ recipient: bidder.address, micros: 10 }],
+          });
+          const ask = newAsk({
+            requiredRoyalties: [{ recipient: asker.address, micros: 10 }],
+          });
+          await expect(
+            fillOrder(market, bid, bidder, ask, asker)
+          ).to.be.revertedWith("Market: required royalties don't match");
+        });
+        it("errors if required royalties disagree on an amount", async () => {
+          const { market, asker, bidder, tokenIdBid, newAsk } = await setup();
+          const bid = tokenIdBid({
+            requiredRoyalties: [{ recipient: bidder.address, micros: 10 }],
+          });
+          const ask = newAsk({
+            requiredRoyalties: [{ recipient: bidder.address, micros: 11 }],
+          });
+          await expect(
+            fillOrder(market, bid, bidder, ask, asker)
+          ).to.be.revertedWith("Market: required royalties don't match");
+        });
+      });
     });
 
     describe("failure cases", () => {

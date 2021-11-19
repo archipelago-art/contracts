@@ -72,6 +72,8 @@ contract ArchipelagoMarket {
 
     string constant TRANSFER_FAILED = "Market: transfer failed";
 
+    string constant ROYALTY_MISMATCH = "Market: required royalties don't match";
+
     bytes32 constant TYPEHASH_DOMAIN_SEPARATOR =
         keccak256(
             "EIP712Domain(string name,uint256 chainId,address verifyingContract)"
@@ -296,6 +298,17 @@ contract ArchipelagoMarket {
                     "missing trait"
                 );
             }
+        }
+
+        require(
+            ask.requiredRoyalties.length == bid.requiredRoyalties.length,
+            ROYALTY_MISMATCH
+        );
+        for (uint256 i = 0; i < ask.requiredRoyalties.length; i++) {
+            Royalty memory royalty = ask.requiredRoyalties[i];
+            Royalty memory _royalty = bid.requiredRoyalties[i];
+            require(royalty.recipient == _royalty.recipient, ROYALTY_MISMATCH);
+            require(royalty.micros == _royalty.micros, ROYALTY_MISMATCH);
         }
 
         for (uint256 i = 0; i < ask.extraRoyalties.length; i++) {
