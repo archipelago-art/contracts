@@ -58,8 +58,8 @@ contract ArchipelagoMarket {
     mapping(address => uint256) public askTimestampCancellation;
     mapping(address => mapping(uint256 => bool)) public nonceCancellation;
 
-    /// `onChainApprovals[_address][_structHash]` is `true` if `_address` has
-    /// provided on-chain approval of a message with hash `_structHash`.
+    /// `onChainApprovals[address][structHash]` is `true` if `address` has
+    /// provided on-chain approval of a message with hash `structHash`.
     ///
     /// These approvals are not bounded by a domain separator; the contract
     /// storage itself is the signing domain.
@@ -80,7 +80,7 @@ contract ArchipelagoMarket {
     /// TODO: ensure admin can skim any ETH that is mistakenly sent here.
     receive() external payable {}
 
-    function _computeDomainSeparator() internal view returns (bytes32) {
+    function computeDomainSeparator() internal view returns (bytes32) {
         return
             keccak256(
                 abi.encode(
@@ -92,80 +92,80 @@ contract ArchipelagoMarket {
             );
     }
 
-    function _verify(
-        bytes32 _domainSeparator,
-        bytes32 _structHash,
-        bytes memory _signature,
-        SignatureKind _signatureKind
+    function verify(
+        bytes32 domainSeparator,
+        bytes32 structHash,
+        bytes memory signature,
+        SignatureKind signatureKind
     ) internal view returns (address) {
-        if (_signatureKind != SignatureKind.NO_SIGNATURE) {
+        if (signatureKind != SignatureKind.NO_SIGNATURE) {
             return
                 SignatureChecker.recover(
-                    _domainSeparator,
-                    _structHash,
-                    _signature,
-                    _signatureKind
+                    domainSeparator,
+                    structHash,
+                    signature,
+                    signatureKind
                 );
         }
-        address _signer = abi.decode(_signature, (address));
+        address signer = abi.decode(signature, (address));
         require(
-            onChainApprovals[_signer][_structHash],
+            onChainApprovals[signer][structHash],
             "Market: on-chain approval missing"
         );
-        return _signer;
+        return signer;
     }
 
-    function setOnChainBidApproval(Bid memory _bid, bool _approved) external {
-        bytes32 _hash = _bid.structHash();
-        onChainApprovals[msg.sender][_hash] = _approved;
-        emit BidApproval(msg.sender, _hash, _approved, _bid);
+    function setOnChainBidApproval(Bid memory bid, bool approved) external {
+        bytes32 hash = bid.structHash();
+        onChainApprovals[msg.sender][hash] = approved;
+        emit BidApproval(msg.sender, hash, approved, bid);
     }
 
-    function setOnChainAskApproval(Ask memory _ask, bool _approved) external {
-        bytes32 _hash = _ask.structHash();
-        onChainApprovals[msg.sender][_hash] = _approved;
-        emit AskApproval(msg.sender, _hash, _approved, _ask);
+    function setOnChainAskApproval(Ask memory ask, bool approved) external {
+        bytes32 hash = ask.structHash();
+        onChainApprovals[msg.sender][hash] = approved;
+        emit AskApproval(msg.sender, hash, approved, ask);
     }
 
     /// Computes the EIP-712 struct hash of the given bid. The resulting hash
     /// can be passed to `onChainApprovals(address, bytes32)` to check whether
     /// a given account has signed this bid.
-    function bidHash(Bid memory _bid) external pure returns (bytes32) {
-        return _bid.structHash();
+    function bidHash(Bid memory bid) external pure returns (bytes32) {
+        return bid.structHash();
     }
 
     /// Computes the EIP-712 struct hash of the given ask. The resulting hash
     /// can be passed to `onChainApprovals(address, bytes32)` to check whether
     /// a given account has signed this ask.
-    function askHash(Ask memory _ask) external pure returns (bytes32) {
-        return _ask.structHash();
+    function askHash(Ask memory ask) external pure returns (bytes32) {
+        return ask.structHash();
     }
 
-    function cancelBids(uint256 _cancellationTimestamp) external {
+    function cancelBids(uint256 cancellationTimestamp) external {
         require(
-            _cancellationTimestamp > bidTimestampCancellation[msg.sender],
+            cancellationTimestamp > bidTimestampCancellation[msg.sender],
             INVALID_ARGS
         );
-        require(_cancellationTimestamp <= block.timestamp, INVALID_ARGS);
-        bidTimestampCancellation[msg.sender] = _cancellationTimestamp;
-        emit BidCancellation(msg.sender, _cancellationTimestamp);
+        require(cancellationTimestamp <= block.timestamp, INVALID_ARGS);
+        bidTimestampCancellation[msg.sender] = cancellationTimestamp;
+        emit BidCancellation(msg.sender, cancellationTimestamp);
     }
 
-    function cancelAsks(uint256 _cancellationTimestamp) external {
+    function cancelAsks(uint256 cancellationTimestamp) external {
         require(
-            _cancellationTimestamp > askTimestampCancellation[msg.sender],
+            cancellationTimestamp > askTimestampCancellation[msg.sender],
             INVALID_ARGS
         );
-        require(_cancellationTimestamp <= block.timestamp, INVALID_ARGS);
-        askTimestampCancellation[msg.sender] = _cancellationTimestamp;
-        emit AskCancellation(msg.sender, _cancellationTimestamp);
+        require(cancellationTimestamp <= block.timestamp, INVALID_ARGS);
+        askTimestampCancellation[msg.sender] = cancellationTimestamp;
+        emit AskCancellation(msg.sender, cancellationTimestamp);
     }
 
-    function cancelNonces(uint256[] memory _nonces) external {
-        for (uint256 _i; _i < _nonces.length; _i++) {
-            uint256 _nonce = _nonces[_i];
-            nonceCancellation[msg.sender][_nonce] = true;
-            emit NonceCancellation(msg.sender, _nonce);
+    function cancelNonces(uint256[] memory nonces) external {
+        for (uint256 i; i < nonces.length; i++) {
+            uint256 nonce = nonces[i];
+            nonceCancellation[msg.sender][nonce] = true;
+            emit NonceCancellation(msg.sender, nonce);
         }
     }
 
@@ -177,15 +177,15 @@ contract ArchipelagoMarket {
         bytes memory askSignature,
         SignatureKind askSignatureKind
     ) external {
-        bytes32 _domainSeparator = _computeDomainSeparator();
-        address bidder = _verify(
-            _domainSeparator,
+        bytes32 domainSeparator = computeDomainSeparator();
+        address bidder = verify(
+            domainSeparator,
             bid.structHash(),
             bidSignature,
             bidSignatureKind
         );
-        address asker = _verify(
-            _domainSeparator,
+        address asker = verify(
+            domainSeparator,
             ask.structHash(),
             askSignature,
             askSignatureKind
@@ -213,15 +213,15 @@ contract ArchipelagoMarket {
         bytes memory askSignature,
         SignatureKind askSignatureKind
     ) external payable {
-        bytes32 _domainSeparator = _computeDomainSeparator();
-        address bidder = _verify(
-            _domainSeparator,
+        bytes32 domainSeparator = computeDomainSeparator();
+        address bidder = verify(
+            domainSeparator,
             bid.structHash(),
             bidSignature,
             bidSignatureKind
         );
-        address asker = _verify(
-            _domainSeparator,
+        address asker = verify(
+            domainSeparator,
             ask.structHash(),
             askSignature,
             askSignatureKind
@@ -273,15 +273,15 @@ contract ArchipelagoMarket {
         nonceCancellation[bidder][bid.nonce] = true;
         nonceCancellation[asker][ask.nonce] = true;
 
-        uint256 _tradeId = uint256(
+        uint256 tradeId = uint256(
             keccak256(abi.encode(bidder, bid.nonce, asker, ask.nonce))
         );
-        uint256 _price = bid.price;
+        uint256 price = bid.price;
         // amount paid to seller, after subtracting asker royalties
-        uint256 _proceeds = _price;
+        uint256 proceeds = price;
         // amount spent by the buyer, after including bidder royalties
-        uint256 _cost = _price;
-        require(_price == ask.price, "price mismatch");
+        uint256 cost = price;
+        require(price == ask.price, "price mismatch");
 
         IERC20 currency = ask.currencyAddress;
 
@@ -290,48 +290,48 @@ contract ArchipelagoMarket {
         if (bid.bidType == BidType.TOKEN_ID) {
             require(bid.tokenId == tokenId, "tokenid mismatch");
         } else {
-            for (uint256 _i = 0; _i < bid.traitset.length; _i++) {
+            for (uint256 i = 0; i < bid.traitset.length; i++) {
                 require(
-                    bid.traitOracle.hasTrait(tokenId, bid.traitset[_i]),
+                    bid.traitOracle.hasTrait(tokenId, bid.traitset[i]),
                     "missing trait"
                 );
             }
         }
 
-        for (uint256 _i = 0; _i < ask.extraRoyalties.length; _i++) {
-            Royalty memory _royalty = ask.extraRoyalties[_i];
-            uint256 _amt = (_royalty.micros * _price) / 1000000;
+        for (uint256 i = 0; i < ask.extraRoyalties.length; i++) {
+            Royalty memory royalty = ask.extraRoyalties[i];
+            uint256 amt = (royalty.micros * price) / 1000000;
             // Proceeds to the seller are decreased by all Ask royalties
-            _proceeds -= _amt;
+            proceeds -= amt;
             require(
-                currency.transferFrom(bidder, _royalty.recipient, _amt),
+                currency.transferFrom(bidder, royalty.recipient, amt),
                 TRANSFER_FAILED
             );
             emit RoyaltyPaid(
-                _tradeId,
+                tradeId,
                 asker,
-                _royalty.recipient,
-                _royalty.micros,
-                _amt
+                royalty.recipient,
+                royalty.micros,
+                amt
             );
         }
 
-        for (uint256 _i = 0; _i < bid.extraRoyalties.length; _i++) {
-            Royalty memory _royalty = bid.extraRoyalties[_i];
-            uint256 _amt = (_royalty.micros * _price) / 1000000;
-            _cost += _amt;
+        for (uint256 i = 0; i < bid.extraRoyalties.length; i++) {
+            Royalty memory royalty = bid.extraRoyalties[i];
+            uint256 amt = (royalty.micros * price) / 1000000;
+            cost += amt;
             // Proceeds to the seller are *not* decreased by Bid royalties,
             // meaning the bidder pays them on top of the bid price.
             require(
-                currency.transferFrom(bidder, _royalty.recipient, _amt),
+                currency.transferFrom(bidder, royalty.recipient, amt),
                 TRANSFER_FAILED
             );
             emit RoyaltyPaid(
-                _tradeId,
+                tradeId,
                 bidder,
-                _royalty.recipient,
-                _royalty.micros,
-                _amt
+                royalty.recipient,
+                royalty.micros,
+                amt
             );
         }
 
@@ -348,22 +348,22 @@ contract ArchipelagoMarket {
         token.safeTransferFrom(tokenOwner, bidder, tokenId);
         if (ask.unwrapWeth) {
             require(
-                currency.transferFrom(bidder, address(this), _proceeds),
+                currency.transferFrom(bidder, address(this), proceeds),
                 TRANSFER_FAILED
             );
-            IWeth(address(currency)).withdraw(_proceeds);
+            IWeth(address(currency)).withdraw(proceeds);
             // Note: This invokes the asker's fallback function. Be careful of
             // re-entrancy attacks. We deliberately invalidate the bid and ask
             // nonces before this point, to prevent replay attacks.
-            payable(asker).transfer(_proceeds);
+            payable(asker).transfer(proceeds);
         } else {
             require(
-                currency.transferFrom(bidder, asker, _proceeds),
+                currency.transferFrom(bidder, asker, proceeds),
                 TRANSFER_FAILED
             );
         }
 
-        emit Trade(_tradeId, bidder, asker, _price, _proceeds, _cost);
-        emit TokenTraded(_tradeId, token, tokenId);
+        emit Trade(tradeId, bidder, asker, price, proceeds, cost);
+        emit TokenTraded(tradeId, token, tokenId);
     }
 }
