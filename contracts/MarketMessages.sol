@@ -20,20 +20,26 @@ struct Royalty {
 }
 
 struct Bid {
+    /*
+     Shared fields for all Orders:
+     */
     uint256 nonce;
-    /// Timestamp at which this bid was created. Affects time-based
+    /// Timestamp at which this order was created. Affects time-based
     /// cancellations.
     uint256 created;
-    /// Timestamp past which this bid is no longer valid.
+    /// Timestamp past which this order is no longer valid.
     uint256 deadline;
     /// Address of the ERC-20 contract being used as payment currency.
     /// (typically WETH)
     IERC20 currencyAddress;
-    /// Offer price, in wei.
+    /// Order price, in wei.
     uint256 price;
-    BidType bidType;
     /// Address of the ERC-721 whose tokens are being traded
     IERC721 tokenAddress;
+    /*
+     * Bid-specific fields
+     */
+    BidType bidType;
     /// For `TOKEN_ID` bids, this is the token that the bid applies to. For
     /// other bids, this is zero.
     uint256 tokenId;
@@ -55,19 +61,25 @@ struct Bid {
 }
 
 struct Ask {
+    /*
+     Shared fields for all Orders:
+     */
     uint256 nonce;
-    /// Timestamp at which this ask was created. Affects time-based
+    /// Timestamp at which this order was created. Affects time-based
     /// cancellations.
     uint256 created;
-    /// Timestamp past which this ask is no longer valid.
+    /// Timestamp past which this order is no longer valid.
     uint256 deadline;
-    /// List price, in wei.
-    uint256 price;
     /// Address of the ERC-20 contract being used as payment currency.
     /// (typically WETH)
     IERC20 currencyAddress;
+    /// Order price, in wei.
+    uint256 price;
     /// Address of the ERC-721 whose tokens are being traded
     IERC721 tokenAddress;
+    /*
+    Ask-specific fields.
+    */
     uint256 tokenId;
     // Royalties that are paid by the asker, i.e. are subtracted from the amount
     // of the sale price that is given to the asker when the sale completes.
@@ -91,7 +103,7 @@ library MarketMessages {
 
     bytes32 internal constant TYPEHASH_BID =
         keccak256(
-            "Bid(uint256 nonce,uint256 created,uint256 deadline,address currencyAddress,uint256 price,uint8 bidType,address tokenAddress,uint256 tokenId,uint256[] traitset,address traitOracle,Royalty[] royalties)Royalty(address recipient,uint256 micros)"
+            "Bid(uint256 nonce,uint256 created,uint256 deadline,address currencyAddress,uint256 price,address tokenAddress,uint8 bidType,uint256 tokenId,uint256[] traitset,address traitOracle,Royalty[] royalties)Royalty(address recipient,uint256 micros)"
         );
     bytes32 internal constant TYPEHASH_ASK =
         keccak256(
@@ -110,8 +122,8 @@ library MarketMessages {
                     _self.deadline,
                     _self.currencyAddress,
                     _self.price,
-                    _self.bidType,
                     _self.tokenAddress,
+                    _self.bidType,
                     _self.tokenId,
                     keccak256(abi.encodePacked(_self.traitset)),
                     _self.traitOracle,
