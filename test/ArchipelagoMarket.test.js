@@ -81,8 +81,9 @@ describe("Market", () => {
       currencyAddress = weth.address,
       price = exa,
       tokenAddress = nft.address,
-      tokenId = 0,
+      requiredRoyalties = [],
       extraRoyalties = [],
+      tokenId = 0,
     } = {}) {
       return {
         nonce,
@@ -91,11 +92,12 @@ describe("Market", () => {
         currencyAddress,
         price,
         tokenAddress,
+        requiredRoyalties,
+        extraRoyalties,
         tokenId,
         traitset: [],
         traitOracle: ethers.constants.AddressZero,
         bidType: sdk.market.BidType.TOKEN_ID,
-        extraRoyalties,
       };
     }
 
@@ -106,9 +108,10 @@ describe("Market", () => {
       currencyAddress = weth.address,
       price = exa,
       tokenAddress = nft.address,
+      requiredRoyalties = [],
+      extraRoyalties = [],
       traitset = [],
       traitOracle = oracle.address,
-      extraRoyalties = [],
     } = {}) {
       return {
         nonce,
@@ -117,11 +120,12 @@ describe("Market", () => {
         currencyAddress,
         price,
         tokenAddress,
+        requiredRoyalties,
+        extraRoyalties,
         tokenId: 0,
         traitset,
         traitOracle,
         bidType: sdk.market.BidType.TRAITSET,
-        extraRoyalties,
       };
     }
 
@@ -133,6 +137,7 @@ describe("Market", () => {
       price = exa,
       tokenAddress = nft.address,
       tokenId = 0,
+      requiredRoyalties = [],
       extraRoyalties = [],
       unwrapWeth = false,
       authorizedBidder = ethers.constants.AddressZero,
@@ -145,6 +150,7 @@ describe("Market", () => {
         price,
         tokenAddress,
         tokenId,
+        requiredRoyalties,
         extraRoyalties,
         unwrapWeth,
         authorizedBidder,

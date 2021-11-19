@@ -36,6 +36,11 @@ struct Bid {
     uint256 price;
     /// Address of the ERC-721 whose tokens are being traded
     IERC721 tokenAddress;
+    /// Royalties which are required by the Archipelago marketplace. These
+    /// royalties are paid by the seller, but they are included in both the
+    /// Bid and the Ask to avoid fee evasion where a seller can fill a Bid
+    /// without including their required royalties.
+    Royalty[] requiredRoyalties;
     /// Extra royalties specified by the participant who created this order.
     /// If the extra royalties are added on an Ask, they will be paid by the
     /// seller; extra royalties on a Bid are paid by the buyer (i.e. on top of
@@ -76,6 +81,11 @@ struct Ask {
     uint256 price;
     /// Address of the ERC-721 whose tokens are being traded
     IERC721 tokenAddress;
+    /// Royalties which are required by the Archipelago marketplace. These
+    /// royalties are paid by the seller, but they are included in both the
+    /// Bid and the Ask to avoid fee evasion where a seller can fill a Bid
+    /// without including their required royalties.
+    Royalty[] requiredRoyalties;
     /// Extra royalties specified by the participant who created this order.
     /// If the extra royalties are added on an Ask, they will be paid by the
     /// seller; extra royalties on a Bid are paid by the buyer (i.e. on top of
@@ -102,11 +112,11 @@ library MarketMessages {
 
     bytes32 internal constant TYPEHASH_BID =
         keccak256(
-            "Bid(uint256 nonce,uint256 created,uint256 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] extraRoyalties,uint8 bidType,uint256 tokenId,uint256[] traitset,address traitOracle)Royalty(address recipient,uint256 micros)"
+            "Bid(uint256 nonce,uint256 created,uint256 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties,Royalty[] extraRoyalties,uint8 bidType,uint256 tokenId,uint256[] traitset,address traitOracle)Royalty(address recipient,uint256 micros)"
         );
     bytes32 internal constant TYPEHASH_ASK =
         keccak256(
-            "Ask(uint256 nonce,uint256 created,uint256 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] extraRoyalties,uint256 tokenId,bool unwrapWeth,address authorizedBidder)Royalty(address recipient,uint256 micros)"
+            "Ask(uint256 nonce,uint256 created,uint256 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties,Royalty[] extraRoyalties,uint256 tokenId,bool unwrapWeth,address authorizedBidder)Royalty(address recipient,uint256 micros)"
         );
     bytes32 internal constant TYPEHASH_ROYALTY =
         keccak256("Royalty(address recipient,uint256 micros)");
@@ -122,6 +132,7 @@ library MarketMessages {
                     _self.currencyAddress,
                     _self.price,
                     _self.tokenAddress,
+                    _self.requiredRoyalties.structHash(),
                     _self.extraRoyalties.structHash(),
                     _self.bidType,
                     _self.tokenId,
@@ -142,6 +153,7 @@ library MarketMessages {
                     _self.currencyAddress,
                     _self.price,
                     _self.tokenAddress,
+                    _self.requiredRoyalties.structHash(),
                     _self.extraRoyalties.structHash(),
                     _self.tokenId,
                     _self.unwrapWeth,

@@ -180,6 +180,7 @@ TEST_CASES.push(async function* marketFills(props) {
       traitOracle: ethers.constants.AddressZero,
       traitOracle: ethers.constants.AddressZero,
       bidType: BidType.TOKEN_ID,
+      requiredRoyalties: [],
       extraRoyalties: [],
     };
     const ask = {
@@ -190,6 +191,7 @@ TEST_CASES.push(async function* marketFills(props) {
       price: exa,
       tokenAddress: token.address,
       tokenId: tokenId,
+      requiredRoyalties: [],
       extraRoyalties: [],
       unwrapWeth: false,
       authorizedBidder: ethers.constants.AddressZero,
@@ -219,6 +221,7 @@ TEST_CASES.push(async function* marketFills(props) {
       traitset: [traitId],
       traitOracle: oracle.address,
       bidType: BidType.TRAITSET,
+      requiredRoyalties: [],
       extraRoyalties: [],
     };
     const ask = {
@@ -229,6 +232,7 @@ TEST_CASES.push(async function* marketFills(props) {
       price: exa,
       tokenId: tokenId,
       tokenAddress: token.address,
+      requiredRoyalties: [],
       extraRoyalties: [],
       unwrapWeth: false,
       authorizedBidder: ethers.constants.AddressZero,
@@ -258,6 +262,7 @@ TEST_CASES.push(async function* marketFills(props) {
       traitset: [],
       traitOracle: ethers.constants.AddressZero,
       bidType: BidType.TOKEN_ID,
+      requiredRoyalties: [],
       extraRoyalties: [],
     };
     const ask = {
@@ -268,6 +273,7 @@ TEST_CASES.push(async function* marketFills(props) {
       price: exa,
       tokenId: tokenId,
       tokenAddress: token.address,
+      requiredRoyalties: [],
       extraRoyalties: [],
       unwrapWeth: true,
       authorizedBidder: ethers.constants.AddressZero,
@@ -298,6 +304,7 @@ TEST_CASES.push(async function* marketFills(props) {
       traitset: [],
       traitOracle: ethers.constants.AddressZero,
       bidType: BidType.TOKEN_ID,
+      requiredRoyalties: [],
       extraRoyalties: [r, r, r, r],
     };
     const ask = {
@@ -308,6 +315,7 @@ TEST_CASES.push(async function* marketFills(props) {
       price: exa,
       tokenId: tokenId,
       tokenAddress: token.address,
+      requiredRoyalties: [],
       extraRoyalties: [],
       unwrapWeth: true,
       authorizedBidder: ethers.constants.AddressZero,
@@ -334,6 +342,7 @@ TEST_CASES.push(async function* marketFills(props) {
       traitset: [],
       traitOracle: ethers.constants.AddressZero,
       bidType: BidType.TOKEN_ID,
+      requiredRoyalties: [],
       extraRoyalties: [],
     };
     const ask = {
@@ -344,6 +353,7 @@ TEST_CASES.push(async function* marketFills(props) {
       price: exa,
       tokenId: tokenId,
       tokenAddress: token.address,
+      requiredRoyalties: [],
       extraRoyalties: [],
       unwrapWeth: true,
       authorizedBidder: ethers.constants.AddressZero,
