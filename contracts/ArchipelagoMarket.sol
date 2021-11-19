@@ -37,9 +37,9 @@ contract ArchipelagoMarket {
         uint256 proceeds,
         uint256 cost
     );
-    // Emitted once for every token that's transferred as part of a trade,
-    // i.e. a Trade event will correspond to one TokenTraded events.
-    // It's part of a separate event so that we can index more fields.
+    /// Emitted once for every token that's transferred as part of a trade,
+    /// i.e. a Trade event will correspond to one TokenTraded events.
+    /// It's part of a separate event so that we can index more fields.
     event TokenTraded(
         uint256 indexed tradeId,
         IERC721 indexed tokenAddress,
@@ -193,18 +193,18 @@ contract ArchipelagoMarket {
         _fillOrder(bid, bidder, ask, asker);
     }
 
-    // Variant of fill order where the buyer pays in ETH (which is converted to
-    // WETH under the hood). Added as a convenience. Code is mostly a repeat of
-    // fillOrder, since we need to get the bidder from the signature, and then
-    // convert the paid ETH to WETH.
-    //
-    // We don't know exactly how much the order will cost the bidder upfront
-    // (we'd need to calculate royalties). So instead, the bidder just provides
-    // any amount of ETH they want, which will be added to their WETH balance
-    // before attempting to fill the transaction. If they haven't sent enough,
-    // the tx will fail; if they sent extra, they wil have a remaining WETH
-    // balance afterwards, which we assume was their intent (maybe they have
-    // other bids outstanding).
+    /// Variant of fill order where the buyer pays in ETH (which is converted to
+    /// WETH under the hood). Added as a convenience. Code is mostly a repeat of
+    /// fillOrder, since we need to get the bidder from the signature, and then
+    /// convert the paid ETH to WETH.
+    ///
+    /// We don't know exactly how much the order will cost the bidder upfront
+    /// (we'd need to calculate royalties). So instead, the bidder just provides
+    /// any amount of ETH they want, which will be added to their WETH balance
+    /// before attempting to fill the transaction. If they haven't sent enough,
+    /// the tx will fail; if they sent extra, they wil have a remaining WETH
+    /// balance afterwards, which we assume was their intent (maybe they have
+    /// other bids outstanding).
     function fillOrderEth(
         Bid memory bid,
         bytes memory bidSignature,

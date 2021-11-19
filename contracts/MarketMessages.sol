@@ -14,8 +14,8 @@ enum BidType {
 
 struct Royalty {
     address recipient;
-    // Millionths of the sale price that this recipient should get.
-    // I.e. the royalty will be price * micros * 10^-6
+    /// Millionths of the sale price that this recipient should get.
+    /// I.e. the royalty will be price * micros * 10^-6
     uint256 micros;
 }
 
@@ -49,14 +49,14 @@ struct Bid {
     /// a floor bid on all tokens. For non-`TRAITSET` bids, this array is empty.
     uint256[] traitset;
     /// For `TRAITSET` bids, this must be the address of a Trait oracle that is
-    //trusted / to determine trait membership for this bid. for non-`TRAITSET`
-    //bids, this will / be the zero address.
+    /// trusted / to determine trait membership for this bid. for non-`TRAITSET`
+    /// bids, this will / be the zero address.
     ITraitOracle traitOracle;
-    // Royalties specified by the bidder. These royalties are added _on top of_ the
-    // sale price. These are paid to agents that directly helped the bidder, e.g.
-    // a broker who is helping the bidder, or to the frontend marketplace that
-    // the bidder is operating from. By convention, artist and platform royalties
-    // are paid by the seller, not the bidder.
+    /// Royalties specified by the bidder. These royalties are added _on top of_ the
+    /// sale price. These are paid to agents that directly helped the bidder, e.g.
+    /// a broker who is helping the bidder, or to the frontend marketplace that
+    /// the bidder is operating from. By convention, artist and platform royalties
+    /// are paid by the seller, not the bidder.
     Royalty[] royalties;
 }
 
@@ -81,19 +81,19 @@ struct Ask {
     Ask-specific fields.
     */
     uint256 tokenId;
-    // Royalties that are paid by the asker, i.e. are subtracted from the amount
-    // of the sale price that is given to the asker when the sale completes.
-    // Artist or platform royalties (e.g. to ArtBlocks or the Archipelago protocol)
-    // should be deducted from the Ask side.
+    /// Royalties that are paid by the asker, i.e. are subtracted from the amount
+    /// of the sale price that is given to the asker when the sale completes.
+    /// Artist or platform royalties (e.g. to ArtBlocks or the Archipelago protocol)
+    /// should be deducted from the Ask side.
     Royalty[] royalties;
-    // Whether the asker would like their WETH proceeds to be automatically
-    // unwrapped to ETH on order execution.
-    // Purely a convenience for people who prefer ETH to WETH.
+    /// Whether the asker would like their WETH proceeds to be automatically
+    /// unwrapped to ETH on order execution.
+    /// Purely a convenience for people who prefer ETH to WETH.
     bool unwrapWeth;
-    // The address of the account that is allowed to fill this order.
-    // If this address is the zero address, then anyone's bid may match.
-    // If this address is nonzero, they are the only address allowed to match
-    // this ask.
+    /// The address of the account that is allowed to fill this order.
+    /// If this address is the zero address, then anyone's bid may match.
+    /// If this address is nonzero, they are the only address allowed to match
+    /// this ask.
     address authorizedBidder;
 }
 
