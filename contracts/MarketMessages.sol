@@ -36,6 +36,11 @@ struct Bid {
     uint256 price;
     /// Address of the ERC-721 whose tokens are being traded
     IERC721 tokenAddress;
+    /// Extra royalties specified by the participant who created this order.
+    /// If the extra royalties are added on an Ask, they will be paid by the
+    /// seller; extra royalties on a Bid are paid by the buyer (i.e. on top of
+    /// the listed sale price).
+    Royalty[] extraRoyalties;
     /*
      * Bid-specific fields
      */
@@ -52,12 +57,6 @@ struct Bid {
     /// trusted / to determine trait membership for this bid. for non-`TRAITSET`
     /// bids, this will / be the zero address.
     ITraitOracle traitOracle;
-    /// Royalties specified by the bidder. These royalties are added _on top of_ the
-    /// sale price. These are paid to agents that directly helped the bidder, e.g.
-    /// a broker who is helping the bidder, or to the frontend marketplace that
-    /// the bidder is operating from. By convention, artist and platform royalties
-    /// are paid by the seller, not the bidder.
-    Royalty[] extraRoyalties;
 }
 
 struct Ask {
@@ -77,15 +76,15 @@ struct Ask {
     uint256 price;
     /// Address of the ERC-721 whose tokens are being traded
     IERC721 tokenAddress;
+    /// Extra royalties specified by the participant who created this order.
+    /// If the extra royalties are added on an Ask, they will be paid by the
+    /// seller; extra royalties on a Bid are paid by the buyer (i.e. on top of
+    /// the listed sale price).
+    Royalty[] extraRoyalties;
     /*
     Ask-specific fields.
     */
     uint256 tokenId;
-    /// Royalties that are paid by the asker, i.e. are subtracted from the amount
-    /// of the sale price that is given to the asker when the sale completes.
-    /// Artist or platform royalties (e.g. to ArtBlocks or the Archipelago protocol)
-    /// should be deducted from the Ask side.
-    Royalty[] extraRoyalties;
     /// Whether the asker would like their WETH proceeds to be automatically
     /// unwrapped to ETH on order execution.
     /// Purely a convenience for people who prefer ETH to WETH.
@@ -103,11 +102,11 @@ library MarketMessages {
 
     bytes32 internal constant TYPEHASH_BID =
         keccak256(
-            "Bid(uint256 nonce,uint256 created,uint256 deadline,address currencyAddress,uint256 price,address tokenAddress,uint8 bidType,uint256 tokenId,uint256[] traitset,address traitOracle,Royalty[] extraRoyalties)Royalty(address recipient,uint256 micros)"
+            "Bid(uint256 nonce,uint256 created,uint256 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] extraRoyalties,uint8 bidType,uint256 tokenId,uint256[] traitset,address traitOracle)Royalty(address recipient,uint256 micros)"
         );
     bytes32 internal constant TYPEHASH_ASK =
         keccak256(
-            "Ask(uint256 nonce,uint256 created,uint256 deadline,address currencyAddress,uint256 price,address tokenAddress,uint256 tokenId,Royalty[] extraRoyalties,bool unwrapWeth,address authorizedBidder)Royalty(address recipient,uint256 micros)"
+            "Ask(uint256 nonce,uint256 created,uint256 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] extraRoyalties,uint256 tokenId,bool unwrapWeth,address authorizedBidder)Royalty(address recipient,uint256 micros)"
         );
     bytes32 internal constant TYPEHASH_ROYALTY =
         keccak256("Royalty(address recipient,uint256 micros)");
@@ -123,11 +122,11 @@ library MarketMessages {
                     _self.currencyAddress,
                     _self.price,
                     _self.tokenAddress,
+                    _self.extraRoyalties.structHash(),
                     _self.bidType,
                     _self.tokenId,
                     keccak256(abi.encodePacked(_self.traitset)),
-                    _self.traitOracle,
-                    _self.extraRoyalties.structHash()
+                    _self.traitOracle
                 )
             );
     }
@@ -143,8 +142,8 @@ library MarketMessages {
                     _self.currencyAddress,
                     _self.price,
                     _self.tokenAddress,
-                    _self.tokenId,
                     _self.extraRoyalties.structHash(),
+                    _self.tokenId,
                     _self.unwrapWeth,
                     _self.authorizedBidder
                 )

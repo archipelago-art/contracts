@@ -38,11 +38,11 @@ const Bid = [
   { type: "address", name: "currencyAddress" },
   { type: "uint256", name: "price" },
   { type: "address", name: "tokenAddress" },
+  { type: "Royalty[]", name: "extraRoyalties" },
   { type: "uint8", name: "bidType" },
   { type: "uint256", name: "tokenId" },
   { type: "uint256[]", name: "traitset" },
   { type: "address", name: "traitOracle" },
-  { type: "Royalty[]", name: "extraRoyalties" },
 ];
 const Ask = [
   { type: "uint256", name: "nonce" },
@@ -51,8 +51,8 @@ const Ask = [
   { type: "address", name: "currencyAddress" },
   { type: "uint256", name: "price" },
   { type: "address", name: "tokenAddress" },
-  { type: "uint256", name: "tokenId" },
   { type: "Royalty[]", name: "extraRoyalties" },
+  { type: "uint256", name: "tokenId" },
   { type: "bool", name: "unwrapWeth" },
   { type: "address", name: "authorizedBidder" },
 ];
@@ -99,9 +99,9 @@ const verify712 = Object.freeze({
 
 const TYPENAME_ROYALTY = "Royalty(address recipient,uint256 micros)";
 const TYPENAME_BID =
-  "Bid(uint256 nonce,uint256 created,uint256 deadline,address currencyAddress,uint256 price,address tokenAddress,uint8 bidType,uint256 tokenId,uint256[] traitset,address traitOracle,Royalty[] extraRoyalties)";
+  "Bid(uint256 nonce,uint256 created,uint256 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] extraRoyalties,uint8 bidType,uint256 tokenId,uint256[] traitset,address traitOracle)";
 const TYPENAME_ASK =
-  "Ask(uint256 nonce,uint256 created,uint256 deadline,address currencyAddress,uint256 price,address tokenAddress,uint256 tokenId,Royalty[] extraRoyalties,bool unwrapWeth,address authorizedBidder)";
+  "Ask(uint256 nonce,uint256 created,uint256 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] extraRoyalties,uint256 tokenId,bool unwrapWeth,address authorizedBidder)";
 
 const TYPEHASH_ROYALTY = utf8Hash(TYPENAME_ROYALTY);
 const TYPEHASH_BID = utf8Hash(TYPENAME_BID + TYPENAME_ROYALTY);
@@ -127,11 +127,11 @@ function bidStructHash(bid) {
         "address",
         "uint256",
         "address",
+        "bytes32",
         "uint8",
         "uint256",
         "bytes32",
         "address",
-        "bytes32",
       ],
       [
         TYPEHASH_BID,
@@ -141,18 +141,18 @@ function bidStructHash(bid) {
         bid.currencyAddress,
         bid.price,
         bid.tokenAddress,
-        bid.bidType,
-        bid.tokenId,
-        ethers.utils.keccak256(
-          ethers.utils.solidityPack(["uint256[]"], [bid.traitset])
-        ),
-        bid.traitOracle,
         ethers.utils.keccak256(
           ethers.utils.solidityPack(
             ["bytes32[]"],
             [bid.extraRoyalties.map(royaltyStructHash)]
           )
         ),
+        bid.bidType,
+        bid.tokenId,
+        ethers.utils.keccak256(
+          ethers.utils.solidityPack(["uint256[]"], [bid.traitset])
+        ),
+        bid.traitOracle,
       ]
     )
   );
@@ -169,8 +169,8 @@ function askStructHash(ask) {
         "address",
         "uint256",
         "address",
-        "uint256",
         "bytes32",
+        "uint256",
         "bool",
         "address",
       ],
@@ -182,13 +182,13 @@ function askStructHash(ask) {
         ask.currencyAddress,
         ask.price,
         ask.tokenAddress,
-        ask.tokenId,
         ethers.utils.keccak256(
           ethers.utils.solidityPack(
             ["bytes32[]"],
             [ask.extraRoyalties.map(royaltyStructHash)]
           )
         ),
+        ask.tokenId,
         ask.unwrapWeth,
         ask.authorizedBidder,
       ]
