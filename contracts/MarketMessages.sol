@@ -57,7 +57,7 @@ struct Bid {
     /// a broker who is helping the bidder, or to the frontend marketplace that
     /// the bidder is operating from. By convention, artist and platform royalties
     /// are paid by the seller, not the bidder.
-    Royalty[] royalties;
+    Royalty[] extraRoyalties;
 }
 
 struct Ask {
@@ -85,7 +85,7 @@ struct Ask {
     /// of the sale price that is given to the asker when the sale completes.
     /// Artist or platform royalties (e.g. to ArtBlocks or the Archipelago protocol)
     /// should be deducted from the Ask side.
-    Royalty[] royalties;
+    Royalty[] extraRoyalties;
     /// Whether the asker would like their WETH proceeds to be automatically
     /// unwrapped to ETH on order execution.
     /// Purely a convenience for people who prefer ETH to WETH.
@@ -103,11 +103,11 @@ library MarketMessages {
 
     bytes32 internal constant TYPEHASH_BID =
         keccak256(
-            "Bid(uint256 nonce,uint256 created,uint256 deadline,address currencyAddress,uint256 price,address tokenAddress,uint8 bidType,uint256 tokenId,uint256[] traitset,address traitOracle,Royalty[] royalties)Royalty(address recipient,uint256 micros)"
+            "Bid(uint256 nonce,uint256 created,uint256 deadline,address currencyAddress,uint256 price,address tokenAddress,uint8 bidType,uint256 tokenId,uint256[] traitset,address traitOracle,Royalty[] extraRoyalties)Royalty(address recipient,uint256 micros)"
         );
     bytes32 internal constant TYPEHASH_ASK =
         keccak256(
-            "Ask(uint256 nonce,uint256 created,uint256 deadline,address currencyAddress,uint256 price,address tokenAddress,uint256 tokenId,Royalty[] royalties,bool unwrapWeth,address authorizedBidder)Royalty(address recipient,uint256 micros)"
+            "Ask(uint256 nonce,uint256 created,uint256 deadline,address currencyAddress,uint256 price,address tokenAddress,uint256 tokenId,Royalty[] extraRoyalties,bool unwrapWeth,address authorizedBidder)Royalty(address recipient,uint256 micros)"
         );
     bytes32 internal constant TYPEHASH_ROYALTY =
         keccak256("Royalty(address recipient,uint256 micros)");
@@ -127,7 +127,7 @@ library MarketMessages {
                     _self.tokenId,
                     keccak256(abi.encodePacked(_self.traitset)),
                     _self.traitOracle,
-                    _self.royalties.structHash()
+                    _self.extraRoyalties.structHash()
                 )
             );
     }
@@ -144,7 +144,7 @@ library MarketMessages {
                     _self.price,
                     _self.tokenAddress,
                     _self.tokenId,
-                    _self.royalties.structHash(),
+                    _self.extraRoyalties.structHash(),
                     _self.unwrapWeth,
                     _self.authorizedBidder
                 )

@@ -42,7 +42,7 @@ const Bid = [
   { type: "uint256", name: "tokenId" },
   { type: "uint256[]", name: "traitset" },
   { type: "address", name: "traitOracle" },
-  { type: "Royalty[]", name: "royalties" },
+  { type: "Royalty[]", name: "extraRoyalties" },
 ];
 const Ask = [
   { type: "uint256", name: "nonce" },
@@ -52,7 +52,7 @@ const Ask = [
   { type: "uint256", name: "price" },
   { type: "address", name: "tokenAddress" },
   { type: "uint256", name: "tokenId" },
-  { type: "Royalty[]", name: "royalties" },
+  { type: "Royalty[]", name: "extraRoyalties" },
   { type: "bool", name: "unwrapWeth" },
   { type: "address", name: "authorizedBidder" },
 ];
@@ -99,9 +99,9 @@ const verify712 = Object.freeze({
 
 const TYPENAME_ROYALTY = "Royalty(address recipient,uint256 micros)";
 const TYPENAME_BID =
-  "Bid(uint256 nonce,uint256 created,uint256 deadline,address currencyAddress,uint256 price,address tokenAddress,uint8 bidType,uint256 tokenId,uint256[] traitset,address traitOracle,Royalty[] royalties)";
+  "Bid(uint256 nonce,uint256 created,uint256 deadline,address currencyAddress,uint256 price,address tokenAddress,uint8 bidType,uint256 tokenId,uint256[] traitset,address traitOracle,Royalty[] extraRoyalties)";
 const TYPENAME_ASK =
-  "Ask(uint256 nonce,uint256 created,uint256 deadline,address currencyAddress,uint256 price,address tokenAddress,uint256 tokenId,Royalty[] royalties,bool unwrapWeth,address authorizedBidder)";
+  "Ask(uint256 nonce,uint256 created,uint256 deadline,address currencyAddress,uint256 price,address tokenAddress,uint256 tokenId,Royalty[] extraRoyalties,bool unwrapWeth,address authorizedBidder)";
 
 const TYPEHASH_ROYALTY = utf8Hash(TYPENAME_ROYALTY);
 const TYPEHASH_BID = utf8Hash(TYPENAME_BID + TYPENAME_ROYALTY);
@@ -150,7 +150,7 @@ function bidStructHash(bid) {
         ethers.utils.keccak256(
           ethers.utils.solidityPack(
             ["bytes32[]"],
-            [bid.royalties.map(royaltyStructHash)]
+            [bid.extraRoyalties.map(royaltyStructHash)]
           )
         ),
       ]
@@ -186,7 +186,7 @@ function askStructHash(ask) {
         ethers.utils.keccak256(
           ethers.utils.solidityPack(
             ["bytes32[]"],
-            [ask.royalties.map(royaltyStructHash)]
+            [ask.extraRoyalties.map(royaltyStructHash)]
           )
         ),
         ask.unwrapWeth,
@@ -240,7 +240,7 @@ function computeSale({ bid, ask }) {
   const buyerRoyalties = [];
   const sellerRoyalties = [];
 
-  for (const r of ask.royalties) {
+  for (const r of ask.extraRoyalties) {
     const micros = ethers.BigNumber.from(r.micros);
     const recipient = ethers.utils.getAddress(r.recipient);
     const amount = royaltyAmount(micros, price);
@@ -251,7 +251,7 @@ function computeSale({ bid, ask }) {
     throw new Error("seller royalties exceed 100% of sale price");
   }
 
-  for (const r of bid.royalties) {
+  for (const r of bid.extraRoyalties) {
     const micros = ethers.BigNumber.from(r.micros);
     const recipient = ethers.utils.getAddress(r.recipient);
     const amount = royaltyAmount(micros, price);

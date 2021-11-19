@@ -82,7 +82,7 @@ describe("Market", () => {
       price = exa,
       tokenAddress = nft.address,
       tokenId = 0,
-      royalties = [],
+      extraRoyalties = [],
     } = {}) {
       return {
         nonce,
@@ -95,7 +95,7 @@ describe("Market", () => {
         traitset: [],
         traitOracle: ethers.constants.AddressZero,
         bidType: sdk.market.BidType.TOKEN_ID,
-        royalties,
+        extraRoyalties,
       };
     }
 
@@ -108,7 +108,7 @@ describe("Market", () => {
       tokenAddress = nft.address,
       traitset = [],
       traitOracle = oracle.address,
-      royalties = [],
+      extraRoyalties = [],
     } = {}) {
       return {
         nonce,
@@ -121,7 +121,7 @@ describe("Market", () => {
         traitset,
         traitOracle,
         bidType: sdk.market.BidType.TRAITSET,
-        royalties,
+        extraRoyalties,
       };
     }
 
@@ -133,7 +133,7 @@ describe("Market", () => {
       price = exa,
       tokenAddress = nft.address,
       tokenId = 0,
-      royalties = [],
+      extraRoyalties = [],
       unwrapWeth = false,
       authorizedBidder = ethers.constants.AddressZero,
     } = {}) {
@@ -145,7 +145,7 @@ describe("Market", () => {
         price,
         tokenAddress,
         tokenId,
-        royalties,
+        extraRoyalties,
         unwrapWeth,
         authorizedBidder,
       };
@@ -496,9 +496,11 @@ describe("Market", () => {
         await setup();
       const r0 = signers[3].address;
       const bid = tokenIdBid({
-        royalties: [{ recipient: r0, micros: 1000000 }],
+        extraRoyalties: [{ recipient: r0, micros: 1000000 }],
       });
-      const ask = newAsk({ royalties: [{ recipient: r0, micros: 500000 }] });
+      const ask = newAsk({
+        extraRoyalties: [{ recipient: r0, micros: 500000 }],
+      });
       const tradeId = computeTradeId(bid, bidder, ask, asker);
       await expect(fillOrder(market, bid, bidder, ask, asker))
         .to.emit(market, "Trade")
@@ -680,7 +682,7 @@ describe("Market", () => {
           await setup();
         const r0 = signers[3].address;
         const bid = tokenIdBid();
-        const ask = newAsk({ royalties: [{ recipient: r0, micros: 0 }] });
+        const ask = newAsk({ extraRoyalties: [{ recipient: r0, micros: 0 }] });
         await fillOrder(market, bid, bidder, ask, asker);
         expect(await weth.balanceOf(r0)).to.equal(0);
         expect(await weth.balanceOf(asker.address)).to.equal(exa);
@@ -702,7 +704,7 @@ describe("Market", () => {
           await setup();
         const r0 = signers[3].address;
         const bid = tokenIdBid();
-        const ask = newAsk({ royalties: [{ recipient: r0, micros: 5 }] });
+        const ask = newAsk({ extraRoyalties: [{ recipient: r0, micros: 5 }] });
         const roy = micro.mul(5);
         const tradeId = computeTradeId(bid, bidder, ask, asker);
         await expect(fillOrder(market, bid, bidder, ask, asker))
@@ -730,7 +732,7 @@ describe("Market", () => {
         const r1 = signers[4].address;
         const bid = tokenIdBid();
         const ask = newAsk({
-          royalties: [
+          extraRoyalties: [
             { recipient: r0, micros: 5 },
             { recipient: r1, micros: 1 },
           ],
@@ -775,7 +777,7 @@ describe("Market", () => {
         const r1 = signers[4].address;
         const bid = tokenIdBid();
         const ask = newAsk({
-          royalties: [
+          extraRoyalties: [
             { recipient: r0, micros: 800000 },
             { recipient: r1, micros: 200000 },
           ],
@@ -809,7 +811,7 @@ describe("Market", () => {
         const r1 = signers[4].address;
         const bid = tokenIdBid();
         const ask = newAsk({
-          royalties: [
+          extraRoyalties: [
             { recipient: r0, micros: 800000 },
             { recipient: r1, micros: 200001 },
           ],
@@ -827,7 +829,9 @@ describe("Market", () => {
           await setup();
         const roy = micro.mul(10);
         const r0 = signers[3].address;
-        const bid = tokenIdBid({ royalties: [{ recipient: r0, micros: 10 }] });
+        const bid = tokenIdBid({
+          extraRoyalties: [{ recipient: r0, micros: 10 }],
+        });
         const ask = newAsk();
         const tradeId = computeTradeId(bid, bidder, ask, asker);
         const cost = exa.add(roy);
@@ -858,7 +862,7 @@ describe("Market", () => {
           await setup();
         const r0 = signers[3].address;
         const bid = tokenIdBid({
-          royalties: [{ recipient: r0, micros: 10 }],
+          extraRoyalties: [{ recipient: r0, micros: 10 }],
           price: exa.mul(2),
         });
         const ask = newAsk({ price: exa.mul(2) });
@@ -873,7 +877,7 @@ describe("Market", () => {
         const r0 = signers[3].address;
         const r1 = signers[4].address;
         const bid = tokenIdBid({
-          royalties: [
+          extraRoyalties: [
             { recipient: r0, micros: 1 },
             { recipient: r1, micros: 2 },
           ],
@@ -1297,7 +1301,7 @@ describe("Market", () => {
         deadline: ethers.constants.MaxUint256,
         price: exa,
         traitset: [0x1234, 0x5678],
-        royalties: [
+        extraRoyalties: [
           { recipient: signers[3].address, micros: 10 },
           { recipient: signers[4].address, micros: 100 },
         ],
@@ -1322,7 +1326,7 @@ describe("Market", () => {
         deadline: ethers.constants.MaxUint256,
         tokenId: 0x12345678,
         price: exa,
-        royalties: [
+        extraRoyalties: [
           { recipient: signers[3].address, micros: 10 },
           { recipient: signers[4].address, micros: 100 },
         ],

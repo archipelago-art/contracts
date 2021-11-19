@@ -298,8 +298,8 @@ contract ArchipelagoMarket {
             }
         }
 
-        for (uint256 _i = 0; _i < ask.royalties.length; _i++) {
-            Royalty memory _royalty = ask.royalties[_i];
+        for (uint256 _i = 0; _i < ask.extraRoyalties.length; _i++) {
+            Royalty memory _royalty = ask.extraRoyalties[_i];
             uint256 _amt = (_royalty.micros * _price) / 1000000;
             // Proceeds to the seller are decreased by all Ask royalties
             _proceeds -= _amt;
@@ -316,8 +316,8 @@ contract ArchipelagoMarket {
             );
         }
 
-        for (uint256 _i = 0; _i < bid.royalties.length; _i++) {
-            Royalty memory _royalty = bid.royalties[_i];
+        for (uint256 _i = 0; _i < bid.extraRoyalties.length; _i++) {
+            Royalty memory _royalty = bid.extraRoyalties[_i];
             uint256 _amt = (_royalty.micros * _price) / 1000000;
             _cost += _amt;
             // Proceeds to the seller are *not* decreased by Bid royalties,
