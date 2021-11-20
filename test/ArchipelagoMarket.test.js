@@ -687,8 +687,12 @@ describe("Market", () => {
         const { market, signers, weth, asker, bidder, tokenIdBid, newAsk } =
           await setup();
         const r0 = signers[3].address;
-        const bid = tokenIdBid();
-        const ask = newAsk({ extraRoyalties: [{ recipient: r0, micros: 0 }] });
+        const bid = tokenIdBid({
+          requiredRoyalties: [{ recipient: r0, micros: 0 }],
+        });
+        const ask = newAsk({
+          requiredRoyalties: [{ recipient: r0, micros: 0 }],
+        });
         await fillOrder(market, bid, bidder, ask, asker);
         expect(await weth.balanceOf(r0)).to.equal(0);
         expect(await weth.balanceOf(asker.address)).to.equal(exa);
@@ -705,12 +709,16 @@ describe("Market", () => {
           ],
         });
       });
-      it("handles a single royalty correctly", async () => {
+      it("handles a single required royalty correctly", async () => {
         const { market, signers, weth, asker, bidder, tokenIdBid, newAsk } =
           await setup();
         const r0 = signers[3].address;
-        const bid = tokenIdBid();
-        const ask = newAsk({ extraRoyalties: [{ recipient: r0, micros: 5 }] });
+        const bid = tokenIdBid({
+          requiredRoyalties: [{ recipient: r0, micros: 5 }],
+        });
+        const ask = newAsk({
+          requiredRoyalties: [{ recipient: r0, micros: 5 }],
+        });
         const roy = micro.mul(5);
         const tradeId = computeTradeId(bid, bidder, ask, asker);
         await expect(fillOrder(market, bid, bidder, ask, asker))
@@ -731,14 +739,19 @@ describe("Market", () => {
           ],
         });
       });
-      it("handles multiple royalties correctly", async () => {
+      it("handles multiple required royalties correctly", async () => {
         const { market, signers, weth, asker, bidder, tokenIdBid, newAsk } =
           await setup();
         const r0 = signers[3].address;
         const r1 = signers[4].address;
-        const bid = tokenIdBid();
+        const bid = tokenIdBid({
+          requiredRoyalties: [
+            { recipient: r0, micros: 5 },
+            { recipient: r1, micros: 1 },
+          ],
+        });
         const ask = newAsk({
-          extraRoyalties: [
+          requiredRoyalties: [
             { recipient: r0, micros: 5 },
             { recipient: r1, micros: 1 },
           ],
@@ -781,12 +794,12 @@ describe("Market", () => {
           await setup();
         const r0 = signers[3].address;
         const r1 = signers[4].address;
-        const bid = tokenIdBid();
+        const bid = tokenIdBid({
+          requiredRoyalties: [{ recipient: r0, micros: 800000 }],
+        });
         const ask = newAsk({
-          extraRoyalties: [
-            { recipient: r0, micros: 800000 },
-            { recipient: r1, micros: 200000 },
-          ],
+          requiredRoyalties: [{ recipient: r0, micros: 800000 }],
+          extraRoyalties: [{ recipient: r1, micros: 200000 }],
         });
         await fillOrder(market, bid, bidder, ask, asker);
         expect(await weth.balanceOf(r0)).to.equal(micro.mul(800000));
@@ -815,12 +828,12 @@ describe("Market", () => {
           await setup();
         const r0 = signers[3].address;
         const r1 = signers[4].address;
-        const bid = tokenIdBid();
+        const bid = tokenIdBid({
+          requiredRoyalties: [{ recipient: r0, micros: 800000 }],
+        });
         const ask = newAsk({
-          extraRoyalties: [
-            { recipient: r0, micros: 800000 },
-            { recipient: r1, micros: 200001 },
-          ],
+          requiredRoyalties: [{ recipient: r0, micros: 800000 }],
+          extraRoyalties: [{ recipient: r1, micros: 200001 }],
         });
         await expect(
           fillOrder(market, bid, bidder, ask, asker)
@@ -830,7 +843,7 @@ describe("Market", () => {
         );
       });
 
-      it("bidder royalty works (if specified)", async () => {
+      it("bidder extra royalty works (if specified)", async () => {
         const { market, signers, weth, asker, bidder, tokenIdBid, newAsk } =
           await setup();
         const roy = micro.mul(10);
@@ -860,6 +873,90 @@ describe("Market", () => {
             },
           ],
           sellerRoyalties: [],
+        });
+      });
+
+      it("asker extra royalty works (if specified)", async () => {
+        const { market, signers, weth, asker, bidder, tokenIdBid, newAsk } =
+          await setup();
+        const r0 = signers[3].address;
+        const bid = tokenIdBid();
+        const ask = newAsk({ extraRoyalties: [{ recipient: r0, micros: 5 }] });
+        const roy = micro.mul(5);
+        const tradeId = computeTradeId(bid, bidder, ask, asker);
+        await expect(fillOrder(market, bid, bidder, ask, asker))
+          .to.emit(market, "RoyaltyPaid")
+          .withArgs(tradeId, asker.address, r0, 5, roy);
+        expect(await weth.balanceOf(r0)).to.equal(roy);
+        expect(await weth.balanceOf(asker.address)).to.equal(exa.sub(roy));
+        expect(sdk.market.computeSale({ bid, ask })).to.deep.equal({
+          cost: exa,
+          proceeds: exa.sub(roy),
+          buyerRoyalties: [],
+          sellerRoyalties: [
+            {
+              recipient: r0,
+              micros: BN.from(5n),
+              amount: roy,
+            },
+          ],
+        });
+      });
+
+      it("all three royalty types in conjunction", async () => {
+        const { market, signers, weth, asker, bidder, tokenIdBid, newAsk } =
+          await setup();
+        const bidderStartBalance = await weth.balanceOf(bidder.address);
+        const r1 = signers[3].address;
+        const r2 = signers[4].address;
+        const r3 = signers[5].address;
+        const bid = tokenIdBid({
+          requiredRoyalties: [{ recipient: r1, micros: 1 }],
+          extraRoyalties: [{ recipient: r2, micros: 2 }],
+        });
+        const ask = newAsk({
+          requiredRoyalties: [{ recipient: r1, micros: 1 }],
+          extraRoyalties: [{ recipient: r3, micros: 3 }],
+        });
+        const tradeId = computeTradeId(bid, bidder, ask, asker);
+        await expect(fillOrder(market, bid, bidder, ask, asker))
+          .to.emit(market, "RoyaltyPaid")
+          .withArgs(tradeId, asker.address, r1, 1, micro)
+          .to.emit(market, "RoyaltyPaid")
+          .withArgs(tradeId, bidder.address, r2, 2, micro.mul(2))
+          .to.emit(market, "RoyaltyPaid")
+          .withArgs(tradeId, asker.address, r3, 3, micro.mul(3));
+        expect(await weth.balanceOf(r1)).to.equal(micro);
+        expect(await weth.balanceOf(r2)).to.equal(micro.mul(2));
+        expect(await weth.balanceOf(r3)).to.equal(micro.mul(3));
+        expect(await weth.balanceOf(asker.address)).to.equal(
+          exa.sub(micro.mul(4))
+        );
+        expect(await weth.balanceOf(bidder.address)).to.equal(
+          bidderStartBalance.sub(bid.price).sub(micro.mul(2))
+        );
+        expect(sdk.market.computeSale({ bid, ask })).to.deep.equal({
+          cost: exa.add(micro.mul(2)),
+          proceeds: exa.sub(micro.mul(4)),
+          buyerRoyalties: [
+            {
+              recipient: r2,
+              micros: BN.from(2n),
+              amount: micro.mul(2),
+            },
+          ],
+          sellerRoyalties: [
+            {
+              recipient: r1,
+              micros: BN.from(1n),
+              amount: micro,
+            },
+            {
+              recipient: r3,
+              micros: BN.from(3n),
+              amount: micro.mul(3),
+            },
+          ],
         });
       });
 

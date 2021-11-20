@@ -256,6 +256,13 @@ function computeSale({ bid, ask }) {
   const buyerRoyalties = [];
   const sellerRoyalties = [];
 
+  for (const r of ask.requiredRoyalties) {
+    const micros = ethers.BigNumber.from(r.micros);
+    const recipient = ethers.utils.getAddress(r.recipient);
+    const amount = royaltyAmount(micros, price);
+    proceeds = proceeds.sub(amount);
+    sellerRoyalties.push({ recipient, micros, amount });
+  }
   for (const r of ask.extraRoyalties) {
     const micros = ethers.BigNumber.from(r.micros);
     const recipient = ethers.utils.getAddress(r.recipient);

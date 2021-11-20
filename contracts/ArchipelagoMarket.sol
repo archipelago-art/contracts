@@ -309,8 +309,23 @@ contract ArchipelagoMarket {
             Royalty memory _royalty = bid.requiredRoyalties[i];
             require(royalty.recipient == _royalty.recipient, ROYALTY_MISMATCH);
             require(royalty.micros == _royalty.micros, ROYALTY_MISMATCH);
+            uint256 amt = (royalty.micros * price) / 1000000;
+            // Proceeds to the seller are decreased by all Ask royalties
+            proceeds -= amt;
+            require(
+                currency.transferFrom(bidder, royalty.recipient, amt),
+                TRANSFER_FAILED
+            );
+            emit RoyaltyPaid(
+                tradeId,
+                asker,
+                royalty.recipient,
+                royalty.micros,
+                amt
+            );
         }
-
+        // Note that the extra royalties on the ask is basically duplicated from the required royalties.
+        // If you make a change to one code path, you should also change the other.
         for (uint256 i = 0; i < ask.extraRoyalties.length; i++) {
             Royalty memory royalty = ask.extraRoyalties[i];
             uint256 amt = (royalty.micros * price) / 1000000;
