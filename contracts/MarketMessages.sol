@@ -32,7 +32,7 @@ struct Bid {
     /// Address of the ERC-20 contract being used as payment currency.
     /// (typically WETH)
     IERC20 currencyAddress;
-    /// Order price, in wei.
+    /// Order price, in units of the ERC-20 given by `currencyAddress`.
     uint256 price;
     /// Address of the ERC-721 whose tokens are being traded
     IERC721 tokenAddress;
@@ -77,7 +77,7 @@ struct Ask {
     /// Address of the ERC-20 contract being used as payment currency.
     /// (typically WETH)
     IERC20 currencyAddress;
-    /// Order price, in wei.
+    /// Order price, in units of the ERC-20 given by `currencyAddress`.
     uint256 price;
     /// Address of the ERC-721 whose tokens are being traded
     IERC721 tokenAddress;
