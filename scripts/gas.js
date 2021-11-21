@@ -174,7 +174,7 @@ TEST_CASES.push(async function* marketFills(props) {
     const bid = {
       nonce: 0,
       created: 1,
-      deadline: ethers.constants.MaxUint256,
+      deadline: sdk.market.MaxUint40,
       currencyAddress: weth.address,
       price: exa,
       tokenAddress: token.address,
@@ -189,7 +189,7 @@ TEST_CASES.push(async function* marketFills(props) {
     const ask = {
       nonce: 0,
       created: 1,
-      deadline: ethers.constants.MaxUint256,
+      deadline: sdk.market.MaxUint40,
       currencyAddress: weth.address,
       price: exa,
       tokenAddress: token.address,
@@ -216,7 +216,7 @@ TEST_CASES.push(async function* marketFills(props) {
     const bid = {
       nonce: 1,
       created: 1,
-      deadline: ethers.constants.MaxUint256,
+      deadline: sdk.market.MaxUint40,
       currencyAddress: weth.address,
       price: exa,
       tokenId: 0,
@@ -230,7 +230,7 @@ TEST_CASES.push(async function* marketFills(props) {
     const ask = {
       nonce: 1,
       created: 1,
-      deadline: ethers.constants.MaxUint256,
+      deadline: sdk.market.MaxUint40,
       currencyAddress: weth.address,
       price: exa,
       tokenId: tokenId,
@@ -257,7 +257,7 @@ TEST_CASES.push(async function* marketFills(props) {
     const bid = {
       nonce: 2,
       created: 1,
-      deadline: ethers.constants.MaxUint256,
+      deadline: sdk.market.MaxUint40,
       currencyAddress: weth.address,
       price: exa,
       tokenId: tokenId,
@@ -271,7 +271,7 @@ TEST_CASES.push(async function* marketFills(props) {
     const ask = {
       nonce: 2,
       created: 1,
-      deadline: ethers.constants.MaxUint256,
+      deadline: sdk.market.MaxUint40,
       currencyAddress: weth.address,
       price: exa,
       tokenId: tokenId,
@@ -298,7 +298,7 @@ TEST_CASES.push(async function* marketFills(props) {
     const bid = {
       nonce: 3,
       created: 1,
-      deadline: ethers.constants.MaxUint256,
+      deadline: sdk.market.MaxUint40,
       currencyAddress: weth.address,
       price: exa,
       tokenId: tokenId,
@@ -312,7 +312,7 @@ TEST_CASES.push(async function* marketFills(props) {
     const ask = {
       nonce: 3,
       created: 1,
-      deadline: ethers.constants.MaxUint256,
+      deadline: sdk.market.MaxUint40,
       currencyAddress: weth.address,
       price: exa,
       tokenId: tokenId,
@@ -337,7 +337,7 @@ TEST_CASES.push(async function* marketFills(props) {
     const bid = {
       nonce: 4,
       created: 1,
-      deadline: ethers.constants.MaxUint256,
+      deadline: sdk.market.MaxUint40,
       currencyAddress: weth.address,
       price: exa,
       tokenId: tokenId,
@@ -351,7 +351,7 @@ TEST_CASES.push(async function* marketFills(props) {
     const ask = {
       nonce: 4,
       created: 1,
-      deadline: ethers.constants.MaxUint256,
+      deadline: sdk.market.MaxUint40,
       currencyAddress: weth.address,
       price: exa,
       tokenId: tokenId,
@@ -379,7 +379,7 @@ TEST_CASES.push(async function* marketFills(props) {
     const bid = {
       nonce: 5,
       created: 1,
-      deadline: ethers.constants.MaxUint256,
+      deadline: sdk.market.MaxUint40,
       currencyAddress: weth.address,
       price: exa,
       tokenId: tokenId,
@@ -393,7 +393,7 @@ TEST_CASES.push(async function* marketFills(props) {
     const ask = {
       nonce: 5,
       created: 1,
-      deadline: ethers.constants.MaxUint256,
+      deadline: sdk.market.MaxUint40,
       currencyAddress: weth.address,
       price: exa,
       tokenId: tokenId,

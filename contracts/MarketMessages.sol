@@ -26,9 +26,9 @@ struct Bid {
     uint256 nonce;
     /// Timestamp at which this order was created. Affects time-based
     /// cancellations.
-    uint256 created;
+    uint40 created;
     /// Timestamp past which this order is no longer valid.
-    uint256 deadline;
+    uint40 deadline;
     /// Address of the ERC-20 contract being used as payment currency.
     /// (typically WETH)
     IERC20 currencyAddress;
@@ -71,9 +71,9 @@ struct Ask {
     uint256 nonce;
     /// Timestamp at which this order was created. Affects time-based
     /// cancellations.
-    uint256 created;
+    uint40 created;
     /// Timestamp past which this order is no longer valid.
-    uint256 deadline;
+    uint40 deadline;
     /// Address of the ERC-20 contract being used as payment currency.
     /// (typically WETH)
     IERC20 currencyAddress;
@@ -112,11 +112,11 @@ library MarketMessages {
 
     bytes32 internal constant TYPEHASH_BID =
         keccak256(
-            "Bid(uint256 nonce,uint256 created,uint256 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties,Royalty[] extraRoyalties,uint8 bidType,uint256 tokenId,uint256[] traitset,address traitOracle)Royalty(address recipient,uint256 micros)"
+            "Bid(uint256 nonce,uint40 created,uint40 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties,Royalty[] extraRoyalties,uint8 bidType,uint256 tokenId,uint256[] traitset,address traitOracle)Royalty(address recipient,uint256 micros)"
         );
     bytes32 internal constant TYPEHASH_ASK =
         keccak256(
-            "Ask(uint256 nonce,uint256 created,uint256 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties,Royalty[] extraRoyalties,uint256 tokenId,bool unwrapWeth,address authorizedBidder)Royalty(address recipient,uint256 micros)"
+            "Ask(uint256 nonce,uint40 created,uint40 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties,Royalty[] extraRoyalties,uint256 tokenId,bool unwrapWeth,address authorizedBidder)Royalty(address recipient,uint256 micros)"
         );
     bytes32 internal constant TYPEHASH_ROYALTY =
         keccak256("Royalty(address recipient,uint256 micros)");

@@ -77,7 +77,7 @@ describe("Market", () => {
     function tokenIdBid({
       nonce = 0,
       created = 1,
-      deadline = ethers.constants.MaxUint256,
+      deadline = sdk.market.MaxUint40,
       currencyAddress = weth.address,
       price = exa,
       tokenAddress = nft.address,
@@ -104,7 +104,7 @@ describe("Market", () => {
     function traitsetBid({
       nonce = 0,
       created = 1,
-      deadline = ethers.constants.MaxUint256,
+      deadline = sdk.market.MaxUint40,
       currencyAddress = weth.address,
       price = exa,
       tokenAddress = nft.address,
@@ -132,7 +132,7 @@ describe("Market", () => {
     function newAsk({
       nonce = 0,
       created = 1,
-      deadline = ethers.constants.MaxUint256,
+      deadline = sdk.market.MaxUint40,
       currencyAddress = weth.address,
       price = exa,
       tokenAddress = nft.address,
@@ -1439,7 +1439,7 @@ describe("Market", () => {
       const bid = traitsetBid({
         nonce: 1,
         created: 2,
-        deadline: ethers.constants.MaxUint256,
+        deadline: sdk.market.MaxUint40,
         price: exa,
         traitset: [0x1234, 0x5678],
         extraRoyalties: [
@@ -1464,7 +1464,7 @@ describe("Market", () => {
       const ask = newAsk({
         nonce: 1,
         created: 2,
-        deadline: ethers.constants.MaxUint256,
+        deadline: sdk.market.MaxUint40,
         tokenId: 0x12345678,
         price: exa,
         extraRoyalties: [
