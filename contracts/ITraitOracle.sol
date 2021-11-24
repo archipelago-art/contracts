@@ -19,6 +19,6 @@ interface ITraitOracle {
     function hasTrait(
         IERC721 _tokenContract,
         uint256 _tokenId,
-        uint256 _traitId
+        bytes calldata _trait
     ) external view returns (bool);
 }

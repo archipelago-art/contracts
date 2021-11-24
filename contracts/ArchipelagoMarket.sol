@@ -271,10 +271,8 @@ contract ArchipelagoMarket is Ownable {
             uint256 expectedTokenId = uint256(bytes32(bid.trait));
             require(expectedTokenId == tokenId, "tokenid mismatch");
         } else {
-            // Pending updating the Trait Oracle interface :-)
-            uint256 backfillTrait = uint256(bytes32(bid.trait));
             require(
-                bid.traitOracle.hasTrait(token, tokenId, backfillTrait),
+                bid.traitOracle.hasTrait(token, tokenId, bid.trait),
                 "missing trait"
             );
         }

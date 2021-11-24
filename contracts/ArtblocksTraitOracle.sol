@@ -392,8 +392,9 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle {
     function hasTrait(
         IERC721, /*_tokenContract*/
         uint256 _tokenId,
-        uint256 _traitId
+        bytes calldata _trait
     ) external view override returns (bool) {
+        uint256 _traitId = uint256(bytes32(_trait));
         // Check project traits first, since this only requires a single
         // storage lookup if `_traitId` represents a feature trait.
         return

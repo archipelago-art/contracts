@@ -62,7 +62,7 @@ describe("ArtblocksTraitOracle", () => {
     it("accepts the token oracle interface", async () => {
       const interfaceId = ethers.utils.hexDataSlice(
         ethers.utils.keccak256(
-          ethers.utils.toUtf8Bytes("hasTrait(address,uint256,uint256)")
+          ethers.utils.toUtf8Bytes("hasTrait(address,uint256,bytes)")
         ),
         0,
         4
