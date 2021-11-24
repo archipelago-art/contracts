@@ -13,8 +13,6 @@ contract ArchipelagoMarket is Ownable {
     using MarketMessages for Bid;
     using MarketMessages for Ask;
 
-    event BidCancellation(address indexed participant, uint256 timestamp);
-    event AskCancellation(address indexed participant, uint256 timestamp);
     event NonceCancellation(address indexed participant, uint256 indexed nonce);
 
     event BidApproval(
@@ -55,8 +53,6 @@ contract ArchipelagoMarket is Ownable {
         uint256 amount
     );
 
-    mapping(address => uint256) public bidTimestampCancellation;
-    mapping(address => uint256) public askTimestampCancellation;
     mapping(address => mapping(uint256 => bool)) public nonceCancellation;
 
     /// `onChainApprovals[address][structHash]` is `true` if `address` has
@@ -152,26 +148,7 @@ contract ArchipelagoMarket is Ownable {
         return ask.structHash();
     }
 
-    function cancelBids(uint256 cancellationTimestamp) external {
-        require(
-            cancellationTimestamp > bidTimestampCancellation[msg.sender],
-            INVALID_ARGS
-        );
-        require(cancellationTimestamp <= block.timestamp, INVALID_ARGS);
-        bidTimestampCancellation[msg.sender] = cancellationTimestamp;
-        emit BidCancellation(msg.sender, cancellationTimestamp);
-    }
-
-    function cancelAsks(uint256 cancellationTimestamp) external {
-        require(
-            cancellationTimestamp > askTimestampCancellation[msg.sender],
-            INVALID_ARGS
-        );
-        require(cancellationTimestamp <= block.timestamp, INVALID_ARGS);
-        askTimestampCancellation[msg.sender] = cancellationTimestamp;
-        emit AskCancellation(msg.sender, cancellationTimestamp);
-    }
-
+    // TODO: Profile gas usage of memory vs calldata here.
     function cancelNonces(uint256[] memory nonces) external {
         for (uint256 i; i < nonces.length; i++) {
             uint256 nonce = nonces[i];
@@ -262,15 +239,7 @@ contract ArchipelagoMarket is Ownable {
         require(block.timestamp <= ask.deadline, ORDER_CANCELLED_OR_EXPIRED);
 
         require(
-            bidTimestampCancellation[bidder] < bid.created,
-            ORDER_CANCELLED_OR_EXPIRED
-        );
-        require(
             !nonceCancellation[bidder][bid.nonce],
-            ORDER_CANCELLED_OR_EXPIRED
-        );
-        require(
-            askTimestampCancellation[asker] < ask.created,
             ORDER_CANCELLED_OR_EXPIRED
         );
         require(

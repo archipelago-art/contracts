@@ -76,7 +76,6 @@ describe("Market", () => {
 
     function tokenIdBid({
       nonce = 0,
-      created = 1,
       deadline = sdk.market.MaxUint40,
       currencyAddress = weth.address,
       price = exa,
@@ -87,7 +86,6 @@ describe("Market", () => {
     } = {}) {
       return {
         nonce,
-        created,
         deadline,
         currencyAddress,
         price,
@@ -101,7 +99,6 @@ describe("Market", () => {
 
     function traitBid({
       nonce = 0,
-      created = 1,
       deadline = sdk.market.MaxUint40,
       currencyAddress = weth.address,
       price = exa,
@@ -113,7 +110,6 @@ describe("Market", () => {
     } = {}) {
       return {
         nonce,
-        created,
         deadline,
         currencyAddress,
         price,
@@ -127,7 +123,6 @@ describe("Market", () => {
 
     function newAsk({
       nonce = 0,
-      created = 1,
       deadline = sdk.market.MaxUint40,
       currencyAddress = weth.address,
       price = exa,
@@ -140,7 +135,6 @@ describe("Market", () => {
     } = {}) {
       return {
         nonce,
-        created,
         deadline,
         currencyAddress,
         price,
@@ -1296,26 +1290,6 @@ describe("Market", () => {
     });
   });
   describe("cancellation mechanics", () => {
-    it("orders may fail due to bid timestamp cancellation", async () => {
-      const { market, signers, weth, nft, asker, bidder, tokenIdBid, newAsk } =
-        await setup();
-      const bid = tokenIdBid();
-      const ask = newAsk();
-      await market.connect(bidder).cancelBids(bid.created);
-      await expect(
-        fillOrder(market, bid, bidder, ask, asker)
-      ).to.be.revertedWith("cancelled");
-    });
-    it("orders may fail due to ask timestamp cancellation", async () => {
-      const { market, signers, weth, nft, asker, bidder, tokenIdBid, newAsk } =
-        await setup();
-      const bid = tokenIdBid();
-      const ask = newAsk();
-      await market.connect(asker).cancelAsks(ask.created);
-      await expect(
-        fillOrder(market, bid, bidder, ask, asker)
-      ).to.be.revertedWith("cancelled");
-    });
     it("orders may fail due to bid nonce cancellation", async () => {
       const { market, signers, weth, nft, asker, bidder, tokenIdBid, newAsk } =
         await setup();
@@ -1366,17 +1340,9 @@ describe("Market", () => {
         true
       );
     });
-    it("events are emitted on all cancellation types", async () => {
+    it("events are emitted on nonce cancellations", async () => {
       const { market, signers } = await setup();
       const address = signers[0].address;
-      const cancelBids = market.cancelBids(100);
-      await expect(cancelBids)
-        .to.emit(market, "BidCancellation")
-        .withArgs(address, 100);
-      const cancelAsks = market.cancelAsks(101);
-      await expect(cancelAsks)
-        .to.emit(market, "AskCancellation")
-        .withArgs(address, 101);
       const cancelNonces = market.cancelNonces([102, 103]);
       await expect(cancelNonces)
         .to.emit(market, "NonceCancellation")
@@ -1384,33 +1350,12 @@ describe("Market", () => {
         .to.emit(market, "NonceCancellation")
         .withArgs(address, 103);
     });
-    it("cancellation timestamps must be increasing", async () => {
-      const { market } = await setup();
-      await market.cancelBids(1);
-      await market.cancelAsks(1);
-      await expect(market.cancelBids(0)).to.be.revertedWith("invalid args");
-      await expect(market.cancelBids(1)).to.be.revertedWith("invalid args");
-      await expect(market.cancelAsks(0)).to.be.revertedWith("invalid args");
-      await expect(market.cancelAsks(1)).to.be.revertedWith("invalid args");
-    });
-    it("cancellation timestamps must not be in the future", async () => {
-      const { market } = await setup();
-      const now = await clock.timestamp();
-      const future = now.add(BN.from("86400"));
-      await expect(market.cancelBids(future)).to.be.revertedWith(
-        "invalid args"
-      );
-      await expect(market.cancelAsks(future)).to.be.revertedWith(
-        "invalid args"
-      );
-    });
   });
   describe("EIP-712 struct hash helpers", () => {
     it("properly hash bids", async () => {
       const { market, signers, bidder, traitBid } = await setup();
       const bid = traitBid({
         nonce: 1,
-        created: 2,
         deadline: sdk.market.MaxUint40,
         price: exa,
         trait: 0x1234,
@@ -1435,7 +1380,6 @@ describe("Market", () => {
       const { market, signers, asker, newAsk } = await setup();
       const ask = newAsk({
         nonce: 1,
-        created: 2,
         deadline: sdk.market.MaxUint40,
         tokenId: 0x12345678,
         price: exa,

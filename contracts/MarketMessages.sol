@@ -17,9 +17,6 @@ struct Bid {
      Shared fields for all Orders:
      */
     uint256 nonce;
-    /// Timestamp at which this order was created. Affects time-based
-    /// cancellations.
-    uint40 created;
     /// Timestamp past which this order is no longer valid.
     uint40 deadline;
     /// Address of the ERC-20 contract being used as payment currency.
@@ -56,9 +53,6 @@ struct Ask {
      Shared fields for all Orders:
      */
     uint256 nonce;
-    /// Timestamp at which this order was created. Affects time-based
-    /// cancellations.
-    uint40 created;
     /// Timestamp past which this order is no longer valid.
     uint40 deadline;
     /// Address of the ERC-20 contract being used as payment currency.
@@ -99,11 +93,11 @@ library MarketMessages {
 
     bytes32 internal constant TYPEHASH_BID =
         keccak256(
-            "Bid(uint256 nonce,uint40 created,uint40 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties,Royalty[] extraRoyalties,uint256 trait,address traitOracle)Royalty(address recipient,uint256 micros)"
+            "Bid(uint256 nonce,uint40 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties,Royalty[] extraRoyalties,uint256 trait,address traitOracle)Royalty(address recipient,uint256 micros)"
         );
     bytes32 internal constant TYPEHASH_ASK =
         keccak256(
-            "Ask(uint256 nonce,uint40 created,uint40 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties,Royalty[] extraRoyalties,uint256 tokenId,bool unwrapWeth,address authorizedBidder)Royalty(address recipient,uint256 micros)"
+            "Ask(uint256 nonce,uint40 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties,Royalty[] extraRoyalties,uint256 tokenId,bool unwrapWeth,address authorizedBidder)Royalty(address recipient,uint256 micros)"
         );
     bytes32 internal constant TYPEHASH_ROYALTY =
         keccak256("Royalty(address recipient,uint256 micros)");
@@ -114,7 +108,6 @@ library MarketMessages {
                 abi.encode(
                     TYPEHASH_BID,
                     _self.nonce,
-                    _self.created,
                     _self.deadline,
                     _self.currencyAddress,
                     _self.price,
@@ -133,7 +126,6 @@ library MarketMessages {
                 abi.encode(
                     TYPEHASH_ASK,
                     _self.nonce,
-                    _self.created,
                     _self.deadline,
                     _self.currencyAddress,
                     _self.price,
