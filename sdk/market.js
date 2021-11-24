@@ -117,7 +117,7 @@ function bidStructHash(bid) {
       [
         "bytes32",
         "uint256",
-        "uint256",
+        "uint40",
         "address",
         "uint256",
         "address",
@@ -158,7 +158,7 @@ function askStructHash(ask) {
       [
         "bytes32",
         "uint256",
-        "uint256",
+        "uint40",
         "address",
         "uint256",
         "address",
