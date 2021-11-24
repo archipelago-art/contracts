@@ -92,7 +92,7 @@ describe("Market", () => {
         tokenAddress,
         requiredRoyalties,
         extraRoyalties,
-        trait: tokenId,
+        trait: ethers.utils.defaultAbiCoder.encode(["uint256"], [tokenId]),
         traitOracle: ethers.constants.AddressZero,
       };
     }
@@ -116,7 +116,7 @@ describe("Market", () => {
         tokenAddress,
         requiredRoyalties,
         extraRoyalties,
-        trait,
+        trait: ethers.utils.defaultAbiCoder.encode(["uint256"], [trait]),
         traitOracle,
       };
     }

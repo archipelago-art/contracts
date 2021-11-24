@@ -36,7 +36,7 @@ const Bid = [
   { type: "address", name: "tokenAddress" },
   { type: "Royalty[]", name: "requiredRoyalties" },
   { type: "Royalty[]", name: "extraRoyalties" },
-  { type: "uint256", name: "trait" },
+  { type: "bytes", name: "trait" },
   { type: "address", name: "traitOracle" },
 ];
 const Ask = [
@@ -94,7 +94,7 @@ const verify712 = Object.freeze({
 
 const TYPENAME_ROYALTY = "Royalty(address recipient,uint256 micros)";
 const TYPENAME_BID =
-  "Bid(uint256 nonce,uint40 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties,Royalty[] extraRoyalties,uint256 trait,address traitOracle)";
+  "Bid(uint256 nonce,uint40 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties,Royalty[] extraRoyalties,bytes trait,address traitOracle)";
 const TYPENAME_ASK =
   "Ask(uint256 nonce,uint40 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties,Royalty[] extraRoyalties,uint256 tokenId,bool unwrapWeth,address authorizedBidder)";
 
@@ -123,7 +123,7 @@ function bidStructHash(bid) {
         "address",
         "bytes32",
         "bytes32",
-        "uint256",
+        "bytes32",
         "address",
       ],
       [
@@ -145,7 +145,7 @@ function bidStructHash(bid) {
             [bid.extraRoyalties.map(royaltyStructHash)]
           )
         ),
-        bid.trait,
+        ethers.utils.keccak256(bid.trait),
         bid.traitOracle,
       ]
     )

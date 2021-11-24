@@ -268,10 +268,13 @@ contract ArchipelagoMarket is Ownable {
         require(token == bid.tokenAddress, "token address mismatch");
         require(currency == bid.currencyAddress, "currency address mismatch");
         if (address(bid.traitOracle) == address(0)) {
-            require(bid.trait == tokenId, "tokenid mismatch");
+            uint256 expectedTokenId = uint256(bytes32(bid.trait));
+            require(expectedTokenId == tokenId, "tokenid mismatch");
         } else {
+            // Pending updating the Trait Oracle interface :-)
+            uint256 backfillTrait = uint256(bytes32(bid.trait));
             require(
-                bid.traitOracle.hasTrait(token, tokenId, bid.trait),
+                bid.traitOracle.hasTrait(token, tokenId, backfillTrait),
                 "missing trait"
             );
         }
