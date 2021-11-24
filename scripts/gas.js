@@ -5,7 +5,6 @@ const BN = ethers.BigNumber;
 
 const sdk = require("../sdk");
 const { EIP_712 } = sdk.SignatureKind;
-const { BidType } = sdk.market;
 
 const TEST_CASES = [];
 
@@ -178,11 +177,8 @@ TEST_CASES.push(async function* marketFills(props) {
       currencyAddress: weth.address,
       price: exa,
       tokenAddress: token.address,
-      tokenId: tokenId,
-      traitset: 0,
+      traitset: tokenId,
       traitOracle: ethers.constants.AddressZero,
-      traitOracle: ethers.constants.AddressZero,
-      bidType: BidType.TOKEN_ID,
       requiredRoyalties: [],
       extraRoyalties: [],
     };
@@ -219,11 +215,9 @@ TEST_CASES.push(async function* marketFills(props) {
       deadline: sdk.market.MaxUint40,
       currencyAddress: weth.address,
       price: exa,
-      tokenId: 0,
       tokenAddress: token.address,
       traitset: traitId,
       traitOracle: oracle.address,
-      bidType: BidType.TRAITSET,
       requiredRoyalties: [],
       extraRoyalties: [],
     };
@@ -260,11 +254,9 @@ TEST_CASES.push(async function* marketFills(props) {
       deadline: sdk.market.MaxUint40,
       currencyAddress: weth.address,
       price: exa,
-      tokenId: tokenId,
       tokenAddress: token.address,
-      traitset: 0,
+      traitset: tokenId,
       traitOracle: ethers.constants.AddressZero,
-      bidType: BidType.TOKEN_ID,
       requiredRoyalties: [],
       extraRoyalties: [],
     };
@@ -301,11 +293,9 @@ TEST_CASES.push(async function* marketFills(props) {
       deadline: sdk.market.MaxUint40,
       currencyAddress: weth.address,
       price: exa,
-      tokenId: tokenId,
+      traitset: tokenId,
       tokenAddress: token.address,
-      traitset: 0,
       traitOracle: ethers.constants.AddressZero,
-      bidType: BidType.TOKEN_ID,
       requiredRoyalties: [],
       extraRoyalties: [],
     };
@@ -340,11 +330,9 @@ TEST_CASES.push(async function* marketFills(props) {
       deadline: sdk.market.MaxUint40,
       currencyAddress: weth.address,
       price: exa,
-      tokenId: tokenId,
+      traitset: tokenId,
       tokenAddress: token.address,
-      traitset: 0,
       traitOracle: ethers.constants.AddressZero,
-      bidType: BidType.TOKEN_ID,
       requiredRoyalties: [r0],
       extraRoyalties: [],
     };
@@ -382,11 +370,9 @@ TEST_CASES.push(async function* marketFills(props) {
       deadline: sdk.market.MaxUint40,
       currencyAddress: weth.address,
       price: exa,
-      tokenId: tokenId,
       tokenAddress: token.address,
-      traitset: 0,
+      traitset: tokenId,
       traitOracle: ethers.constants.AddressZero,
-      bidType: BidType.TOKEN_ID,
       requiredRoyalties: [r0, r0, r0],
       extraRoyalties: [],
     };

@@ -2,11 +2,6 @@ const ethers = require("ethers");
 
 const { hashLegacyMessage } = require("./signatureChecker");
 
-const BidType = Object.freeze({
-  TOKEN_ID: 0,
-  TRAITSET: 1,
-});
-
 const MaxUint40 = ethers.BigNumber.from((1n << 40n) - 1n);
 
 function utf8Hash(s) {
@@ -42,8 +37,6 @@ const Bid = [
   { type: "address", name: "tokenAddress" },
   { type: "Royalty[]", name: "requiredRoyalties" },
   { type: "Royalty[]", name: "extraRoyalties" },
-  { type: "uint8", name: "bidType" },
-  { type: "uint256", name: "tokenId" },
   { type: "uint256", name: "traitset" },
   { type: "address", name: "traitOracle" },
 ];
@@ -103,7 +96,7 @@ const verify712 = Object.freeze({
 
 const TYPENAME_ROYALTY = "Royalty(address recipient,uint256 micros)";
 const TYPENAME_BID =
-  "Bid(uint256 nonce,uint40 created,uint40 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties,Royalty[] extraRoyalties,uint8 bidType,uint256 tokenId,uint256 traitset,address traitOracle)";
+  "Bid(uint256 nonce,uint40 created,uint40 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties,Royalty[] extraRoyalties,uint256 traitset,address traitOracle)";
 const TYPENAME_ASK =
   "Ask(uint256 nonce,uint40 created,uint40 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties,Royalty[] extraRoyalties,uint256 tokenId,bool unwrapWeth,address authorizedBidder)";
 
@@ -133,8 +126,6 @@ function bidStructHash(bid) {
         "address",
         "bytes32",
         "bytes32",
-        "uint8",
-        "uint256",
         "uint256",
         "address",
       ],
@@ -158,8 +149,6 @@ function bidStructHash(bid) {
             [bid.extraRoyalties.map(royaltyStructHash)]
           )
         ),
-        bid.bidType,
-        bid.tokenId,
         bid.traitset,
         bid.traitOracle,
       ]
@@ -291,7 +280,6 @@ function computeSale({ bid, ask }) {
 }
 
 module.exports = {
-  BidType,
   MaxUint40,
   domainSeparator,
   sign712,

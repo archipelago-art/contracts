@@ -5,13 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "./ITraitOracle.sol";
 
-enum BidType {
-    /// A bid for a specific token, keyed by token ID.
-    TOKEN_ID,
-    /// A blanket bid for any token that matches *all* of the specified traits.
-    TRAITSET
-}
-
 struct Royalty {
     address recipient;
     /// Millionths of the sale price that this recipient should get.
@@ -49,14 +42,9 @@ struct Bid {
     /*
      * Bid-specific fields
      */
-    BidType bidType;
-    /// For `TOKEN_ID` bids, this is the token that the bid applies to. For
-    /// other bids, this is zero.
-    uint256 tokenId;
-    /// For `TRAITSET` bids, this is an array of trait IDs, sorted in strictly
-    /// increasing order. A token must have *every* trait in this array to match
-    /// the bid. The array may be empty, in which case this naturally represents
-    /// a floor bid on all tokens. For non-`TRAITSET` bids, this array is empty.
+    /// This is either: an encoding of the traitset data that will be passed to
+    /// the trait oracle (if one is provided), or the raw token id for the token
+    /// being bid on (if the traitOracle is address zero).
     uint256 traitset;
     /// For `TRAITSET` bids, this must be the address of a Trait oracle that is
     /// trusted / to determine trait membership for this bid. for non-`TRAITSET`
@@ -112,7 +100,7 @@ library MarketMessages {
 
     bytes32 internal constant TYPEHASH_BID =
         keccak256(
-            "Bid(uint256 nonce,uint40 created,uint40 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties,Royalty[] extraRoyalties,uint8 bidType,uint256 tokenId,uint256 traitset,address traitOracle)Royalty(address recipient,uint256 micros)"
+            "Bid(uint256 nonce,uint40 created,uint40 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties,Royalty[] extraRoyalties,uint256 traitset,address traitOracle)Royalty(address recipient,uint256 micros)"
         );
     bytes32 internal constant TYPEHASH_ASK =
         keccak256(
@@ -134,8 +122,6 @@ library MarketMessages {
                     _self.tokenAddress,
                     _self.requiredRoyalties.structHash(),
                     _self.extraRoyalties.structHash(),
-                    _self.bidType,
-                    _self.tokenId,
                     _self.traitset,
                     _self.traitOracle
                 )

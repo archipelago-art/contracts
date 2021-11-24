@@ -94,10 +94,8 @@ describe("Market", () => {
         tokenAddress,
         requiredRoyalties,
         extraRoyalties,
-        tokenId,
-        traitset: 0,
+        traitset: tokenId,
         traitOracle: ethers.constants.AddressZero,
-        bidType: sdk.market.BidType.TOKEN_ID,
       };
     }
 
@@ -122,10 +120,8 @@ describe("Market", () => {
         tokenAddress,
         requiredRoyalties,
         extraRoyalties,
-        tokenId: 0,
         traitset,
         traitOracle,
-        bidType: sdk.market.BidType.TRAITSET,
       };
     }
 
@@ -519,7 +515,7 @@ describe("Market", () => {
           bid.price.mul(2)
         )
         .to.emit(market, "TokenTraded")
-        .withArgs(tradeId, bid.tokenAddress, bid.tokenId);
+        .withArgs(tradeId, bid.tokenAddress, bid.traitset);
     });
 
     describe("order filling in ETH", () => {
