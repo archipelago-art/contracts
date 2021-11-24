@@ -1457,4 +1457,22 @@ describe("Market", () => {
       expect(await market.onChainApprovals(addr, hash)).to.equal(false);
     });
   });
+  describe("eth recovery", () => {
+    it("funds sent to the market may be recovered by market owner", async () => {
+      const { market, signers } = await setup();
+      const recipient = signers[9];
+      const recipientBalance = await recipient.getBalance();
+      await signers[0].sendTransaction({
+        to: market.address,
+        value: exa,
+      });
+      await market.skim(recipient.address);
+      expect(await recipient.getBalance()).to.equal(recipientBalance.add(exa));
+    });
+    it("only the market owner may call skim", async () => {
+      const { market, signers } = await setup();
+      const fail = market.connect(signers[1]).skim(signers[1].address);
+      expect(fail).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+  });
 });

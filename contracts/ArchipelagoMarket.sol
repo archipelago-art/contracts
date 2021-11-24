@@ -2,13 +2,14 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./ITraitOracle.sol";
 import "./IWeth.sol";
 import "./MarketMessages.sol";
 import "./SignatureChecker.sol";
 
-contract ArchipelagoMarket {
+contract ArchipelagoMarket is Ownable {
     using MarketMessages for Bid;
     using MarketMessages for Ask;
 
@@ -79,8 +80,16 @@ contract ArchipelagoMarket {
             "EIP712Domain(string name,uint256 chainId,address verifyingContract)"
         );
 
-    /// TODO: ensure admin can skim any ETH that is mistakenly sent here.
+    /// Needs to be present so that the WETH contract can send ETH here for
+    /// automatic unwrapping on behalf of sellers. No-one else should send
+    /// ETH to this contract.
     receive() external payable {}
+
+    /// For recovering ETH mistakenly sent to this contract.
+    /// Only the owner (i.e. Archipelago) may do this.
+    function skim(address recipient) external onlyOwner {
+        payable(recipient).transfer(address(this).balance);
+    }
 
     function computeDomainSeparator() internal view returns (bytes32) {
         return
