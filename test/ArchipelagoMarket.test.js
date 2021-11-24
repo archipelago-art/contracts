@@ -94,12 +94,12 @@ describe("Market", () => {
         tokenAddress,
         requiredRoyalties,
         extraRoyalties,
-        traitset: tokenId,
+        trait: tokenId,
         traitOracle: ethers.constants.AddressZero,
       };
     }
 
-    function traitsetBid({
+    function traitBid({
       nonce = 0,
       created = 1,
       deadline = sdk.market.MaxUint40,
@@ -108,7 +108,7 @@ describe("Market", () => {
       tokenAddress = nft.address,
       requiredRoyalties = [],
       extraRoyalties = [],
-      traitset = 0,
+      trait = 0,
       traitOracle = oracle.address,
     } = {}) {
       return {
@@ -120,7 +120,7 @@ describe("Market", () => {
         tokenAddress,
         requiredRoyalties,
         extraRoyalties,
-        traitset,
+        trait,
         traitOracle,
       };
     }
@@ -162,7 +162,7 @@ describe("Market", () => {
       otherSigner,
       oracle,
       tokenIdBid,
-      traitsetBid,
+      traitBid,
       newAsk,
     };
   }
@@ -332,7 +332,7 @@ describe("Market", () => {
           asker: SignatureKind.ETHEREUM_SIGNED_MESSAGE,
         }));
       });
-      it("supports legacy bid signatures on traitset bids", async () => {
+      it("supports legacy bid signatures on trait bids", async () => {
         const {
           market,
           signers,
@@ -341,11 +341,11 @@ describe("Market", () => {
           asker,
           bidder,
           oracle,
-          traitsetBid,
+          traitBid,
           newAsk,
         } = await setup();
         await oracle.setTrait(nft.address, 0, 42);
-        const bid = traitsetBid({ traitset: 42 });
+        const bid = traitBid({ trait: 42 });
         const ask = newAsk();
         await fillOrder(market, bid, bidder, ask, asker, {
           bidder: SignatureKind.ETHEREUM_SIGNED_MESSAGE,
@@ -515,7 +515,7 @@ describe("Market", () => {
           bid.price.mul(2)
         )
         .to.emit(market, "TokenTraded")
-        .withArgs(tradeId, bid.tokenAddress, bid.traitset);
+        .withArgs(tradeId, bid.tokenAddress, bid.trait);
     });
 
     describe("order filling in ETH", () => {
@@ -635,17 +635,17 @@ describe("Market", () => {
 
     describe("traits and oracle", () => {
       it("a nft can match a single trait", async () => {
-        const { market, bidder, asker, oracle, traitsetBid, newAsk, nft } =
+        const { market, bidder, asker, oracle, traitBid, newAsk, nft } =
           await setup();
-        const bid = traitsetBid({ traitset: 42 });
+        const bid = traitBid({ trait: 42 });
         const ask = newAsk();
         await oracle.setTrait(nft.address, 0, 42);
         await fillOrder(market, bid, bidder, ask, asker);
       });
       it("a nft can fail to match a single trait", async () => {
-        const { market, bidder, asker, oracle, traitsetBid, newAsk, nft } =
+        const { market, bidder, asker, oracle, traitBid, newAsk, nft } =
           await setup();
-        const bid = traitsetBid({ traitset: 42 });
+        const bid = traitBid({ trait: 42 });
         const ask = newAsk();
         await oracle.setTrait(nft.address, 0, 69);
         const fail = fillOrder(market, bid, bidder, ask, asker);
@@ -1407,13 +1407,13 @@ describe("Market", () => {
   });
   describe("EIP-712 struct hash helpers", () => {
     it("properly hash bids", async () => {
-      const { market, signers, bidder, traitsetBid } = await setup();
-      const bid = traitsetBid({
+      const { market, signers, bidder, traitBid } = await setup();
+      const bid = traitBid({
         nonce: 1,
         created: 2,
         deadline: sdk.market.MaxUint40,
         price: exa,
-        traitset: 0x1234,
+        trait: 0x1234,
         extraRoyalties: [
           { recipient: signers[3].address, micros: 10 },
           { recipient: signers[4].address, micros: 100 },

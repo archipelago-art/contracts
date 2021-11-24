@@ -177,7 +177,7 @@ TEST_CASES.push(async function* marketFills(props) {
       currencyAddress: weth.address,
       price: exa,
       tokenAddress: token.address,
-      traitset: tokenId,
+      trait: tokenId,
       traitOracle: ethers.constants.AddressZero,
       requiredRoyalties: [],
       extraRoyalties: [],
@@ -216,7 +216,7 @@ TEST_CASES.push(async function* marketFills(props) {
       currencyAddress: weth.address,
       price: exa,
       tokenAddress: token.address,
-      traitset: traitId,
+      trait: traitId,
       traitOracle: oracle.address,
       requiredRoyalties: [],
       extraRoyalties: [],
@@ -244,7 +244,7 @@ TEST_CASES.push(async function* marketFills(props) {
       askSignature,
       EIP_712
     );
-    yield ["fillSingleTraitsetOrder", await tx.wait()];
+    yield ["fillSingletraitOrder", await tx.wait()];
   }
 
   {
@@ -255,7 +255,7 @@ TEST_CASES.push(async function* marketFills(props) {
       currencyAddress: weth.address,
       price: exa,
       tokenAddress: token.address,
-      traitset: tokenId,
+      trait: tokenId,
       traitOracle: ethers.constants.AddressZero,
       requiredRoyalties: [],
       extraRoyalties: [],
@@ -293,7 +293,7 @@ TEST_CASES.push(async function* marketFills(props) {
       deadline: sdk.market.MaxUint40,
       currencyAddress: weth.address,
       price: exa,
-      traitset: tokenId,
+      trait: tokenId,
       tokenAddress: token.address,
       traitOracle: ethers.constants.AddressZero,
       requiredRoyalties: [],
@@ -330,7 +330,7 @@ TEST_CASES.push(async function* marketFills(props) {
       deadline: sdk.market.MaxUint40,
       currencyAddress: weth.address,
       price: exa,
-      traitset: tokenId,
+      trait: tokenId,
       tokenAddress: token.address,
       traitOracle: ethers.constants.AddressZero,
       requiredRoyalties: [r0],
@@ -371,7 +371,7 @@ TEST_CASES.push(async function* marketFills(props) {
       currencyAddress: weth.address,
       price: exa,
       tokenAddress: token.address,
-      traitset: tokenId,
+      trait: tokenId,
       traitOracle: ethers.constants.AddressZero,
       requiredRoyalties: [r0, r0, r0],
       extraRoyalties: [],

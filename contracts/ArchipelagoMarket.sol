@@ -290,10 +290,10 @@ contract ArchipelagoMarket {
         require(token == bid.tokenAddress, "token address mismatch");
         require(currency == bid.currencyAddress, "currency address mismatch");
         if (address(bid.traitOracle) == address(0)) {
-            require(bid.traitset == tokenId, "tokenid mismatch");
+            require(bid.trait == tokenId, "tokenid mismatch");
         } else {
             require(
-                bid.traitOracle.hasTrait(token, tokenId, bid.traitset),
+                bid.traitOracle.hasTrait(token, tokenId, bid.trait),
                 "missing trait"
             );
         }

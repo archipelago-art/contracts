@@ -42,13 +42,12 @@ struct Bid {
     /*
      * Bid-specific fields
      */
-    /// This is either: an encoding of the traitset data that will be passed to
+    /// This is either: an encoding of the trait data that will be passed to
     /// the trait oracle (if one is provided), or the raw token id for the token
     /// being bid on (if the traitOracle is address zero).
-    uint256 traitset;
-    /// For `TRAITSET` bids, this must be the address of a Trait oracle that is
-    /// trusted / to determine trait membership for this bid. for non-`TRAITSET`
-    /// bids, this will / be the zero address.
+    uint256 trait;
+    /// The address of the trait oracle used to interpret the trait data.
+    /// If this is the zero address, the trait must be a uint256 tokenId
     ITraitOracle traitOracle;
 }
 
@@ -100,7 +99,7 @@ library MarketMessages {
 
     bytes32 internal constant TYPEHASH_BID =
         keccak256(
-            "Bid(uint256 nonce,uint40 created,uint40 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties,Royalty[] extraRoyalties,uint256 traitset,address traitOracle)Royalty(address recipient,uint256 micros)"
+            "Bid(uint256 nonce,uint40 created,uint40 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties,Royalty[] extraRoyalties,uint256 trait,address traitOracle)Royalty(address recipient,uint256 micros)"
         );
     bytes32 internal constant TYPEHASH_ASK =
         keccak256(
@@ -122,7 +121,7 @@ library MarketMessages {
                     _self.tokenAddress,
                     _self.requiredRoyalties.structHash(),
                     _self.extraRoyalties.structHash(),
-                    _self.traitset,
+                    _self.trait,
                     _self.traitOracle
                 )
             );

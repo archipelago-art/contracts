@@ -37,7 +37,7 @@ const Bid = [
   { type: "address", name: "tokenAddress" },
   { type: "Royalty[]", name: "requiredRoyalties" },
   { type: "Royalty[]", name: "extraRoyalties" },
-  { type: "uint256", name: "traitset" },
+  { type: "uint256", name: "trait" },
   { type: "address", name: "traitOracle" },
 ];
 const Ask = [
@@ -96,7 +96,7 @@ const verify712 = Object.freeze({
 
 const TYPENAME_ROYALTY = "Royalty(address recipient,uint256 micros)";
 const TYPENAME_BID =
-  "Bid(uint256 nonce,uint40 created,uint40 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties,Royalty[] extraRoyalties,uint256 traitset,address traitOracle)";
+  "Bid(uint256 nonce,uint40 created,uint40 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties,Royalty[] extraRoyalties,uint256 trait,address traitOracle)";
 const TYPENAME_ASK =
   "Ask(uint256 nonce,uint40 created,uint40 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties,Royalty[] extraRoyalties,uint256 tokenId,bool unwrapWeth,address authorizedBidder)";
 
@@ -149,7 +149,7 @@ function bidStructHash(bid) {
             [bid.extraRoyalties.map(royaltyStructHash)]
           )
         ),
-        bid.traitset,
+        bid.trait,
         bid.traitOracle,
       ]
     )
