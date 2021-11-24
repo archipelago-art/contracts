@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+
 interface ITraitOracle {
     /// Queries whether the given NFT has the given trait. The NFT is specified
     /// by token ID only; the token contract is assumed to be known already.
@@ -14,8 +16,9 @@ interface ITraitOracle {
     /// or as `uint256(keccak256("Normal"))` and `uint256(keccak256("Rare"))`,
     /// or as something else. The trait oracle may expose other domain-specific
     /// methods to describe these traits.
-    function hasTrait(uint256 _tokenId, uint256 _traitId)
-        external
-        view
-        returns (bool);
+    function hasTrait(
+        IERC721 _tokenContract,
+        uint256 _tokenId,
+        uint256 _traitId
+    ) external view returns (bool);
 }

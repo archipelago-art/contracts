@@ -62,7 +62,7 @@ describe("ArtblocksTraitOracle", () => {
     it("accepts the token oracle interface", async () => {
       const interfaceId = ethers.utils.hexDataSlice(
         ethers.utils.keccak256(
-          ethers.utils.toUtf8Bytes("hasTrait(uint256,uint256)")
+          ethers.utils.toUtf8Bytes("hasTrait(address,uint256,uint256)")
         ),
         0,
         4
@@ -333,18 +333,38 @@ describe("ArtblocksTraitOracle", () => {
       await expect(addTraitMemberships(oracle, signer, msg1))
         .to.emit(oracle, "TraitMembershipExpanded")
         .withArgs(traitId, batch1.length);
-      expect(await oracle.hasTrait(batch1[0], traitId)).to.equal(true);
-      expect(await oracle.hasTrait(batch2[0], traitId)).to.equal(false);
-      expect(await oracle.hasTrait(otherTokenId, traitId)).to.equal(false);
+      expect(
+        await oracle.hasTrait(ethers.constants.AddressZero, batch1[0], traitId)
+      ).to.equal(true);
+      expect(
+        await oracle.hasTrait(ethers.constants.AddressZero, batch2[0], traitId)
+      ).to.equal(false);
+      expect(
+        await oracle.hasTrait(
+          ethers.constants.AddressZero,
+          otherTokenId,
+          traitId
+        )
+      ).to.equal(false);
       expect(await oracle.featureMembers(traitId)).to.equal(batch1.length);
 
       const msg2 = { traitId, tokenIds: batch2 };
       await expect(await addTraitMemberships(oracle, signer, msg2))
         .to.emit(oracle, "TraitMembershipExpanded")
         .withArgs(traitId, tokenIds.length);
-      expect(await oracle.hasTrait(batch1[0], traitId)).to.equal(true);
-      expect(await oracle.hasTrait(batch2[0], traitId)).to.equal(true);
-      expect(await oracle.hasTrait(otherTokenId, traitId)).to.equal(false);
+      expect(
+        await oracle.hasTrait(ethers.constants.AddressZero, batch1[0], traitId)
+      ).to.equal(true);
+      expect(
+        await oracle.hasTrait(ethers.constants.AddressZero, batch2[0], traitId)
+      ).to.equal(true);
+      expect(
+        await oracle.hasTrait(
+          ethers.constants.AddressZero,
+          otherTokenId,
+          traitId
+        )
+      ).to.equal(false);
       expect(await oracle.featureMembers(traitId)).to.equal(tokenIds.length);
     });
 
@@ -355,11 +375,23 @@ describe("ArtblocksTraitOracle", () => {
       const msg2 = { traitId, tokenIds: [baseTokenId + 250] };
       await addTraitMemberships(oracle, signer, msg2);
 
-      expect(await oracle.hasTrait(baseTokenId + 250, traitId)).to.equal(true);
-      expect(await oracle.hasTrait(250, traitId)).to.equal(false);
-      expect(await oracle.hasTrait(2 * baseTokenId + 250, traitId)).to.equal(
-        false
-      );
+      expect(
+        await oracle.hasTrait(
+          ethers.constants.AddressZero,
+          baseTokenId + 250,
+          traitId
+        )
+      ).to.equal(true);
+      expect(
+        await oracle.hasTrait(ethers.constants.AddressZero, 250, traitId)
+      ).to.equal(false);
+      expect(
+        await oracle.hasTrait(
+          ethers.constants.AddressZero,
+          2 * baseTokenId + 250,
+          traitId
+        )
+      ).to.equal(false);
     });
 
     it("keeps track of members that were added multiple times", async () => {
@@ -374,9 +406,27 @@ describe("ArtblocksTraitOracle", () => {
       await expect(addTraitMemberships(oracle, signer, msg1))
         .to.emit(oracle, "TraitMembershipExpanded")
         .withArgs(traitId, 2);
-      expect(await oracle.hasTrait(baseTokenId + 1, traitId)).to.be.true;
-      expect(await oracle.hasTrait(baseTokenId + 2, traitId)).to.be.true;
-      expect(await oracle.hasTrait(baseTokenId + 3, traitId)).to.be.false;
+      expect(
+        await oracle.hasTrait(
+          ethers.constants.AddressZero,
+          baseTokenId + 1,
+          traitId
+        )
+      ).to.be.true;
+      expect(
+        await oracle.hasTrait(
+          ethers.constants.AddressZero,
+          baseTokenId + 2,
+          traitId
+        )
+      ).to.be.true;
+      expect(
+        await oracle.hasTrait(
+          ethers.constants.AddressZero,
+          baseTokenId + 3,
+          traitId
+        )
+      ).to.be.false;
       expect(await oracle.featureMembers(traitId)).to.equal(2);
 
       const msg2 = {
@@ -386,9 +436,27 @@ describe("ArtblocksTraitOracle", () => {
       await expect(addTraitMemberships(oracle, signer, msg2))
         .to.emit(oracle, "TraitMembershipExpanded")
         .withArgs(traitId, 3);
-      expect(await oracle.hasTrait(baseTokenId + 1, traitId)).to.be.true;
-      expect(await oracle.hasTrait(baseTokenId + 2, traitId)).to.be.true;
-      expect(await oracle.hasTrait(baseTokenId + 3, traitId)).to.be.true;
+      expect(
+        await oracle.hasTrait(
+          ethers.constants.AddressZero,
+          baseTokenId + 1,
+          traitId
+        )
+      ).to.be.true;
+      expect(
+        await oracle.hasTrait(
+          ethers.constants.AddressZero,
+          baseTokenId + 2,
+          traitId
+        )
+      ).to.be.true;
+      expect(
+        await oracle.hasTrait(
+          ethers.constants.AddressZero,
+          baseTokenId + 3,
+          traitId
+        )
+      ).to.be.true;
       expect(await oracle.featureMembers(traitId)).to.equal(3);
     });
 
@@ -708,30 +776,83 @@ describe("ArtblocksTraitOracle", () => {
     });
 
     it("includes actual members", async () => {
-      expect(await oracle.hasTrait(baseId, traitIdV0)).to.be.true;
-      expect(await oracle.hasTrait(baseId, traitIdV1)).to.be.true;
-      expect(await oracle.hasTrait(baseId + 1, traitIdV0)).to.be.true;
-      expect(await oracle.hasTrait(baseId + 1, traitIdV1)).to.be.true;
+      expect(
+        await oracle.hasTrait(ethers.constants.AddressZero, baseId, traitIdV0)
+      ).to.be.true;
+      expect(
+        await oracle.hasTrait(ethers.constants.AddressZero, baseId, traitIdV1)
+      ).to.be.true;
+      expect(
+        await oracle.hasTrait(
+          ethers.constants.AddressZero,
+          baseId + 1,
+          traitIdV0
+        )
+      ).to.be.true;
+      expect(
+        await oracle.hasTrait(
+          ethers.constants.AddressZero,
+          baseId + 1,
+          traitIdV1
+        )
+      ).to.be.true;
     });
 
     it("excludes members that are out of range", async () => {
-      expect(await oracle.hasTrait(baseId + 777, traitIdV0)).to.be.false;
-      expect(await oracle.hasTrait(baseId + 777, traitIdV1)).to.be.false;
+      expect(
+        await oracle.hasTrait(
+          ethers.constants.AddressZero,
+          baseId + 777,
+          traitIdV0
+        )
+      ).to.be.false;
+      expect(
+        await oracle.hasTrait(
+          ethers.constants.AddressZero,
+          baseId + 777,
+          traitIdV1
+        )
+      ).to.be.false;
     });
 
     it("excludes members from other projects", async () => {
-      expect(await oracle.hasTrait(baseId + PROJECT_STRIDE, traitIdV0)).to.be
-        .false;
+      expect(
+        await oracle.hasTrait(
+          ethers.constants.AddressZero,
+          baseId + PROJECT_STRIDE,
+          traitIdV0
+        )
+      ).to.be.false;
     });
 
     it("determines project size from the correct version", async () => {
-      expect(await oracle.hasTrait(baseId + 250, traitIdV0)).to.be.false;
-      expect(await oracle.hasTrait(baseId + 250, traitIdV1)).to.be.true;
+      expect(
+        await oracle.hasTrait(
+          ethers.constants.AddressZero,
+          baseId + 250,
+          traitIdV0
+        )
+      ).to.be.false;
+      expect(
+        await oracle.hasTrait(
+          ethers.constants.AddressZero,
+          baseId + 250,
+          traitIdV1
+        )
+      ).to.be.true;
     });
 
     it("excludes all members from a nonexistent version", async () => {
-      expect(await oracle.hasTrait(baseId + 250, traitIdV2)).to.be.false;
-      expect(await oracle.hasTrait(baseId, traitIdV2)).to.be.false;
+      expect(
+        await oracle.hasTrait(
+          ethers.constants.AddressZero,
+          baseId + 250,
+          traitIdV2
+        )
+      ).to.be.false;
+      expect(
+        await oracle.hasTrait(ethers.constants.AddressZero, baseId, traitIdV2)
+      ).to.be.false;
     });
   });
 });

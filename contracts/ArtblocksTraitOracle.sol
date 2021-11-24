@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 import "./ArtblocksTraitOracleMessages.sol";
 import "./ITraitOracle.sol";
@@ -388,12 +389,11 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle {
         return _result;
     }
 
-    function hasTrait(uint256 _tokenId, uint256 _traitId)
-        external
-        view
-        override
-        returns (bool)
-    {
+    function hasTrait(
+        IERC721, /*_tokenContract*/
+        uint256 _tokenId,
+        uint256 _traitId
+    ) external view override returns (bool) {
         // Check project traits first, since this only requires a single
         // storage lookup if `_traitId` represents a feature trait.
         return
