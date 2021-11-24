@@ -169,30 +169,62 @@ TEST_CASES.push(async function* marketFills(props) {
   // we don't include paying for storing the fact that signer has a non-zero weth balance.
   await weth.connect(signer).deposit({ value: exa });
 
+  let nextNonce = 0;
+
+  function newBid({
+    nonce = nextNonce++,
+    deadline = sdk.market.MaxUint40,
+    currencyAddress = weth.address,
+    price = exa,
+    tokenAddress = token.address,
+    requiredRoyalties = [],
+    extraRoyalties = [],
+    traitOracle = ethers.constants.AddressZero,
+    trait = tokenId,
+  } = {}) {
+    return {
+      nonce,
+      deadline,
+      currencyAddress,
+      price,
+      tokenAddress,
+      requiredRoyalties,
+      extraRoyalties,
+      trait: ethers.utils.defaultAbiCoder.encode(["uint256"], [trait]),
+      traitOracle,
+    };
+  }
+
+  const defaultTokenId = tokenId;
+  function newAsk({
+    nonce = nextNonce++,
+    deadline = sdk.market.MaxUint40,
+    currencyAddress = weth.address,
+    price = exa,
+    tokenAddress = token.address,
+    tokenId = defaultTokenId,
+    requiredRoyalties = [],
+    extraRoyalties = [],
+    unwrapWeth = false,
+    authorizedBidder = ethers.constants.AddressZero,
+  } = {}) {
+    return {
+      nonce,
+      deadline,
+      currencyAddress,
+      price,
+      tokenAddress,
+      tokenId,
+      requiredRoyalties,
+      extraRoyalties,
+      unwrapWeth,
+      authorizedBidder,
+    };
+  }
+
   {
-    const bid = {
-      nonce: 0,
-      deadline: sdk.market.MaxUint40,
-      currencyAddress: weth.address,
-      price: exa,
-      tokenAddress: token.address,
-      trait: tokenId,
-      traitOracle: ethers.constants.AddressZero,
-      requiredRoyalties: [],
-      extraRoyalties: [],
-    };
-    const ask = {
-      nonce: 0,
-      deadline: sdk.market.MaxUint40,
-      currencyAddress: weth.address,
-      price: exa,
-      tokenAddress: token.address,
-      tokenId: tokenId,
-      requiredRoyalties: [],
-      extraRoyalties: [],
-      unwrapWeth: false,
-      authorizedBidder: ethers.constants.AddressZero,
-    };
+    const bid = newBid();
+    const ask = newAsk();
     const bidSignature = sdk.market.sign712.bid(bob, domainInfo, bid);
     const askSignature = sdk.market.sign712.ask(alice, domainInfo, ask);
     const tx = await market.fillOrder(
@@ -207,29 +239,8 @@ TEST_CASES.push(async function* marketFills(props) {
   }
 
   {
-    const bid = {
-      nonce: 1,
-      deadline: sdk.market.MaxUint40,
-      currencyAddress: weth.address,
-      price: exa,
-      tokenAddress: token.address,
-      trait: traitId,
-      traitOracle: oracle.address,
-      requiredRoyalties: [],
-      extraRoyalties: [],
-    };
-    const ask = {
-      nonce: 1,
-      deadline: sdk.market.MaxUint40,
-      currencyAddress: weth.address,
-      price: exa,
-      tokenId: tokenId,
-      tokenAddress: token.address,
-      requiredRoyalties: [],
-      extraRoyalties: [],
-      unwrapWeth: false,
-      authorizedBidder: ethers.constants.AddressZero,
-    };
+    const bid = newBid({ trait: traitId, traitOracle: oracle.address });
+    const ask = newAsk();
     const bidSignature = sdk.market.sign712.bid(alice, domainInfo, bid);
     const askSignature = sdk.market.sign712.ask(bob, domainInfo, ask);
     const tx = await market.fillOrder(
@@ -244,29 +255,8 @@ TEST_CASES.push(async function* marketFills(props) {
   }
 
   {
-    const bid = {
-      nonce: 2,
-      deadline: sdk.market.MaxUint40,
-      currencyAddress: weth.address,
-      price: exa,
-      tokenAddress: token.address,
-      trait: tokenId,
-      traitOracle: ethers.constants.AddressZero,
-      requiredRoyalties: [],
-      extraRoyalties: [],
-    };
-    const ask = {
-      nonce: 2,
-      deadline: sdk.market.MaxUint40,
-      currencyAddress: weth.address,
-      price: exa,
-      tokenId: tokenId,
-      tokenAddress: token.address,
-      requiredRoyalties: [],
-      extraRoyalties: [],
-      unwrapWeth: true,
-      authorizedBidder: ethers.constants.AddressZero,
-    };
+    const bid = newBid();
+    const ask = newAsk({ unwrapWeth: true });
     const bidSignature = sdk.market.sign712.bid(bob, domainInfo, bid);
     const askSignature = sdk.market.sign712.ask(alice, domainInfo, ask);
     const tx = await market.fillOrder(
@@ -281,29 +271,8 @@ TEST_CASES.push(async function* marketFills(props) {
   }
 
   {
-    const bid = {
-      nonce: 3,
-      deadline: sdk.market.MaxUint40,
-      currencyAddress: weth.address,
-      price: exa,
-      trait: tokenId,
-      tokenAddress: token.address,
-      traitOracle: ethers.constants.AddressZero,
-      requiredRoyalties: [],
-      extraRoyalties: [],
-    };
-    const ask = {
-      nonce: 3,
-      deadline: sdk.market.MaxUint40,
-      currencyAddress: weth.address,
-      price: exa,
-      tokenId: tokenId,
-      tokenAddress: token.address,
-      requiredRoyalties: [],
-      extraRoyalties: [],
-      unwrapWeth: false,
-      authorizedBidder: ethers.constants.AddressZero,
-    };
+    const bid = newBid();
+    const ask = newAsk();
     const bidSignature = sdk.market.sign712.bid(alice, domainInfo, bid);
     const askSignature = sdk.market.sign712.ask(bob, domainInfo, ask);
     const tx = await market
@@ -316,29 +285,8 @@ TEST_CASES.push(async function* marketFills(props) {
 
   {
     const r0 = { recipient: signer.address, micros: 10000 };
-    const bid = {
-      nonce: 4,
-      deadline: sdk.market.MaxUint40,
-      currencyAddress: weth.address,
-      price: exa,
-      trait: tokenId,
-      tokenAddress: token.address,
-      traitOracle: ethers.constants.AddressZero,
-      requiredRoyalties: [r0],
-      extraRoyalties: [],
-    };
-    const ask = {
-      nonce: 4,
-      deadline: sdk.market.MaxUint40,
-      currencyAddress: weth.address,
-      price: exa,
-      tokenId: tokenId,
-      tokenAddress: token.address,
-      requiredRoyalties: [r0],
-      extraRoyalties: [],
-      unwrapWeth: false,
-      authorizedBidder: ethers.constants.AddressZero,
-    };
+    const bid = newBid({ requiredRoyalties: [r0] });
+    const ask = newAsk({ requiredRoyalties: [r0] });
     const bidSignature = sdk.market.sign712.bid(bob, domainInfo, bid);
     const askSignature = sdk.market.sign712.ask(alice, domainInfo, ask);
     const tx = await market.fillOrder(
@@ -354,29 +302,8 @@ TEST_CASES.push(async function* marketFills(props) {
 
   {
     const r0 = { recipient: signer.address, micros: 10000 };
-    const bid = {
-      nonce: 5,
-      deadline: sdk.market.MaxUint40,
-      currencyAddress: weth.address,
-      price: exa,
-      tokenAddress: token.address,
-      trait: tokenId,
-      traitOracle: ethers.constants.AddressZero,
-      requiredRoyalties: [r0, r0, r0],
-      extraRoyalties: [],
-    };
-    const ask = {
-      nonce: 5,
-      deadline: sdk.market.MaxUint40,
-      currencyAddress: weth.address,
-      price: exa,
-      tokenId: tokenId,
-      tokenAddress: token.address,
-      requiredRoyalties: [r0, r0, r0],
-      extraRoyalties: [],
-      unwrapWeth: false,
-      authorizedBidder: ethers.constants.AddressZero,
-    };
+    const bid = newBid({ requiredRoyalties: [r0, r0, r0] });
+    const ask = newAsk({ requiredRoyalties: [r0, r0, r0] });
     const bidSignature = sdk.market.sign712.bid(alice, domainInfo, bid);
     const askSignature = sdk.market.sign712.ask(bob, domainInfo, ask);
     const tx = await market.fillOrder(
