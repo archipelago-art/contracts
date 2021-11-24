@@ -95,7 +95,7 @@ describe("Market", () => {
         requiredRoyalties,
         extraRoyalties,
         tokenId,
-        traitset: [],
+        traitset: 0,
         traitOracle: ethers.constants.AddressZero,
         bidType: sdk.market.BidType.TOKEN_ID,
       };
@@ -110,7 +110,7 @@ describe("Market", () => {
       tokenAddress = nft.address,
       requiredRoyalties = [],
       extraRoyalties = [],
-      traitset = [],
+      traitset = 0,
       traitOracle = oracle.address,
     } = {}) {
       return {
@@ -349,7 +349,7 @@ describe("Market", () => {
           newAsk,
         } = await setup();
         await oracle.setTrait(nft.address, 0, 42);
-        const bid = traitsetBid({ traitset: [42] });
+        const bid = traitsetBid({ traitset: 42 });
         const ask = newAsk();
         await fillOrder(market, bid, bidder, ask, asker, {
           bidder: SignatureKind.ETHEREUM_SIGNED_MESSAGE,
@@ -638,44 +638,20 @@ describe("Market", () => {
     });
 
     describe("traits and oracle", () => {
-      it("any nft can match if the traitset is empty", async () => {
-        const { market, bidder, asker, traitsetBid, newAsk } = await setup();
-        const bid = traitsetBid();
-        const ask = newAsk();
-        await fillOrder(market, bid, bidder, ask, asker);
-      });
       it("a nft can match a single trait", async () => {
         const { market, bidder, asker, oracle, traitsetBid, newAsk, nft } =
           await setup();
-        const bid = traitsetBid({ traitset: [42] });
+        const bid = traitsetBid({ traitset: 42 });
         const ask = newAsk();
         await oracle.setTrait(nft.address, 0, 42);
-        await fillOrder(market, bid, bidder, ask, asker);
-      });
-      it("a nft can match a trait intersection", async () => {
-        const { market, bidder, asker, oracle, traitsetBid, newAsk, nft } =
-          await setup();
-        const bid = traitsetBid({ traitset: [42, 69] });
-        const ask = newAsk();
-        await oracle.setTrait(nft.address, 0, 42);
-        await oracle.setTrait(nft.address, 0, 69);
         await fillOrder(market, bid, bidder, ask, asker);
       });
       it("a nft can fail to match a single trait", async () => {
         const { market, bidder, asker, oracle, traitsetBid, newAsk, nft } =
           await setup();
-        const bid = traitsetBid({ traitset: [42] });
+        const bid = traitsetBid({ traitset: 42 });
         const ask = newAsk();
         await oracle.setTrait(nft.address, 0, 69);
-        const fail = fillOrder(market, bid, bidder, ask, asker);
-        await expect(fail).to.be.revertedWith("missing trait");
-      });
-      it("a nft can fail to match an intersection", async () => {
-        const { market, bidder, asker, oracle, traitsetBid, newAsk, nft } =
-          await setup();
-        const bid = traitsetBid({ traitset: [42, 69] });
-        const ask = newAsk();
-        await oracle.setTrait(nft.address, 0, 69); // it has one trait but not both
         const fail = fillOrder(market, bid, bidder, ask, asker);
         await expect(fail).to.be.revertedWith("missing trait");
       });
@@ -1441,7 +1417,7 @@ describe("Market", () => {
         created: 2,
         deadline: sdk.market.MaxUint40,
         price: exa,
-        traitset: [0x1234, 0x5678],
+        traitset: 0x1234,
         extraRoyalties: [
           { recipient: signers[3].address, micros: 10 },
           { recipient: signers[4].address, micros: 100 },

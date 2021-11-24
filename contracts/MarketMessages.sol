@@ -57,7 +57,7 @@ struct Bid {
     /// increasing order. A token must have *every* trait in this array to match
     /// the bid. The array may be empty, in which case this naturally represents
     /// a floor bid on all tokens. For non-`TRAITSET` bids, this array is empty.
-    uint256[] traitset;
+    uint256 traitset;
     /// For `TRAITSET` bids, this must be the address of a Trait oracle that is
     /// trusted / to determine trait membership for this bid. for non-`TRAITSET`
     /// bids, this will / be the zero address.
@@ -112,7 +112,7 @@ library MarketMessages {
 
     bytes32 internal constant TYPEHASH_BID =
         keccak256(
-            "Bid(uint256 nonce,uint40 created,uint40 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties,Royalty[] extraRoyalties,uint8 bidType,uint256 tokenId,uint256[] traitset,address traitOracle)Royalty(address recipient,uint256 micros)"
+            "Bid(uint256 nonce,uint40 created,uint40 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties,Royalty[] extraRoyalties,uint8 bidType,uint256 tokenId,uint256 traitset,address traitOracle)Royalty(address recipient,uint256 micros)"
         );
     bytes32 internal constant TYPEHASH_ASK =
         keccak256(
@@ -136,7 +136,7 @@ library MarketMessages {
                     _self.extraRoyalties.structHash(),
                     _self.bidType,
                     _self.tokenId,
-                    keccak256(abi.encodePacked(_self.traitset)),
+                    _self.traitset,
                     _self.traitOracle
                 )
             );

@@ -292,12 +292,10 @@ contract ArchipelagoMarket {
         if (bid.bidType == BidType.TOKEN_ID) {
             require(bid.tokenId == tokenId, "tokenid mismatch");
         } else {
-            for (uint256 i = 0; i < bid.traitset.length; i++) {
-                require(
-                    bid.traitOracle.hasTrait(token, tokenId, bid.traitset[i]),
-                    "missing trait"
-                );
-            }
+            require(
+                bid.traitOracle.hasTrait(token, tokenId, bid.traitset),
+                "missing trait"
+            );
         }
 
         require(
