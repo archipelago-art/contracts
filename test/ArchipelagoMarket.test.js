@@ -1419,4 +1419,28 @@ describe("Market", () => {
       expect(fail).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
+  describe("emergency shutdown", () => {
+    it("the owner may shut down the market", async () => {
+      const { market, signers, weth, nft, asker, bidder, tokenIdBid, newAsk } =
+        await setup();
+      const bid = tokenIdBid();
+      const ask = newAsk();
+      await market.setEmergencyShutdown(true);
+      const fail = fillOrder(market, bid, bidder, ask, asker);
+      expect(fail).to.be.revertedWith("Market is shutdown");
+    });
+    it("non-owner may not shut down the market", async () => {
+      const { market, bidder } = await setup();
+      const fail = market.connect(bidder).setEmergencyShutdown(true);
+      expect(fail).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+    it("the owner may restart the market", async () => {
+      const { market, asker, bidder, tokenIdBid, newAsk } = await setup();
+      const bid = tokenIdBid();
+      const ask = newAsk();
+      await market.setEmergencyShutdown(true);
+      await market.setEmergencyShutdown(false);
+      await fillOrder(market, bid, bidder, ask, asker);
+    });
+  });
 });

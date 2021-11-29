@@ -62,6 +62,10 @@ contract ArchipelagoMarket is Ownable {
     /// storage itself is the signing domain.
     mapping(address => mapping(bytes32 => bool)) public onChainApprovals;
 
+    /// Whether the market is in emergencyShutdown mode (in which case, no trades
+    /// can be made).
+    bool emergencyShutdown;
+
     string constant INVALID_ARGS = "Market: invalid args";
 
     string constant ORDER_CANCELLED_OR_EXPIRED =
@@ -85,6 +89,12 @@ contract ArchipelagoMarket is Ownable {
     /// Only the owner (i.e. Archipelago) may do this.
     function skim(address recipient) external onlyOwner {
         payable(recipient).transfer(address(this).balance);
+    }
+
+    /// Shut down the market. Should be used if a critical security
+    /// flaw is discovered.
+    function setEmergencyShutdown(bool isShutdown) external onlyOwner {
+        emergencyShutdown = isShutdown;
     }
 
     function computeDomainSeparator() internal view returns (bytes32) {
@@ -227,6 +237,7 @@ contract ArchipelagoMarket is Ownable {
         Ask memory ask,
         address asker
     ) internal {
+        require(!emergencyShutdown, "Market is shutdown");
         uint256 tokenId = ask.tokenId;
         IERC721 token = ask.tokenAddress;
         require(
