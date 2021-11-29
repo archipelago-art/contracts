@@ -166,19 +166,39 @@ describe("Market", () => {
   });
 
   async function signBid(market, bid, signer) {
-    return sdk.market.sign712.bid(signer, await domainInfo(market), bid);
+    return sdk.market.sign.bid(
+      SignatureKind.EIP_712,
+      signer,
+      await domainInfo(market),
+      bid
+    );
   }
 
   async function signBidLegacy(market, bid, signer) {
-    return sdk.market.signLegacy.bid(signer, await domainInfo(market), bid);
+    return sdk.market.sign.bid(
+      SignatureKind.ETHEREUM_SIGNED_MESSAGE,
+      signer,
+      await domainInfo(market),
+      bid
+    );
   }
 
   async function signAsk(market, ask, signer) {
-    return sdk.market.sign712.ask(signer, await domainInfo(market), ask);
+    return sdk.market.sign.ask(
+      SignatureKind.EIP_712,
+      signer,
+      await domainInfo(market),
+      ask
+    );
   }
 
   async function signAskLegacy(market, ask, signer) {
-    return sdk.market.signLegacy.ask(signer, await domainInfo(market), ask);
+    return sdk.market.sign.ask(
+      SignatureKind.ETHEREUM_SIGNED_MESSAGE,
+      signer,
+      await domainInfo(market),
+      ask
+    );
   }
 
   async function fillOrder(
@@ -252,7 +272,12 @@ describe("Market", () => {
       const bid = tokenIdBid();
       const signature = await signBid(market, bid, bidder);
       expect(
-        sdk.market.verify712.bid(signature, await domainInfo(market), bid)
+        sdk.market.verify.bid(
+          SignatureKind.EIP_712,
+          signature,
+          await domainInfo(market),
+          bid
+        )
       ).to.equal(bidder.address);
     });
 
@@ -262,7 +287,12 @@ describe("Market", () => {
       const ask = newAsk();
       const signature = await signAsk(market, ask, asker);
       expect(
-        sdk.market.verify712.ask(signature, await domainInfo(market), ask)
+        sdk.market.verify.ask(
+          SignatureKind.EIP_712,
+          signature,
+          await domainInfo(market),
+          ask
+        )
       ).to.equal(asker.address);
     });
 
@@ -272,7 +302,12 @@ describe("Market", () => {
       const bid = tokenIdBid();
       const signature = await signBidLegacy(market, bid, bidder);
       expect(
-        sdk.market.verifyLegacy.bid(signature, await domainInfo(market), bid)
+        sdk.market.verify.bid(
+          SignatureKind.ETHEREUM_SIGNED_MESSAGE,
+          signature,
+          await domainInfo(market),
+          bid
+        )
       ).to.equal(bidder.address);
     });
 
@@ -282,7 +317,12 @@ describe("Market", () => {
       const ask = newAsk();
       const signature = await signAskLegacy(market, ask, asker);
       expect(
-        sdk.market.verifyLegacy.ask(signature, await domainInfo(market), ask)
+        sdk.market.verify.ask(
+          SignatureKind.ETHEREUM_SIGNED_MESSAGE,
+          signature,
+          await domainInfo(market),
+          ask
+        )
       ).to.equal(asker.address);
     });
   });

@@ -1,6 +1,6 @@
 const ethers = require("ethers");
 
-const { hashLegacyMessage } = require("./signatureChecker");
+const { SignatureKind, hashLegacyMessage } = require("./signatureChecker");
 
 const MaxUint40 = ethers.BigNumber.from((1n << 40n) - 1n);
 
@@ -205,6 +205,15 @@ function verifyLegacyMessage(signature, domainInfo, structHash) {
   return ethers.utils.verifyMessage(blob, signature);
 }
 
+const verifyLegacy = Object.freeze({
+  bid(signature, domainInfo, msg) {
+    return verifyLegacyMessage(signature, domainInfo, bidStructHash(msg));
+  },
+  ask(signature, domainInfo, msg) {
+    return verifyLegacyMessage(signature, domainInfo, askStructHash(msg));
+  },
+});
+
 const signLegacy = Object.freeze({
   bid(signer, domainInfo, msg) {
     return signLegacyMessage(signer, domainInfo, bidStructHash(msg));
@@ -214,12 +223,49 @@ const signLegacy = Object.freeze({
   },
 });
 
-const verifyLegacy = Object.freeze({
-  bid(signature, domainInfo, msg) {
-    return verifyLegacyMessage(signature, domainInfo, bidStructHash(msg));
+const sign = Object.freeze({
+  bid(signatureKind, signer, domainInfo, msg) {
+    switch (signatureKind) {
+      case SignatureKind.ETHEREUM_SIGNED_MESSAGE:
+        return signLegacy.bid(signer, domainInfo, msg);
+      case SignatureKind.EIP_712:
+        return sign712.bid(signer, domainInfo, msg);
+      default:
+        throw new Error(`unsupported signature kind: ${signatureKind}`);
+    }
   },
-  ask(signature, domainInfo, msg) {
-    return verifyLegacyMessage(signature, domainInfo, askStructHash(msg));
+  ask(signatureKind, signer, domainInfo, msg) {
+    switch (signatureKind) {
+      case SignatureKind.ETHEREUM_SIGNED_MESSAGE:
+        return signLegacy.ask(signer, domainInfo, msg);
+      case SignatureKind.EIP_712:
+        return sign712.ask(signer, domainInfo, msg);
+      default:
+        throw new Error(`unsupported signature kind: ${signatureKind}`);
+    }
+  },
+});
+
+const verify = Object.freeze({
+  bid(signatureKind, signature, domainInfo, msg) {
+    switch (signatureKind) {
+      case SignatureKind.ETHEREUM_SIGNED_MESSAGE:
+        return verifyLegacy.bid(signature, domainInfo, msg);
+      case SignatureKind.EIP_712:
+        return verify712.bid(signature, domainInfo, msg);
+      default:
+        throw new Error(`unsupported signature kind: ${signatureKind}`);
+    }
+  },
+  ask(signatureKind, signature, domainInfo, msg) {
+    switch (signatureKind) {
+      case SignatureKind.ETHEREUM_SIGNED_MESSAGE:
+        return verifyLegacy.ask(signature, domainInfo, msg);
+      case SignatureKind.EIP_712:
+        return verify712.ask(signature, domainInfo, msg);
+      default:
+        throw new Error(`unsupported signature kind: ${signatureKind}`);
+    }
   },
 });
 
@@ -276,6 +322,8 @@ function computeSale({ bid, ask }) {
 module.exports = {
   MaxUint40,
   domainSeparator,
+  sign,
+  verify,
   sign712,
   verify712,
   signLegacy,
