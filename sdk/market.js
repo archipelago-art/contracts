@@ -269,9 +269,15 @@ const verify = Object.freeze({
   },
 });
 
+const abi = Object.freeze({
+  Ask: require("./_abi/ask"),
+  Bid: require("./_abi/bid"),
+});
+
 module.exports = {
   MaxUint40,
   domainSeparator,
+  abi,
   sign,
   verify,
   sign712,
