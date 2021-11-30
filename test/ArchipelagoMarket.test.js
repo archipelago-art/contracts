@@ -702,18 +702,6 @@ describe("Market", () => {
         await fillOrder(market, bid, bidder, ask, asker);
         expect(await weth.balanceOf(r0)).to.equal(0);
         expect(await weth.balanceOf(asker.address)).to.equal(exa);
-        expect(sdk.market.computeSale({ bid, ask })).to.deep.equal({
-          cost: exa,
-          proceeds: exa,
-          buyerRoyalties: [],
-          sellerRoyalties: [
-            {
-              recipient: r0,
-              micros: ethers.constants.Zero,
-              amount: ethers.constants.Zero,
-            },
-          ],
-        });
       });
       it("handles a single required royalty correctly", async () => {
         const { market, signers, weth, asker, bidder, tokenIdBid, newAsk } =
@@ -732,18 +720,6 @@ describe("Market", () => {
           .withArgs(tradeId, asker.address, r0, 5, roy);
         expect(await weth.balanceOf(r0)).to.equal(roy);
         expect(await weth.balanceOf(asker.address)).to.equal(exa.sub(roy));
-        expect(sdk.market.computeSale({ bid, ask })).to.deep.equal({
-          cost: exa,
-          proceeds: exa.sub(roy),
-          buyerRoyalties: [],
-          sellerRoyalties: [
-            {
-              recipient: r0,
-              micros: BN.from(5n),
-              amount: roy,
-            },
-          ],
-        });
       });
       it("handles multiple required royalties correctly", async () => {
         const { market, signers, weth, asker, bidder, tokenIdBid, newAsk } =
@@ -777,23 +753,6 @@ describe("Market", () => {
         expect(await weth.balanceOf(asker.address)).to.equal(
           exa.sub(roy).sub(micro)
         );
-        expect(sdk.market.computeSale({ bid, ask })).to.deep.equal({
-          cost: exa,
-          proceeds: exa.sub(roy).sub(micro),
-          buyerRoyalties: [],
-          sellerRoyalties: [
-            {
-              recipient: r0,
-              micros: BN.from(5n),
-              amount: roy,
-            },
-            {
-              recipient: r1,
-              micros: BN.from(1n),
-              amount: micro,
-            },
-          ],
-        });
       });
       it("handles the edge case where royalties sum to 100%", async () => {
         const { market, signers, weth, asker, bidder, tokenIdBid, newAsk } =
@@ -811,23 +770,6 @@ describe("Market", () => {
         expect(await weth.balanceOf(r0)).to.equal(micro.mul(800000));
         expect(await weth.balanceOf(r1)).to.equal(micro.mul(200000));
         expect(await weth.balanceOf(asker.address)).to.equal(0);
-        expect(sdk.market.computeSale({ bid, ask })).to.deep.equal({
-          cost: exa,
-          proceeds: ethers.constants.Zero,
-          buyerRoyalties: [],
-          sellerRoyalties: [
-            {
-              recipient: r0,
-              micros: BN.from(800000n),
-              amount: micro.mul(800000n),
-            },
-            {
-              recipient: r1,
-              micros: BN.from(200000n),
-              amount: micro.mul(200000n),
-            },
-          ],
-        });
       });
       it("reverts if royalties sum to >100%", async () => {
         const { market, signers, weth, asker, bidder, tokenIdBid, newAsk } =
@@ -844,9 +786,6 @@ describe("Market", () => {
         await expect(
           fillOrder(market, bid, bidder, ask, asker)
         ).to.be.revertedWith("Arithmetic operation underflowed");
-        expect(() => sdk.market.computeSale({ bid, ask })).to.throw(
-          "seller royalties exceed 100% of sale price"
-        );
       });
 
       it("bidder extra royalty works (if specified)", async () => {
@@ -868,18 +807,6 @@ describe("Market", () => {
         expect(await weth.balanceOf(asker.address)).to.equal(exa); // seller got full price
         expect(await weth.balanceOf(r0)).to.equal(roy); // recipient got "extra"
         expect(await weth.balanceOf(bidder.address)).to.equal(exa.sub(roy)); // bidder started with 2 weth
-        expect(sdk.market.computeSale({ bid, ask })).to.deep.equal({
-          cost: exa.add(roy),
-          proceeds: exa,
-          buyerRoyalties: [
-            {
-              recipient: r0,
-              micros: BN.from(10n),
-              amount: roy,
-            },
-          ],
-          sellerRoyalties: [],
-        });
       });
 
       it("asker extra royalty works (if specified)", async () => {
@@ -895,18 +822,6 @@ describe("Market", () => {
           .withArgs(tradeId, asker.address, r0, 5, roy);
         expect(await weth.balanceOf(r0)).to.equal(roy);
         expect(await weth.balanceOf(asker.address)).to.equal(exa.sub(roy));
-        expect(sdk.market.computeSale({ bid, ask })).to.deep.equal({
-          cost: exa,
-          proceeds: exa.sub(roy),
-          buyerRoyalties: [],
-          sellerRoyalties: [
-            {
-              recipient: r0,
-              micros: BN.from(5n),
-              amount: roy,
-            },
-          ],
-        });
       });
 
       it("all three royalty types in conjunction", async () => {
@@ -941,29 +856,6 @@ describe("Market", () => {
         expect(await weth.balanceOf(bidder.address)).to.equal(
           bidderStartBalance.sub(bid.price).sub(micro.mul(2))
         );
-        expect(sdk.market.computeSale({ bid, ask })).to.deep.equal({
-          cost: exa.add(micro.mul(2)),
-          proceeds: exa.sub(micro.mul(4)),
-          buyerRoyalties: [
-            {
-              recipient: r2,
-              micros: BN.from(2n),
-              amount: micro.mul(2),
-            },
-          ],
-          sellerRoyalties: [
-            {
-              recipient: r1,
-              micros: BN.from(1n),
-              amount: micro,
-            },
-            {
-              recipient: r3,
-              micros: BN.from(3n),
-              amount: micro.mul(3),
-            },
-          ],
-        });
       });
 
       it("transaction fails if bidder doesn't have enough for the bidder royalty", async () => {
@@ -1004,23 +896,6 @@ describe("Market", () => {
         expect(await weth.balanceOf(bidder.address)).to.equal(
           exa.sub(micro.mul(3))
         );
-        expect(sdk.market.computeSale({ bid, ask })).to.deep.equal({
-          cost: exa.add(micro.mul(3)),
-          proceeds: exa,
-          buyerRoyalties: [
-            {
-              recipient: r0,
-              micros: BN.from(1n),
-              amount: micro,
-            },
-            {
-              recipient: r1,
-              micros: BN.from(2n),
-              amount: micro.mul(2n),
-            },
-          ],
-          sellerRoyalties: [],
-        });
       });
 
       describe("required royalty matching", () => {
