@@ -316,6 +316,19 @@ TEST_CASES.push(async function* marketFills(props) {
     );
     yield ["standard fill (3 royalties)", await tx.wait()];
   }
+
+  {
+    const tx = await market.cancelNonces([999]);
+    yield ["cancel 1 nonce", await tx.wait()];
+  }
+  {
+    const nonces = [];
+    for (let i = 0; i < 20; i++) {
+      nonces.push(i + 1000);
+    }
+    const tx = await market.cancelNonces(nonces);
+    yield ["cancel 20 nonces", await tx.wait()];
+  }
 });
 
 const Mode = Object.freeze({

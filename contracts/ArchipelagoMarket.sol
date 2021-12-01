@@ -152,8 +152,7 @@ contract ArchipelagoMarket is Ownable {
         return ask.structHash();
     }
 
-    // TODO: Profile gas usage of memory vs calldata here.
-    function cancelNonces(uint256[] memory nonces) external {
+    function cancelNonces(uint256[] calldata nonces) external {
         for (uint256 i; i < nonces.length; i++) {
             uint256 nonce = nonces[i];
             nonceCancellation[msg.sender][nonce] = true;
