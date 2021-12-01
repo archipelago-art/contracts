@@ -85,12 +85,6 @@ contract ArchipelagoMarket is Ownable {
     /// ETH to this contract.
     receive() external payable {}
 
-    /// For recovering ETH mistakenly sent to this contract.
-    /// Only the owner (i.e. Archipelago) may do this.
-    function skim(address recipient) external onlyOwner {
-        payable(recipient).transfer(address(this).balance);
-    }
-
     /// Shut down the market. Should be used if a critical security
     /// flaw is discovered.
     function setEmergencyShutdown(bool isShutdown) external onlyOwner {
