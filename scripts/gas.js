@@ -110,6 +110,9 @@ TEST_CASES.push(async function* marketFills(props) {
   const exa = BN.from("10").pow(18);
   const chainId = await ethers.provider.send("eth_chainId");
   const market = await props.factories.ArchipelagoMarket.deploy();
+  await market.setArchipelagoRoyaltyRate(5000);
+  await market.setTreasuryAddress(signer.address);
+
   const weth = await props.factories.TestWeth.deploy();
   const token = await props.factories.TestERC721.deploy();
   const oracle = await props.factories.ArtblocksTraitOracle.deploy();
@@ -306,6 +309,7 @@ TEST_CASES.push(async function* marketFills(props) {
     const ask = newAsk({ requiredRoyalties: [r0, r0, r0] });
     const bidSignature = sdk.market.sign712.bid(alice, domainInfo, bid);
     const askSignature = sdk.market.sign712.ask(bob, domainInfo, ask);
+    await market.set;
     const tx = await market.fillOrder(
       bid,
       bidSignature,
@@ -314,7 +318,7 @@ TEST_CASES.push(async function* marketFills(props) {
       askSignature,
       EIP_712
     );
-    yield ["standard fill (3 royalties)", await tx.wait()];
+    yield ["standard fill (3 royalties + protocol roy)", await tx.wait()];
   }
 
   {

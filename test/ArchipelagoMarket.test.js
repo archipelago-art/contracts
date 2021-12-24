@@ -935,6 +935,32 @@ describe("Market", () => {
           ).to.be.revertedWith("Market: required royalties don't match");
         });
       });
+
+      it("the hardcoded royalty is paid correctly", async () => {
+        const { market, asker, bidder, tokenIdBid, newAsk, signers, weth } =
+          await setup();
+        await market.setArchipelagoRoyaltyRate(5);
+        const roy = micro.mul(5);
+        const r0 = signers[3].address;
+        await market.setTreasuryAddress(r0);
+        const bid = tokenIdBid();
+        const ask = newAsk();
+        const tradeId = computeTradeId(bid, bidder, ask, asker);
+        await expect(fillOrder(market, bid, bidder, ask, asker))
+          .to.emit(market, "RoyaltyPaid")
+          .withArgs(tradeId, asker.address, r0, 5, roy);
+        expect(await weth.balanceOf(r0)).to.equal(roy);
+        expect(await weth.balanceOf(asker.address)).to.equal(exa.sub(roy));
+      });
+
+      it("only owner may change royalty recipient and rate", async () => {
+        const { market, asker, bidder, tokenIdBid, newAsk, signers } =
+          await setup();
+        let fail = market.connect(bidder).setArchipelagoRoyaltyRate(3);
+        expect(fail).to.be.revertedWith("Ownable: caller is not the owner");
+        fail = market.connect(bidder).setTreasuryAddress(bidder.address);
+        expect(fail).to.be.revertedWith("Ownable: caller is not the owner");
+      });
     });
 
     describe("failure cases", () => {

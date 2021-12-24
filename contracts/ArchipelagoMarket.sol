@@ -66,6 +66,14 @@ contract ArchipelagoMarket is Ownable {
     /// can be made).
     bool emergencyShutdown;
 
+    /// Address of the Archipelago protocol treasury (to which hardcoded
+    /// royalties accrue)
+    address archipelagoTreasuryAddress;
+
+    /// Royalty rate that accrues to the Archipelago protocol treasury
+    /// (expressed as millionths of each transaction value)
+    uint256 archipelagoRoyaltyMicros;
+
     string constant INVALID_ARGS = "Market: invalid args";
 
     string constant ORDER_CANCELLED_OR_EXPIRED =
@@ -89,6 +97,17 @@ contract ArchipelagoMarket is Ownable {
     /// flaw is discovered.
     function setEmergencyShutdown(bool isShutdown) external onlyOwner {
         emergencyShutdown = isShutdown;
+    }
+
+    function setTreasuryAddress(address newTreasuryAddress) external onlyOwner {
+        archipelagoTreasuryAddress = newTreasuryAddress;
+    }
+
+    function setArchipelagoRoyaltyRate(uint256 newRoyaltyRate)
+        external
+        onlyOwner
+    {
+        archipelagoRoyaltyMicros = newRoyaltyRate;
     }
 
     function computeDomainSeparator() internal view returns (bytes32) {
@@ -305,8 +324,11 @@ contract ArchipelagoMarket is Ownable {
                 amt
             );
         }
-        // Note that the extra royalties on the ask is basically duplicated from the required royalties.
-        // If you make a change to one code path, you should also change the other.
+        // Note that the extra royalties on the ask is basically duplicated
+        // from the required royalties. If you make a change to one code path,
+        // you should also change the other.
+        // We're support "extra" asker royalties so that the seller can reward
+        // an agent, broker, or advisor, as appropriate.
         for (uint256 i = 0; i < ask.extraRoyalties.length; i++) {
             Royalty memory royalty = ask.extraRoyalties[i];
             uint256 amt = (royalty.micros * price) / 1000000;
@@ -321,6 +343,25 @@ contract ArchipelagoMarket is Ownable {
                 asker,
                 royalty.recipient,
                 royalty.micros,
+                amt
+            );
+        }
+
+        // Finally, we pay the hardcoded protocol royalty. It also comes from
+        // the asker, so it's in the same style as the required royalties and
+        // asker's extra royalties.
+        if (archipelagoTreasuryAddress != address(0)) {
+            uint256 amt = (archipelagoRoyaltyMicros * price) / 1000000;
+            proceeds -= amt;
+            require(
+                currency.transferFrom(bidder, archipelagoTreasuryAddress, amt),
+                TRANSFER_FAILED
+            );
+            emit RoyaltyPaid(
+                tradeId,
+                asker,
+                archipelagoTreasuryAddress,
+                archipelagoRoyaltyMicros,
                 amt
             );
         }
