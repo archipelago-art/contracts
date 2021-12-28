@@ -23,6 +23,34 @@ contract CircuitOracle is ITraitOracle {
     ) external view override returns (bool) {
         // Note: `_buf` is *uniquely owned* and will be destructively consumed
         // as it is read.
+        //
+        // ABI reminders:
+        //
+        //    - EVM memory is a word-addressed byte array. `mload(_a)` reads
+        //      the bytes at `_a + 0`, ..., `_a + 31` and assembles them into a
+        //      32-byte word (big-endian).
+        //
+        //    - `_buf` points to 32 consecutive bytes that indicate the length
+        //      of the buffer. That is, `mload(_buf)` gives `_buf.length`.
+        //
+        //    - The data of `_buf` is stored inline in the subsequent bytes.
+        //      That is, `mload(add(_buf, add(32, _i)))` gives a word whose low
+        //      byte is `_buf[_i]`.
+        //
+        // So, if `_buf.length` is initially `_n`, and `_k <= _n`:
+        //
+        //    - To truncate `_buf` to length `_k`, so that it becomes a prefix
+        //      of its old value, simply store the 32-byte word `_k` into
+        //      `_buf`. This leaves the rest of the data dangling off the end
+        //      of `_buf`, which is fine.
+        //
+        //    - To remove the first `_k` bytes of `_buf`, so that it becomes a
+        //      suffix of its old value, first add `_k` to `_buf`, and then
+        //      store the 32-byte word `_n - _k` into the new value of `_buf`.
+        //      This is *destructive* in that it overwrites up to 32 bytes of
+        //      memory that were previously part of `_buf`'s data. This is fine
+        //      as long as there are no other references to that data.
+
         if (_buf.length < 96) revert(ERR_OVERRUN_STATIC);
         uint256 _dynamicLength = _buf.length - 96;
         assembly {
