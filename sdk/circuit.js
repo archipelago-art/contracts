@@ -1,5 +1,11 @@
 const ethers = require("ethers");
 
+const Errors = Object.freeze({
+  OVERRUN_STATIC: "CircuitOracle: static buffer overrun",
+  OVERRUN_CONSTANT: "CircuitOracle: constant buffer overrun",
+  OVERRUN_ARG: "CircuitOracle: arg buffer overrun",
+});
+
 /*::
 type OpStop = { type: "STOP" };
 type OpNot = { type: "NOT", arg: int };
@@ -66,4 +72,7 @@ function encodeTrait({
   return ethers.utils.hexConcat([staticPart, ...baseTraits, args]);
 }
 
-module.exports = { encodeTrait };
+module.exports = {
+  Errors,
+  encodeTrait,
+};
