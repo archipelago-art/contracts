@@ -13,7 +13,6 @@
     "update-abi": "node scripts/updateAbi.js"
   },
   "author": "William Chargin <wchargin@gmail.com>",
-  "license": "AGPL-3.0-or-later",
   "dependencies": {
     "ethers": "5.4.6"
   },
