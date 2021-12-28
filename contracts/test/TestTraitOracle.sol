@@ -5,22 +5,23 @@ import "../ITraitOracle.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 contract TestTraitOracle is ITraitOracle {
-    mapping(uint256 => mapping(address => mapping(uint256 => bool))) membership;
+    mapping(bytes32 => mapping(address => mapping(uint256 => bool))) membership;
 
     function hasTrait(
         IERC721 _tokenContract,
         uint256 _tokenId,
         bytes calldata _trait
     ) external view override returns (bool) {
-        uint256 _traitId = uint256(bytes32(_trait));
+        bytes32 _traitId = keccak256(_trait);
         return membership[_traitId][address(_tokenContract)][_tokenId];
     }
 
     function setTrait(
         IERC721 _tokenContract,
         uint256 _tokenId,
-        uint256 _traitId
+        bytes calldata _trait
     ) external {
+        bytes32 _traitId = keccak256(_trait);
         membership[_traitId][address(_tokenContract)][_tokenId] = true;
     }
 }

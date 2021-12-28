@@ -116,7 +116,9 @@ describe("Market", () => {
         tokenAddress,
         requiredRoyalties,
         extraRoyalties,
-        trait: ethers.utils.defaultAbiCoder.encode(["uint256"], [trait]),
+        trait: ethers.utils.isBytesLike(trait)
+          ? trait
+          : ethers.utils.defaultAbiCoder.encode(["uint256"], [trait]),
         traitOracle,
       };
     }
@@ -378,8 +380,8 @@ describe("Market", () => {
           traitBid,
           newAsk,
         } = await setup();
-        await oracle.setTrait(nft.address, 0, 42);
-        const bid = traitBid({ trait: 42 });
+        await oracle.setTrait(nft.address, 0, "0x42");
+        const bid = traitBid({ trait: "0x42" });
         const ask = newAsk();
         await fillOrder(market, bid, bidder, ask, asker, {
           bidder: SignatureKind.ETHEREUM_SIGNED_MESSAGE,
@@ -671,15 +673,15 @@ describe("Market", () => {
       it("a nft can match a single trait", async () => {
         const { market, bidder, asker, oracle, traitBid, newAsk, nft } =
           await setup();
-        const bid = traitBid({ trait: 42 });
+        const bid = traitBid({ trait: "0x42" });
         const ask = newAsk();
-        await oracle.setTrait(nft.address, 0, 42);
+        await oracle.setTrait(nft.address, 0, "0x42");
         await fillOrder(market, bid, bidder, ask, asker);
       });
       it("a nft can fail to match a single trait", async () => {
         const { market, bidder, asker, oracle, traitBid, newAsk, nft } =
           await setup();
-        const bid = traitBid({ trait: 42 });
+        const bid = traitBid({ trait: "0x42" });
         const ask = newAsk();
         await oracle.setTrait(nft.address, 0, 69);
         const fail = fillOrder(market, bid, bidder, ask, asker);
