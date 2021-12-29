@@ -213,6 +213,18 @@ describe("CircuitOracle", () => {
         })
       ).to.equal(false);
     });
+
+    it("circuit that refers to high-indexed (unwritable) args", async () => {
+      expect(
+        await check({
+          baseTraits: [short],
+          ops: [
+            { type: "NOT", arg: 255 },
+            { type: "AND", arg0: 0, arg1: 1 },
+          ],
+        })
+      ).to.equal(true);
+    });
   });
 
   describe("circuits with maximum-length base traits", () => {
@@ -224,7 +236,9 @@ describe("CircuitOracle", () => {
       return ethers.utils.hexConcat([pre, middle, suf]);
     }
     const longSet = maxLengthTrait("orange_roughie");
+    expect(ethers.utils.hexDataLength(longSet)).to.equal(0xfffe);
     const longUnset = maxLengthTrait("banana_smoothie");
+    expect(ethers.utils.hexDataLength(longUnset)).to.equal(0xfffe);
     const emptyUnset = "0x";
 
     let check;
@@ -313,6 +327,21 @@ describe("CircuitOracle", () => {
       await expect(
         circuitOracle.hasTrait(tokenContract, tokenId, "0x")
       ).to.be.revertedWith(sdk.circuit.Errors.OVERRUN_STATIC);
+    });
+
+    it("with address with high bits set (ABI decoding error)", async () => {
+      const goodTrait = sdk.circuit.encodeTrait({
+        underlyingOracle: ethers.constants.AddressZero,
+        baseTraits: [],
+        ops: [],
+      });
+      const badTrait = ethers.utils.hexConcat([
+        ethers.utils.hexDataSlice(goodTrait, 0, 11),
+        "0x01",
+        ethers.utils.hexDataSlice(goodTrait, 12),
+      ]);
+      await expect(circuitOracle.hasTrait(tokenContract, tokenId, badTrait)).to
+        .be.reverted;
     });
 
     it("with non-empty but truncated static header", async () => {
