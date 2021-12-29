@@ -20,6 +20,12 @@ TEST_CASES.push(async function* oracleDeploy(props) {
   yield ["ArtblocksTraitOracle deploy", await oracle.deployTransaction.wait()];
 });
 
+TEST_CASES.push(async function* circuitOracleDeploy(props) {
+  const oracle = await props.factories.CircuitOracle.deploy();
+  await oracle.deployed();
+  yield ["CircuitOracle deploy", await oracle.deployTransaction.wait()];
+});
+
 TEST_CASES.push(async function* oracleTraitMemberships(props) {
   const oracle = await props.factories.ArtblocksTraitOracle.deploy();
   await oracle.deployed();
@@ -116,8 +122,10 @@ TEST_CASES.push(async function* marketFills(props) {
   const weth = await props.factories.TestWeth.deploy();
   const token = await props.factories.TestERC721.deploy();
   const oracle = await props.factories.ArtblocksTraitOracle.deploy();
+  const circuitOracle = await props.factories.CircuitOracle.deploy();
   await Promise.all([
     oracle.deployed(),
+    circuitOracle.deployed(),
     market.deployed(),
     weth.deployed(),
     token.deployed(),
@@ -142,7 +150,21 @@ TEST_CASES.push(async function* marketFills(props) {
     (x) => x + baseTokenId
   );
   const featureName = "Palette: Paddle";
+  const unsetFeatureName = "Palette: Blue Spider";
   const version = 0;
+
+  const projectMsg = {
+    projectId,
+    size: 600,
+    projectName: "Archetype",
+    version,
+  };
+  const projectSig = await sdk.oracle.sign712.setProjectInfo(
+    signer,
+    domain,
+    projectMsg
+  );
+  await oracle.setProjectInfo(projectMsg, projectSig, EIP_712);
 
   const featureMsg = { projectId, featureName, version };
   const featureSig = await sdk.oracle.sign712.setFeatureInfo(
@@ -152,7 +174,14 @@ TEST_CASES.push(async function* marketFills(props) {
   );
   await oracle.setFeatureInfo(featureMsg, featureSig, EIP_712);
 
+  const projectTraitId = sdk.oracle.projectTraitId(projectId, version);
   const traitId = sdk.oracle.featureTraitId(projectId, featureName, version);
+  const unsetTraitId = sdk.oracle.featureTraitId(
+    projectId,
+    unsetFeatureName,
+    version
+  );
+
   const msg = { traitId, words: sdk.oracle.traitMembershipWords(paddleIds) };
   const sig = await sdk.oracle.sign712.addTraitMemberships(signer, domain, msg);
   await oracle.addTraitMemberships(msg, sig, EIP_712);
@@ -171,6 +200,16 @@ TEST_CASES.push(async function* marketFills(props) {
   // give signer (future royalty recipient) some eth so that when we are measuring gas,
   // we don't include paying for storing the fact that signer has a non-zero weth balance.
   await weth.connect(signer).deposit({ value: exa });
+
+  async function transferToken(from, to) {
+    await token
+      .connect(from)
+      ["safeTransferFrom(address,address,uint256)"](
+        from.address,
+        to.address,
+        tokenId
+      );
+  }
 
   let nextNonce = 0;
 
@@ -193,7 +232,9 @@ TEST_CASES.push(async function* marketFills(props) {
       tokenAddress,
       requiredRoyalties,
       extraRoyalties,
-      trait: ethers.utils.defaultAbiCoder.encode(["uint256"], [trait]),
+      trait: ethers.utils.isBytesLike(trait)
+        ? trait
+        : ethers.utils.defaultAbiCoder.encode(["uint256"], [trait]),
       traitOracle,
     };
   }
@@ -254,7 +295,62 @@ TEST_CASES.push(async function* marketFills(props) {
       askSignature,
       EIP_712
     );
-    yield ["fillSingletraitOrder", await tx.wait()];
+    yield ["fillOrder with single feature trait", await tx.wait()];
+    await transferToken(alice, bob); // give it back
+  }
+
+  {
+    const disjunctionTraitId = sdk.circuit.encodeTrait({
+      underlyingOracle: oracle.address,
+      baseTraits: [traitId, unsetTraitId],
+      ops: [{ type: "OR", arg0: 0, arg1: 1 }],
+    });
+    const bid = newBid({
+      trait: disjunctionTraitId,
+      traitOracle: circuitOracle.address,
+    });
+    const ask = newAsk();
+    const bidSignature = sdk.market.sign712.bid(alice, domainInfo, bid);
+    const askSignature = sdk.market.sign712.ask(bob, domainInfo, ask);
+
+    const tx = await market.fillOrder(
+      bid,
+      bidSignature,
+      EIP_712,
+      ask,
+      askSignature,
+      EIP_712
+    );
+    yield ["fillOrder with union of two feature traits", await tx.wait()];
+    await transferToken(alice, bob); // give it back
+  }
+
+  {
+    const conjunctionTraitId = sdk.circuit.encodeTrait({
+      underlyingOracle: oracle.address,
+      baseTraits: [projectTraitId, traitId],
+      ops: [{ type: "AND", arg0: 0, arg1: 1 }],
+    });
+    const bid = newBid({
+      trait: conjunctionTraitId,
+      traitOracle: circuitOracle.address,
+    });
+    const ask = newAsk();
+    const bidSignature = sdk.market.sign712.bid(alice, domainInfo, bid);
+    const askSignature = sdk.market.sign712.ask(bob, domainInfo, ask);
+
+    const tx = await market.fillOrder(
+      bid,
+      bidSignature,
+      EIP_712,
+      ask,
+      askSignature,
+      EIP_712
+    );
+    yield [
+      "fillOrder with intersection of project and feature traits",
+      await tx.wait(),
+    ];
   }
 
   {
@@ -350,12 +446,14 @@ async function main() {
   const [
     ArtblocksTraitOracle,
     ArchipelagoMarket,
+    CircuitOracle,
     TestTraitOracle,
     TestWeth,
     TestERC721,
   ] = await Promise.all([
     ethers.getContractFactory("ArtblocksTraitOracle"),
     ethers.getContractFactory("ArchipelagoMarket"),
+    ethers.getContractFactory("CircuitOracle"),
     ethers.getContractFactory("TestTraitOracle"),
     ethers.getContractFactory("TestWeth"),
     ethers.getContractFactory("TestERC721"),
@@ -368,6 +466,7 @@ async function main() {
         factories: {
           ArtblocksTraitOracle,
           ArchipelagoMarket,
+          CircuitOracle,
           TestTraitOracle,
           TestWeth,
           TestERC721,
