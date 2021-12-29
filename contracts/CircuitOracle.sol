@@ -52,7 +52,12 @@ contract CircuitOracle is ITraitOracle {
         //      as long as there are no other references to that data.
 
         if (_buf.length < 96) revert(ERR_OVERRUN_STATIC);
-        uint256 _dynamicLength = _buf.length - 96;
+        uint256 _dynamicLength;
+        unchecked {
+            // SAFETY: We've just checked that `_buf.length` is at least 96, so
+            // this can't underflow.
+            _dynamicLength = _buf.length - 96;
+        }
         assembly {
             // SAFETY: We've just checked that `_buf.length` is at least 96, so
             // this is only truncating it.
@@ -69,17 +74,33 @@ contract CircuitOracle is ITraitOracle {
         }
 
         uint256 _mem = 0; // `_mem & (1 << _i)` stores variable `_i`
+        // INVARIANT: `_v` is always less than `type(uint256).max`, because
+        // it's only changed by incrementing it by 1 at a time once per loop
+        // iteration (in each `while` loop). Each loop is bounded: the first
+        // runs at most 16 times, as it consumes 16 bits of `_remainingLengths`
+        // _remainingLengths` at a time and stops once it becomes zero; and the
+        // second runs at most 128 times, as it consumes 2 bits of `_ops` at a
+        // time and stops once it becomes zero.
         uint256 _v = 0; // next variable to assign
 
         // Read and initialize constant variables.
         while (true) {
             uint256 _traitLength = _remainingLengths & 0xffff;
-            if (_traitLength == 0) break;
-            _traitLength--;
             _remainingLengths >>= 16;
+            if (_traitLength == 0) break;
+            unchecked {
+                // SAFETY: We've just checked that `_traitLength != 0`, so this
+                // can't underflow.
+                _traitLength--;
+            }
 
             if (_buf.length < _traitLength) revert(ERR_OVERRUN_CONSTANT);
-            uint256 _newBufLength = _buf.length - _traitLength;
+            uint256 _newBufLength;
+            unchecked {
+                // SAFETY: We've just checked that `_buf.length` is at least
+                // `_traitLength`, so this can't underflow.
+                _newBufLength = _buf.length - _traitLength;
+            }
 
             // Temporarily truncate `_buf` to `_traitLength` for external call.
             assembly {
@@ -88,7 +109,16 @@ contract CircuitOracle is ITraitOracle {
                 mstore(_buf, _traitLength)
             }
             bool _hasTrait = _delegate.hasTrait(_tokenContract, _tokenId, _buf);
-            _mem |= uint256(_hasTrait ? 1 : 0) << _v++;
+            uint256 _hasTraitInt;
+            assembly {
+                // SAFETY: Simple bool-to-int cast.
+                _hasTraitInt := _hasTrait
+            }
+            unchecked {
+                // SAFETY: `_v` is small (see declaration comment), so
+                // incrementing it can't overflow.
+                _mem |= _hasTraitInt << _v++;
+            }
 
             // Then, un-truncate `_buf` and advance it past this trait.
             assembly {
@@ -103,6 +133,11 @@ contract CircuitOracle is ITraitOracle {
         // Evaluate operations. Henceforth, `_buf` represents the full array of
         // arguments. (It's no longer strictly necessary to destructively
         // consume from `_buf`, so we return to normal array accesses.)
+        //
+        // INVARIANT: `_nextArg` is always less than `type(uint256).max - 1`.
+        // It's only changed by incrementing it by 1 or 2 per loop iteration,
+        // and the loop runs at most 128 times (it terminates if `_ops == 0`,
+        // and it shifts `_ops` right by 2 bits each iteration).
         uint256 _nextArg = 0;
         while (true) {
             uint256 _op = _ops & 0x03;
@@ -110,19 +145,56 @@ contract CircuitOracle is ITraitOracle {
             if (_op == OP_STOP) break;
             bool _output;
             if (_op == OP_NOT) {
-                if (_buf.length < _nextArg + 1) revert(ERR_OVERRUN_ARG);
-                bool _a = (_mem & (1 << uint256(uint8(_buf[_nextArg++])))) != 0;
+                unchecked {
+                    // SAFETY: `_nextArg` is small (see declaration comment),
+                    // so adding 1 to it can't overflow.
+                    if (_buf.length < _nextArg + 1) revert(ERR_OVERRUN_ARG);
+                }
+                bool _a = (_mem & (1 << uint256(uint8(_buf[_nextArg])))) != 0;
+                unchecked {
+                    // SAFETY: `_nextArg` is small (see declaration comment),
+                    // so this can't overflow.
+                    _nextArg++;
+                }
                 _output = !_a;
             } else {
-                if (_buf.length < _nextArg + 2) revert(ERR_OVERRUN_ARG);
-                bool _a = (_mem & (1 << uint256(uint8(_buf[_nextArg++])))) != 0;
-                bool _b = (_mem & (1 << uint256(uint8(_buf[_nextArg++])))) != 0;
+                unchecked {
+                    // SAFETY: `_nextArg` is small (see declaration comment),
+                    // so this addition can't overflow.
+                    if (_buf.length < _nextArg + 2) revert(ERR_OVERRUN_ARG);
+                }
+                bool _a = (_mem & (1 << uint256(uint8(_buf[_nextArg])))) != 0;
+                bool _b;
+                unchecked {
+                    // SAFETY: `_nextArg` is small (see declaration comment),
+                    // so adding 1 to it can't overflow.
+                    _b =
+                        (_mem & (1 << uint256(uint8(_buf[_nextArg + 1])))) != 0;
+                }
+                unchecked {
+                    // SAFETY: `_nextArg` is small (see declaration comment),
+                    // so this can't overflow.
+                    _nextArg += 2;
+                }
                 _output = _op == OP_OR ? _a || _b : _a && _b;
             }
-            _mem |= uint256(_output ? 1 : 0) << _v++;
+            uint256 _outputInt;
+            assembly {
+                // SAFETY: Simple bool-to-int cast.
+                _outputInt := _output
+            }
+            unchecked {
+                // SAFETY: `_v` is small (see declaration comment), so
+                // incrementing it can't overflow.
+                _mem |= _outputInt << _v++;
+            }
         }
 
         if (_v == 0) return false; // no constants or ops
-        return (_mem & (1 << (_v - 1))) != 0;
+        unchecked {
+            // SAFETY: We've just checked that `_v != 0`, so this subtraction
+            // can't underflow.
+            return (_mem & (1 << (_v - 1))) != 0;
+        }
     }
 }
