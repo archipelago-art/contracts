@@ -5,14 +5,17 @@ const sdk = require("../sdk");
 
 describe("CircuitOracle", () => {
   let CircuitOracle;
+  let MisbehavingTraitOracle;
   let TestTraitOracle;
 
   let circuitOracle;
   before(async () => {
-    [CircuitOracle, TestTraitOracle] = await Promise.all([
-      ethers.getContractFactory("CircuitOracle"),
-      ethers.getContractFactory("TestTraitOracle"),
-    ]);
+    [CircuitOracle, MisbehavingTraitOracle, TestTraitOracle] =
+      await Promise.all([
+        ethers.getContractFactory("CircuitOracle"),
+        ethers.getContractFactory("MisbehavingTraitOracle"),
+        ethers.getContractFactory("TestTraitOracle"),
+      ]);
     circuitOracle = await CircuitOracle.deploy();
     await circuitOracle.deployed();
   });
@@ -302,8 +305,8 @@ describe("CircuitOracle", () => {
     });
   });
 
-  describe("errors in underlying oracle", () => {
-    it("are propagated", async () => {
+  describe("when the underlying trait oracle misbehaves", () => {
+    it("propagates reverts", async () => {
       const baseTrait = "0xb000";
 
       const testOracle = await TestTraitOracle.deploy();
@@ -319,6 +322,40 @@ describe("CircuitOracle", () => {
       await expect(
         circuitOracle.hasTrait(tokenContract, tokenId, trait)
       ).to.be.revertedWith("TestTraitOracle: kaboom!");
+    });
+
+    it("reverts on oracle responses that are not booleans", async () => {
+      const baseTrait = "0x1234";
+      const misbehavingOracle = await MisbehavingTraitOracle.deploy();
+      await misbehavingOracle.deployed();
+
+      const REVERT = Symbol("revert");
+      const testCases = [
+        { oracleOutput: 0, desiredResult: false },
+        { oracleOutput: 1, desiredResult: true },
+        { oracleOutput: 2, desiredResult: REVERT },
+        { oracleOutput: ethers.constants.MaxUint256, desiredResult: REVERT },
+      ];
+
+      for (const testCase of testCases) {
+        await misbehavingOracle.setTrait(
+          tokenContract,
+          tokenId,
+          baseTrait,
+          testCase.oracleOutput
+        );
+        const trait = sdk.circuit.encodeTrait({
+          underlyingOracle: misbehavingOracle.address,
+          baseTraits: [baseTrait],
+          ops: [],
+        });
+        const result = circuitOracle.hasTrait(tokenContract, tokenId, trait);
+        if (testCase.desiredResult === REVERT) {
+          await expect(result).to.be.reverted;
+        } else {
+          expect(await result).to.equal(testCase.desiredResult);
+        }
+      }
     });
   });
 
