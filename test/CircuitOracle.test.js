@@ -396,7 +396,7 @@ describe("CircuitOracle", () => {
       const badTrait = goodTrait.slice(0, -2);
       await expect(
         circuitOracle.hasTrait(tokenContract, tokenId, badTrait)
-      ).to.be.revertedWith(sdk.circuit.Errors.OVERRUN_CONSTANT);
+      ).to.be.revertedWith(sdk.circuit.Errors.OVERRUN_BASE_TRAIT);
     });
 
     it("with not enough dynamic data while reading unary operator args", async () => {

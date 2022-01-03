@@ -11,8 +11,8 @@ contract CircuitOracle is ITraitOracle {
 
     string internal constant ERR_OVERRUN_STATIC =
         "CircuitOracle: static buffer overrun";
-    string internal constant ERR_OVERRUN_CONSTANT =
-        "CircuitOracle: constant buffer overrun";
+    string internal constant ERR_OVERRUN_BASE_TRAIT =
+        "CircuitOracle: base trait buffer overrun";
     string internal constant ERR_OVERRUN_ARG =
         "CircuitOracle: arg buffer overrun";
 
@@ -83,7 +83,7 @@ contract CircuitOracle is ITraitOracle {
         // time and stops once it becomes zero.
         uint256 _v = 0; // next variable to assign
 
-        // Read and initialize constant variables.
+        // Read and initialize base trait variables.
         while (true) {
             uint256 _traitLength = _remainingLengths & 0xffff;
             _remainingLengths >>= 16;
@@ -94,7 +94,7 @@ contract CircuitOracle is ITraitOracle {
                 _traitLength--;
             }
 
-            if (_buf.length < _traitLength) revert(ERR_OVERRUN_CONSTANT);
+            if (_buf.length < _traitLength) revert(ERR_OVERRUN_BASE_TRAIT);
             uint256 _newBufLength;
             unchecked {
                 // SAFETY: We've just checked that `_buf.length` is at least
@@ -190,7 +190,7 @@ contract CircuitOracle is ITraitOracle {
             }
         }
 
-        if (_v == 0) return false; // no constants or ops
+        if (_v == 0) return false; // no base traits or ops
         unchecked {
             // SAFETY: We've just checked that `_v != 0`, so this subtraction
             // can't underflow.
