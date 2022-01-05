@@ -190,10 +190,148 @@ recover them.
 
 ## Art Blocks trait oracle
 
-To cover:
+The Art Blocks trait oracle defines two kinds of traits: project traits and
+feature traits. An Art Blocks _project_ is keyed by a small, sequential integer
+and associated with zero or more tokens whose IDs are in a fixed range. For
+instance, the project "Meridian" has ID `163`, and all Meridian tokens have IDs
+between `163000000` and `163999999`, inclusive. Conversely, all tokens within
+that range are Meridians. In fact, there will only ever be 1000 Meridians, so
+only token IDs `163000000` through `163000999` (inclusive) can exist for this
+project.
 
-- threat model re: oracle signing key compromise
-- threat model re: bad data from the Art Blocks API servers
-- project/feature versioning
-- feature trait finalization
-- bit-packing for `traitMembers` and `traitFinalizations`
+The Art Blocks oracle responds to trait queries by simply checking the token ID.
+
+_Features_ are project-specific properties that may apply to some tokens. For
+instance, some Meridians have the "Chromaticity: Monochrome" feature, while
+others have the "Chromaticity: Duochrome" feature. A token can have more than
+one feature, and a feature can apply to more than one token. Features of a token
+are not known _a priori_ from only the token ID. Instead, they are computed off
+chain by the Art Blocks platform and exposed through a centralized HTTP API.
+
+### Signing and finalization semantics
+
+We intend to store that data on chain on the Art Blocks trait oracle itself.
+This dataset is not static: new projects are released regularly, and some
+projects continue to occasionally mint new tokens. Once a token is minted, its
+feature data _should_ be canonical and immutable. So, this on-chain dataset must
+permit data to be added for new tokens.
+
+At the same time, updates to this data are sensitive. Users can place a
+high-value bid matching all tokens with a specific, highly valued feature. If
+the on-chain feature dataset is compromised to incorrectly indicate that a less
+valuable piece has this feature, then the high-value bid could be filled against
+the low-value token. This would be a failure of the system.
+
+We'll handle this as follows. The Art Blocks trait oracle contract has an owner,
+and the owner can set an "oracle signer" address that is authorized to update
+the feature data. This address will be controlled by a server that has access to
+a known-accurate database of features. The server responds to requests to sign
+messages indicating that certain tokens have certain features.
+
+The contract will support freezing data on a per-feature basis for all tokens
+below a certain token ID. For instance, the Chromie Squiggle project currently
+has 9247 tokens out of a possible 10000, of which only 20 have the "Perfect
+Spectrum" feature. It's possible that some of the 753 tokens that have not yet
+been minted will also be perfect spectra, so we can't freeze this trait
+entirely. But, once we have written data for the first 9247 tokens, we can
+prevent the "Perfect Spectrum" feature from being added to or removed from
+_those_ tokens specifically.
+
+Once the data for a trait membership is finalized, it cannot be changed, even by
+the oracle signer or the admin.
+
+### Implementation overview
+
+At an implementation level, feature trait membership is sharded by feature ID
+and then packed by project-relative token index into 256-bit words. For example,
+token `163000801` is token index 801 in the Meridian project. Its page is given
+by `801 / 256 = 3`, and its offset is given by `801 % 256 = 33`. So, to check
+whether Meridian #801 has the "Palette: Cave" feature, we test whether
+`traitMembers[_traitId][801 / 256] & (1 << (801 % 256))` is nonzero (where
+`_traitId` is essentially a hash of "Palette: Cave").
+
+The implementation details of finalization aren't yet... finalized. It's easy to
+write a solution with a message type that means, "finalize membership in feature
+trait `t` for the first `n` tokens in this project, using whatever state is
+currently on chain"---but this means that the validity of the message depends on
+the current chain state, and if (e.g.) the chain forks to a block before one of
+the memberships is written, the finalization message will still apply but will
+finalize the wrong data. A family of approaches that avoids this problem
+involves instead signing messages like "of the first `n` tokens in this project,
+exactly `k` of them have trait `t`", which is a fact that does not depend on
+chain state, and the contract can ignore the message if it does not yet have
+membership tuples for `k` of the first `n` tokens. But tracking this state
+efficiently is a bit harder. We're not yet sure what the right tradeoff is here.
+
+(At the time of writing, the current implementation only allows finalizing full
+256-long blocks of tokens for each trait. This works, but has weaker security
+than we would like. For instance, while there are currently 9247 Squiggles, we
+can only finalize traits for the first 9216 of them. The currently
+implementation also never permits unsetting trait membership for a token.)
+
+### Authorized signatures can be submitted by anyone
+
+This system permits any account to present a trait update message signed by the
+oracle signer. The reason is simple: there are currently ~150k tokens and ~30k
+feature traits, with a total of ~1.4M feature trait membership tuples that can
+be packed into ~80k 256-bit words. Directly writing all that to chain would cost
+well over 100 ETH. However, writing a single storage word (or a few) is not that
+expensive, and these are only actually needed when users _fill_ orders, not when
+they sign them off-chain. So, we amortize the cost: the first user who wants to
+fill a bid for a particular trait will also need to submit the trait membership
+data to chain.
+
+This means that we're manually processing ECDSA signatures instead of checking
+`msg.sender` and using Ethereum's native authentication, and so we don't have
+any built-in protection for replay attacks. We don't expect this to be a
+problem. Once a message is signed, the facts that it represent should be valid
+forever, and processing of the messages is idempotent. If the oracle signer key
+is compromised, then the first action needs to be to use the admin key to rotate
+to a new oracle, which prevents replay of any messages on the old signing key,
+anyway.
+
+The signing domain does include the chain ID and oracle address, so that we can
+run testnet oracles with testnet Art Blocks data. Such testnet oracles should
+really use a different signing address, too, but this is an extra layer of
+defense.
+
+### Feature versioning
+
+As an extra eject button, trait IDs for both project traits and feature traits
+include a version field. Thus, a feature trait actually encodes the hash of the
+project ID, the feature name, and the trait version. The trait version is
+expected to generally be 0, but if we can create a new trait at version 1 if
+neccessary: say, if the upstream source of truth for token data changes, or if
+the wrong values are written into storage for any transient reason.
+
+Writing data for traits at newer versions does not change or invalidate data or
+finalization for the same traits at older versions. In particular, orders made
+against the old traits will still be honored. However, the frontend can
+transparently create any new orders against the new version.
+
+(_Should_ the admin have the ability to nix a trait entirely, such that its
+`hasTrait` queries always return false? It's a lot of power, but only in the
+direction of halting orders. Should the Art Blocks oracle have its own emergency
+shutdown mechanism, like the market does?)
+
+## Circuit oracle
+
+A separate document describes the [design of the circuit oracle][circuit].
+
+The `CircuitOracle` contract implementation uses inline assembly to
+destructively consume from the front of bytestrings in EVM memory. During
+operation, `bytes memory` values may not always be aligned to 32-byte addresses,
+but we are not aware of anything that would make this problematic. It works fine
+at the EVM level, and [Solidity's assembly conventions][solc-asm] does not
+indicate that Solidity assumes that `bytes memory` values have any particular
+alignment.
+
+The `CircuitOracle` contract implementation also uses unchecked arithmetic and
+some inline assembly for performance optimizations. This saves about 1000 gas on
+some typical invocations. Most of the unchecked blocks are trivially, locally
+safe (e.g., `require(_x > 0); unchecked { _x--; }`). All have `// SAFETY:`
+justifications in comments.
+
+[circuit]: https://hackmd.io/@wchargin/composite-oracles
+[solc-asm]:
+  https://docs.soliditylang.org/en/v0.8.11/assembly.html#conventions-in-solidity
