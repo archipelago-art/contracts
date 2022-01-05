@@ -77,35 +77,6 @@ recipients. Correspondingly, a buyer may choose to pay in ETH rather than WETH
 by calling `fillOrderEth`, which will wrap any attached ETH into WETH and send
 it to the buyer before filling the order as normal.
 
-## Market
-
-To cover:
-
-- signing domain for bids/asks, both signatures and on-chain approvals
-- impact of changes in trait oracle behavior on active traitset bids
-- signature discovery service ("mempool")
-- attack models: compromise of NFTs or ETH, orders filling with unintended
-  semantics
-- potential "pauser" role as a global panic button, which can be pre-committed
-  to being burned at a later time
-
-## Trait oracle model
-
-To cover:
-
-- interface definition
-- opacity of trait semantics
-
-## Art Blocks trait oracle
-
-To cover:
-
-- threat model re: oracle signing key compromise
-- threat model re: bad data from the Art Blocks API servers
-- project/feature versioning
-- feature trait finalization
-- bit-packing for `traitMembers` and `traitFinalizations`
-
 ## Signatures
 
 The market and the Art Blocks trait oracle use a common framework for signature
@@ -142,3 +113,32 @@ in [6a2e0a7e8136].
 
 **Pre-launch check:** Verify that each `structHash` function depends on the
 value of every field of the corresponding struct.
+
+## Market
+
+To cover:
+
+- signing domain for bids/asks, both signatures and on-chain approvals
+- impact of changes in trait oracle behavior on active traitset bids
+- signature discovery service ("mempool")
+- attack models: compromise of NFTs or ETH, orders filling with unintended
+  semantics
+- potential "pauser" role as a global panic button, which can be pre-committed
+  to being burned at a later time
+
+## Trait oracle model
+
+To cover:
+
+- interface definition
+- opacity of trait semantics
+
+## Art Blocks trait oracle
+
+To cover:
+
+- threat model re: oracle signing key compromise
+- threat model re: bad data from the Art Blocks API servers
+- project/feature versioning
+- feature trait finalization
+- bit-packing for `traitMembers` and `traitFinalizations`
