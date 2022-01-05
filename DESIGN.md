@@ -20,6 +20,11 @@ The Archipelago contract system has three main pieces:
   - a generic `CircuitOracle` that enables composing other traits as Boolean
     formulas ("this trait OR that trait", etc.).
 
+Users will approve the `ArchipelagoMarket` contract to manage their ERC-721 and
+ERC-20 tokens; our chief security concern is ensuring that these tokens are not
+transferred against their owners' intent. The oracle contracts are relevant to
+this concern because they directly influence which orders the market will fill.
+
 ## Messages
 
 Users authorize orders with a market by signing messages off-chain (for
@@ -146,15 +151,42 @@ More details about our specific trait oracles appear below.
 
 ## Market
 
-To cover:
+There will be a single instance of the `ArchipelagoMarket` contract deployed.
+Users are expected to approve this contract to manage their WETH and NFTs, so
+its security surface is high.
 
-- signing domain for bids/asks, both signatures and on-chain approvals
-- impact of changes in trait oracle behavior on active traitset bids
-- signature discovery service ("mempool")
-- attack models: compromise of NFTs or ETH, orders filling with unintended
-  semantics
-- potential "pauser" role as a global panic button, which can be pre-committed
-  to being burned at a later time
+The market accepts messages signed with a signing domain keyed against the
+market contract address and the chain ID. The contract address is included in
+the domain because on-chain cancellations are recorded in the market's contract
+storage. If Alice approves an `ArchipelagoMarket` to manage her tokens,
+publishes a signed ask, then cancels that ask on chain, and then later
+authorizes a different instance of the `ArchipelagoMarket` contract, it is
+desirable that the now-cancelled ask not be treated as valid on the new market.
+
+When approving orders from another smart contract instead of an EOA, the domain
+separator is not used, because the market's contract storage itself serves as
+the signing domain.
+
+Distribution and matching of signed orders does not happen on chain.
+
+When filling an order with a trait bid, the market `staticcall`s out to the
+trait oracle to check if the token from the ask has the trait specified in the
+bid. Since the trait oracle is an arbitrary contract, the result of its
+`hasTrait` call may change over time. If a trait oracle is somehow "compromised"
+to return `true` inaccurately, orders may be filled with unintended semantics.
+
+The market contract has an owner, an arbitrary address capable of calling
+methods on the market. The owner does _not_ have authority to fill arbitrary
+orders or transfer arbitrary tokens. The owner _can_ control royalty parameters,
+specifying the required platform royalty amount and recipient. The owner can
+also change whether the market is in "emergency shutdown" mode. In this mode,
+any attempts to fill an order will fail. This is intended to be activated if we
+discover a critical security flaw in the contract that jeopardizes users'
+tokens.
+
+When transferring ERC-721 tokens, the market only ever calls `safeTransferFrom`,
+not `transferFrom`, to mitigate risk of locking tokens in contracts that can't
+recover them.
 
 ## Art Blocks trait oracle
 
