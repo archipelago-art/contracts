@@ -114,6 +114,36 @@ in [6a2e0a7e8136].
 **Pre-launch check:** Verify that each `structHash` function depends on the
 value of every field of the corresponding struct.
 
+## Traits and oracles
+
+A _trait oracle_ is a contract that implements the following `hasTrait` method:
+
+```solidity
+function hasTrait(
+  IERC721 _tokenContract,
+  uint256 _tokenId,
+  bytes _trait
+) external view returns (bool);
+
+```
+
+A _trait_ is an arbitrary bytestring, the semantics of which are defined by the
+trait oracle. Oracles may define traits to answer simple point or range queries,
+like "is this token a Fidenza?" or "is this token an Eternal Pump with at least
+8 rings?". Trait oracles can also call out to other contracts to answer queries
+like, "has this token's associated Adventurer Gold airdrop been claimed yet?".
+
+Oracles can also define more complex structures for their traits. The
+`CircuitOracle` interprets its `bytes _trait` as the encoding of an "underlying"
+trait oracle address, a list of other traits to query on that underlying oracle,
+and a Boolean circuit specifying how to combine the results. Thus, while the Art
+Blocks oracle can answer queries like "is this an Archetype with the Paddle
+palette?" or "is this an Archetype with the Blue Spider palette?", the circuit
+oracle can answer questions like "is this an Archetype with _either_ the Paddle
+palette or the Blue Spider palette?".
+
+More details about our specific trait oracles appear below.
+
 ## Market
 
 To cover:
@@ -125,13 +155,6 @@ To cover:
   semantics
 - potential "pauser" role as a global panic button, which can be pre-committed
   to being burned at a later time
-
-## Trait oracle model
-
-To cover:
-
-- interface definition
-- opacity of trait semantics
 
 ## Art Blocks trait oracle
 
