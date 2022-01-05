@@ -10,13 +10,17 @@ internals of Archipelago. End users do not need to read this document.
 
 The Archipelago contract system has three main pieces:
 
-- the `Market` contract, an instance of which facilitates trading a class of
-  ERC-721 tokens for a specific ERC-20 currency (typically WETH);
+- the `ArchipelagoMarket` contract, an exchange for arbitrary ERC-721 tokens for
+  arbitrary ERC-20 currencies (typically WETH);
 - the `ITraitOracle` interface, implementors of which define semantics for
   _traits_ that ERC-721 tokens may have, and respond to queries about which
   tokens have which traits; and
-- the `ArtblocksTraitOracle` contract, which implements `ITraitOracle` with the
-  semantics of the Art Blocks platform.
+- the various trait oracle implementations, including:
+  - an `ArtblocksTraitOracle` with semantics of the Art Blocks platform, and
+  - a generic `CircuitOracle` that enables composing other traits as Boolean
+    formulas ("this trait OR that trait", etc.).
+
+## Messages
 
 Users authorize orders with a market by signing messages off-chain (for
 externally owned accounts) or writing explicit message approvals into the
@@ -24,21 +28,17 @@ market's contract storage (for contracts like Gnosis Safes). Given signatures
 for a bid and ask that are compatible, any user may call `fillOrder` to execute
 the trade.
 
-An ask (sell order) specifies one or more tokens to be sold atomically. There
-are two kinds of bids (buy orders). A bid may specify one or more tokens to be
-bought atomically, just like an ask. Or, a bid may specify a list of traits, in
-which case it represents an offer to purchase any single token matching _all_
-listed traits. A "traitset bid" may only match an ask to sell a single token.
+An ask (sell order) specifies a single token to be sold. There are two kinds of
+bids (buy orders). A bid may specify a single token to be bought, just like an
+ask. Or, a bid may specify a trait oracle and a trait, in which case it
+represents an offer to purchase any single token matching that trait (according
+to the specified oracle).
 
 Bids and asks (collectively, orders) have some common metadata properties. An
-order has a deadline, a Unix timestamp: if the EVM `TIMESTAMP` is greater than
-the deadline, then the order is no longer valid. An order also has a creation
-time, a Unix timestamp: an account can call a method on the `Market` contract to
-cancel all bids (resp. asks) created before a certain time, as a kind of "panic
-button". An order also has a nonce, an arbitrary `uint256`: each account may
-only fill one order with a given nonce. As with creation times, an account can
-call a method on the `Market` contract to cancel all orders with a given nonce.
-All cancellations are recorded on chain in the market contract storage.
+order has a deadline, a Unix timestamp. An order also has a nonce, an arbitrary
+`uint256`: each account may only fill one order with a given nonce. An account
+can call a method on the `Market` contract to cancel all orders with a given
+nonce. All cancellations are recorded on chain in the market contract storage.
 
 We anticipate that these nonce semantics will enable a few emergent order
 patterns:
@@ -61,11 +61,14 @@ patterns:
   you want to cancel the whole operation, you can call `cancelNonces` once and
   list the three nonces.
 
-Bids and asks may specify royalties: for example, to the artist, to the
-collection (e.g., Art Blocks), to a broker, to the platform. Royalties specified
-in the ask are taken as a cut from the asker's proceeds at no cost to the
-bidder; royalties specified in the ask are taken as additional funds from the
-bidder at no cost to the asker.
+Orders may specify a list of royalties, which are taken as a cut from the
+seller's proceeds. For instance, this might include royalties for the artist,
+the Art Blocks platform, and the Archipelago platform. A bid and an ask only
+match if they specify exactly the same royalties. Each order may also specify
+"extra royalties" to be paid by that side of the order. (That is: a bid may
+specify extra royalties to be paid by the bidder, and an ask may specify extra
+royalties to be paid by the seller.) Extra royalties do not have to match across
+the two orders.
 
 An ask may specify that the seller would like to be paid in ETH rather than
 WETH. If so, the market contract will unwrap the buyer's WETH before sending the
