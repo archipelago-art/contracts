@@ -10,8 +10,9 @@ import "./MarketMessages.sol";
 import "./SignatureChecker.sol";
 
 contract ArchipelagoMarket is Ownable {
-    using MarketMessages for Bid;
     using MarketMessages for Ask;
+    using MarketMessages for Bid;
+    using MarketMessages for OrderAgreement;
 
     event NonceCancellation(address indexed participant, uint256 indexed nonce);
 
@@ -79,9 +80,10 @@ contract ArchipelagoMarket is Ownable {
     string constant ORDER_CANCELLED_OR_EXPIRED =
         "Market: order cancelled or expired";
 
-    string constant TRANSFER_FAILED = "Market: transfer failed";
+    string constant AGREEMENT_MISMATCH =
+        "Market: bid/ask doesn't match order agreement";
 
-    string constant ROYALTY_MISMATCH = "Market: required royalties don't match";
+    string constant TRANSFER_FAILED = "Market: transfer failed";
 
     bytes32 constant TYPEHASH_DOMAIN_SEPARATOR =
         keccak256(
@@ -171,6 +173,17 @@ contract ArchipelagoMarket is Ownable {
         return ask.structHash();
     }
 
+    /// Computes the EIP-712 struct hash of the parts of an order that must be
+    /// shared between a bid and an ask. The resulting hash should appear as
+    /// the `agreementHash` field of both the `Bid` and the `Ask` structs.
+    function orderAgreementHash(OrderAgreement memory agreement)
+        external
+        pure
+        returns (bytes32)
+    {
+        return agreement.structHash();
+    }
+
     function cancelNonces(uint256[] calldata nonces) external {
         for (uint256 i; i < nonces.length; i++) {
             uint256 nonce = nonces[i];
@@ -179,7 +192,36 @@ contract ArchipelagoMarket is Ownable {
         }
     }
 
+    function _verifyOrder(
+        OrderAgreement memory agreement,
+        Bid memory bid,
+        bytes memory bidSignature,
+        SignatureKind bidSignatureKind,
+        Ask memory ask,
+        bytes memory askSignature,
+        SignatureKind askSignatureKind
+    ) internal view returns (address bidder, address asker) {
+        bytes32 agreementHash = agreement.structHash();
+        require(bid.agreementHash == agreementHash, AGREEMENT_MISMATCH);
+        require(ask.agreementHash == agreementHash, AGREEMENT_MISMATCH);
+
+        bytes32 domainSeparator = computeDomainSeparator();
+        bidder = verify(
+            domainSeparator,
+            bid.structHash(),
+            bidSignature,
+            bidSignatureKind
+        );
+        asker = verify(
+            domainSeparator,
+            ask.structHash(),
+            askSignature,
+            askSignatureKind
+        );
+    }
+
     function fillOrder(
+        OrderAgreement memory agreement,
         Bid memory bid,
         bytes memory bidSignature,
         SignatureKind bidSignatureKind,
@@ -187,20 +229,16 @@ contract ArchipelagoMarket is Ownable {
         bytes memory askSignature,
         SignatureKind askSignatureKind
     ) external {
-        bytes32 domainSeparator = computeDomainSeparator();
-        address bidder = verify(
-            domainSeparator,
-            bid.structHash(),
+        (address bidder, address asker) = _verifyOrder(
+            agreement,
+            bid,
             bidSignature,
-            bidSignatureKind
-        );
-        address asker = verify(
-            domainSeparator,
-            ask.structHash(),
+            bidSignatureKind,
+            ask,
             askSignature,
             askSignatureKind
         );
-        _fillOrder(bid, bidder, ask, asker);
+        _fillOrder(agreement, bid, bidder, ask, asker);
     }
 
     /// Variant of fill order where the buyer pays in ETH (which is converted to
@@ -216,6 +254,7 @@ contract ArchipelagoMarket is Ownable {
     /// balance afterwards, which we assume was their intent (maybe they have
     /// other bids outstanding).
     function fillOrderEth(
+        OrderAgreement memory agreement,
         Bid memory bid,
         bytes memory bidSignature,
         SignatureKind bidSignatureKind,
@@ -223,35 +262,37 @@ contract ArchipelagoMarket is Ownable {
         bytes memory askSignature,
         SignatureKind askSignatureKind
     ) external payable {
-        bytes32 domainSeparator = computeDomainSeparator();
-        address bidder = verify(
-            domainSeparator,
-            bid.structHash(),
+        (address bidder, address asker) = _verifyOrder(
+            agreement,
+            bid,
             bidSignature,
-            bidSignatureKind
-        );
-        address asker = verify(
-            domainSeparator,
-            ask.structHash(),
+            bidSignatureKind,
+            ask,
             askSignature,
             askSignatureKind
         );
         require(msg.sender == bidder, "only bidder may fill with ETH");
-        IWeth currency = IWeth(address(bid.currencyAddress));
+        IWeth currency = IWeth(address(agreement.currencyAddress));
         currency.deposit{value: msg.value}();
         require(currency.transfer(bidder, msg.value), TRANSFER_FAILED);
-        _fillOrder(bid, bidder, ask, asker);
+        _fillOrder(agreement, bid, bidder, ask, asker);
     }
 
     function _fillOrder(
+        OrderAgreement memory agreement,
         Bid memory bid,
         address bidder,
         Ask memory ask,
         address asker
     ) internal {
         require(!emergencyShutdown, "Market is shut down");
+
+        IERC721 token = agreement.tokenAddress;
+        uint256 price = agreement.price;
+        IERC20 currency = agreement.currencyAddress;
+
         uint256 tokenId = ask.tokenId;
-        IERC721 token = ask.tokenAddress;
+
         require(
             ask.authorizedBidder == address(0) ||
                 ask.authorizedBidder == bidder,
@@ -279,17 +320,11 @@ contract ArchipelagoMarket is Ownable {
         uint256 tradeId = uint256(
             keccak256(abi.encode(bidder, bid.nonce, asker, ask.nonce))
         );
-        uint256 price = bid.price;
         // amount paid to seller, after subtracting asker royalties
         uint256 proceeds = price;
         // amount spent by the buyer, after including bidder royalties
         uint256 cost = price;
-        require(price == ask.price, "price mismatch");
 
-        IERC20 currency = ask.currencyAddress;
-
-        require(token == bid.tokenAddress, "token address mismatch");
-        require(currency == bid.currencyAddress, "currency address mismatch");
         if (address(bid.traitOracle) == address(0)) {
             uint256 expectedTokenId = uint256(bytes32(bid.trait));
             require(expectedTokenId == tokenId, "tokenid mismatch");
@@ -300,15 +335,8 @@ contract ArchipelagoMarket is Ownable {
             );
         }
 
-        require(
-            ask.requiredRoyalties.length == bid.requiredRoyalties.length,
-            ROYALTY_MISMATCH
-        );
-        for (uint256 i = 0; i < ask.requiredRoyalties.length; i++) {
-            Royalty memory royalty = ask.requiredRoyalties[i];
-            Royalty memory _royalty = bid.requiredRoyalties[i];
-            require(royalty.recipient == _royalty.recipient, ROYALTY_MISMATCH);
-            require(royalty.micros == _royalty.micros, ROYALTY_MISMATCH);
+        for (uint256 i = 0; i < agreement.requiredRoyalties.length; i++) {
+            Royalty memory royalty = agreement.requiredRoyalties[i];
             uint256 amt = (royalty.micros * price) / 1000000;
             // Proceeds to the seller are decreased by all Ask royalties
             proceeds -= amt;

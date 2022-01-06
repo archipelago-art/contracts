@@ -29,32 +29,38 @@ function rawDomainSeparator(domainInfo) {
 }
 
 const Bid = [
+  { type: "bytes32", name: "agreementHash" },
   { type: "uint256", name: "nonce" },
   { type: "uint40", name: "deadline" },
-  { type: "address", name: "currencyAddress" },
-  { type: "uint256", name: "price" },
-  { type: "address", name: "tokenAddress" },
-  { type: "Royalty[]", name: "requiredRoyalties" },
   { type: "Royalty[]", name: "extraRoyalties" },
   { type: "bytes", name: "trait" },
   { type: "address", name: "traitOracle" },
 ];
 const Ask = [
+  { type: "bytes32", name: "agreementHash" },
   { type: "uint256", name: "nonce" },
   { type: "uint40", name: "deadline" },
-  { type: "address", name: "currencyAddress" },
-  { type: "uint256", name: "price" },
-  { type: "address", name: "tokenAddress" },
-  { type: "Royalty[]", name: "requiredRoyalties" },
   { type: "Royalty[]", name: "extraRoyalties" },
   { type: "uint256", name: "tokenId" },
   { type: "bool", name: "unwrapWeth" },
   { type: "address", name: "authorizedBidder" },
 ];
+const OrderAgreement = [
+  { type: "address", name: "currencyAddress" },
+  { type: "uint256", name: "price" },
+  { type: "address", name: "tokenAddress" },
+  { type: "Royalty[]", name: "requiredRoyalt" },
+];
 const Royalty = [
   { type: "address", name: "recipient" },
   { type: "uint256", name: "micros" },
 ];
+
+const hash = Object.freeze({
+  bid: bidStructHash,
+  ask: askStructHash,
+  orderAgreement: orderAgreementStructHash,
+});
 
 const sign712 = Object.freeze({
   bid(signer, domainInfo, msg) {
@@ -93,14 +99,23 @@ const verify712 = Object.freeze({
 });
 
 const TYPENAME_ROYALTY = "Royalty(address recipient,uint256 micros)";
+const TYPENAME_ORDER_AGREEMENT =
+  "OrderAgreement(address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties)";
 const TYPENAME_BID =
   "Bid(uint256 nonce,uint40 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties,Royalty[] extraRoyalties,bytes trait,address traitOracle)";
 const TYPENAME_ASK =
   "Ask(uint256 nonce,uint40 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties,Royalty[] extraRoyalties,uint256 tokenId,bool unwrapWeth,address authorizedBidder)";
 
 const TYPEHASH_ROYALTY = utf8Hash(TYPENAME_ROYALTY);
-const TYPEHASH_BID = utf8Hash(TYPENAME_BID + TYPENAME_ROYALTY);
-const TYPEHASH_ASK = utf8Hash(TYPENAME_ASK + TYPENAME_ROYALTY);
+const TYPEHASH_ORDER_AGREEMENT = utf8Hash(
+  TYPENAME_ORDER_AGREEMENT + TYPENAME_ROYALTY
+);
+const TYPEHASH_BID = utf8Hash(
+  TYPENAME_BID + TYPENAME_ORDER_AGREEMENT + TYPENAME_ROYALTY
+);
+const TYPEHASH_ASK = utf8Hash(
+  TYPENAME_ASK + TYPENAME_ORDER_AGREEMENT + TYPENAME_ROYALTY
+);
 
 function royaltyStructHash(royalty) {
   return ethers.utils.keccak256(
@@ -111,40 +126,46 @@ function royaltyStructHash(royalty) {
   );
 }
 
+function royaltyArrayStructHash(royalties) {
+  const elementHashes = royalties.map(royaltyStructHash);
+  return ethers.utils.keccak256(
+    ethers.utils.solidityPack(["bytes32[]"], [elementHashes])
+  );
+}
+
+function orderAgreementStructHash(orderAgreement) {
+  return ethers.utils.keccak256(
+    ethers.utils.defaultAbiCoder.encode(
+      ["bytes32", "address", "uint256", "address", "bytes32"],
+      [
+        TYPEHASH_ORDER_AGREEMENT,
+        orderAgreement.currencyAddress,
+        orderAgreement.price,
+        orderAgreement.tokenAddress,
+        royaltyArrayStructHash(orderAgreement.requiredRoyalties),
+      ]
+    )
+  );
+}
+
 function bidStructHash(bid) {
   return ethers.utils.keccak256(
     ethers.utils.defaultAbiCoder.encode(
       [
         "bytes32",
+        "bytes32",
         "uint256",
         "uint40",
-        "address",
-        "uint256",
-        "address",
-        "bytes32",
         "bytes32",
         "bytes32",
         "address",
       ],
       [
         TYPEHASH_BID,
+        bid.agreementHash,
         bid.nonce,
         bid.deadline,
-        bid.currencyAddress,
-        bid.price,
-        bid.tokenAddress,
-        ethers.utils.keccak256(
-          ethers.utils.solidityPack(
-            ["bytes32[]"],
-            [bid.requiredRoyalties.map(royaltyStructHash)]
-          )
-        ),
-        ethers.utils.keccak256(
-          ethers.utils.solidityPack(
-            ["bytes32[]"],
-            [bid.extraRoyalties.map(royaltyStructHash)]
-          )
-        ),
+        royaltyArrayStructHash(bid.extraRoyalties),
         ethers.utils.keccak256(bid.trait),
         bid.traitOracle,
       ]
@@ -157,12 +178,9 @@ function askStructHash(ask) {
     ethers.utils.defaultAbiCoder.encode(
       [
         "bytes32",
+        "bytes32",
         "uint256",
         "uint40",
-        "address",
-        "uint256",
-        "address",
-        "bytes32",
         "bytes32",
         "uint256",
         "bool",
@@ -170,23 +188,13 @@ function askStructHash(ask) {
       ],
       [
         TYPEHASH_ASK,
+        ask.agreementHash,
         ask.nonce,
         ask.deadline,
         ask.currencyAddress,
         ask.price,
         ask.tokenAddress,
-        ethers.utils.keccak256(
-          ethers.utils.solidityPack(
-            ["bytes32[]"],
-            [ask.requiredRoyalties.map(royaltyStructHash)]
-          )
-        ),
-        ethers.utils.keccak256(
-          ethers.utils.solidityPack(
-            ["bytes32[]"],
-            [ask.extraRoyalties.map(royaltyStructHash)]
-          )
-        ),
+        royaltyArrayStructHash(ask.extraRoyalties),
         ask.tokenId,
         ask.unwrapWeth,
         ask.authorizedBidder,
@@ -280,6 +288,7 @@ module.exports = {
   abi,
   sign,
   verify,
+  hash,
   sign712,
   verify712,
   signLegacy,

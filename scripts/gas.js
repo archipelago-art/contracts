@@ -215,24 +215,34 @@ TEST_CASES.push(async function* marketFills(props) {
 
   let nextNonce = 0;
 
-  function newBid({
-    nonce = nextNonce++,
-    deadline = sdk.market.MaxUint40,
+  function newAgreement({
     currencyAddress = weth.address,
     price = exa,
     tokenAddress = token.address,
     requiredRoyalties = [],
-    extraRoyalties = [],
-    traitOracle = ethers.constants.AddressZero,
-    trait = tokenId,
   } = {}) {
     return {
-      nonce,
-      deadline,
       currencyAddress,
       price,
       tokenAddress,
       requiredRoyalties,
+    };
+  }
+
+  function newBid({
+    agreement = null,
+    nonce = nextNonce++,
+    deadline = sdk.market.MaxUint40,
+    extraRoyalties = [],
+    traitOracle = ethers.constants.AddressZero,
+    trait = tokenId,
+  } = {}) {
+    if (agreement == null) throw new Error("missing order agreement");
+    const agreementHash = sdk.market.hash.orderAgreement(agreement);
+    return {
+      agreementHash,
+      nonce,
+      deadline,
       extraRoyalties,
       trait: ethers.utils.isBytesLike(trait)
         ? trait
@@ -243,37 +253,35 @@ TEST_CASES.push(async function* marketFills(props) {
 
   const defaultTokenId = tokenId;
   function newAsk({
+    agreement = null,
     nonce = nextNonce++,
     deadline = sdk.market.MaxUint40,
-    currencyAddress = weth.address,
-    price = exa,
-    tokenAddress = token.address,
-    tokenId = defaultTokenId,
-    requiredRoyalties = [],
     extraRoyalties = [],
+    tokenId = defaultTokenId,
     unwrapWeth = false,
     authorizedBidder = ethers.constants.AddressZero,
   } = {}) {
+    if (agreement == null) throw new Error("missing order agreement");
+    const agreementHash = sdk.market.hash.orderAgreement(agreement);
     return {
+      agreementHash,
       nonce,
       deadline,
-      currencyAddress,
-      price,
-      tokenAddress,
-      tokenId,
-      requiredRoyalties,
       extraRoyalties,
+      tokenId,
       unwrapWeth,
       authorizedBidder,
     };
   }
 
   {
-    const bid = newBid();
-    const ask = newAsk();
+    const agreement = newAgreement();
+    const bid = newBid({ agreement });
+    const ask = newAsk({ agreement });
     const bidSignature = sdk.market.sign712.bid(bob, domainInfo, bid);
     const askSignature = sdk.market.sign712.ask(alice, domainInfo, ask);
     const tx = await market.fillOrder(
+      agreement,
       bid,
       bidSignature,
       EIP_712,
@@ -285,11 +293,17 @@ TEST_CASES.push(async function* marketFills(props) {
   }
 
   {
-    const bid = newBid({ trait: traitId, traitOracle: oracle.address });
-    const ask = newAsk();
+    const agreement = newAgreement();
+    const bid = newBid({
+      agreement,
+      trait: traitId,
+      traitOracle: oracle.address,
+    });
+    const ask = newAsk({ agreement });
     const bidSignature = sdk.market.sign712.bid(alice, domainInfo, bid);
     const askSignature = sdk.market.sign712.ask(bob, domainInfo, ask);
     const tx = await market.fillOrder(
+      agreement,
       bid,
       bidSignature,
       EIP_712,
@@ -306,15 +320,18 @@ TEST_CASES.push(async function* marketFills(props) {
       baseTraits: [traitId, unsetTraitId],
       ops: [{ type: "OR", arg0: 0, arg1: 1 }],
     });
+    const agreement = newAgreement();
     const bid = newBid({
+      agreement,
       trait: disjunctionTraitId,
       traitOracle: circuitOracle.address,
     });
-    const ask = newAsk();
+    const ask = newAsk({ agreement });
     const bidSignature = sdk.market.sign712.bid(alice, domainInfo, bid);
     const askSignature = sdk.market.sign712.ask(bob, domainInfo, ask);
 
     const tx = await market.fillOrder(
+      agreement,
       bid,
       bidSignature,
       EIP_712,
@@ -331,15 +348,18 @@ TEST_CASES.push(async function* marketFills(props) {
       baseTraits: [projectTraitId, traitId],
       ops: [{ type: "AND", arg0: 0, arg1: 1 }],
     });
+    const agreement = newAgreement();
     const bid = newBid({
+      agreement,
       trait: conjunctionTraitId,
       traitOracle: circuitOracle.address,
     });
-    const ask = newAsk();
+    const ask = newAsk({ agreement });
     const bidSignature = sdk.market.sign712.bid(alice, domainInfo, bid);
     const askSignature = sdk.market.sign712.ask(bob, domainInfo, ask);
 
     const tx = await market.fillOrder(
+      agreement,
       bid,
       bidSignature,
       EIP_712,
@@ -354,11 +374,13 @@ TEST_CASES.push(async function* marketFills(props) {
   }
 
   {
-    const bid = newBid();
-    const ask = newAsk({ unwrapWeth: true });
+    const agreement = newAgreement();
+    const bid = newBid({ agreement });
+    const ask = newAsk({ agreement, unwrapWeth: true });
     const bidSignature = sdk.market.sign712.bid(bob, domainInfo, bid);
     const askSignature = sdk.market.sign712.ask(alice, domainInfo, ask);
     const tx = await market.fillOrder(
+      agreement,
       bid,
       bidSignature,
       EIP_712,
@@ -370,25 +392,37 @@ TEST_CASES.push(async function* marketFills(props) {
   }
 
   {
-    const bid = newBid();
-    const ask = newAsk();
+    const agreement = newAgreement();
+    const bid = newBid({ agreement });
+    const ask = newAsk({ agreement });
     const bidSignature = sdk.market.sign712.bid(alice, domainInfo, bid);
     const askSignature = sdk.market.sign712.ask(bob, domainInfo, ask);
     const tx = await market
       .connect(alice)
-      .fillOrderEth(bid, bidSignature, EIP_712, ask, askSignature, EIP_712, {
-        value: exa,
-      });
+      .fillOrderEth(
+        agreement,
+        bid,
+        bidSignature,
+        EIP_712,
+        ask,
+        askSignature,
+        EIP_712,
+        {
+          value: exa,
+        }
+      );
     yield ["fillOrder in Eth", await tx.wait()];
   }
 
   {
     const r0 = { recipient: signer.address, micros: 10000 };
-    const bid = newBid({ requiredRoyalties: [r0] });
-    const ask = newAsk({ requiredRoyalties: [r0] });
+    const agreement = newAgreement({ requiredRoyalties: [r0] });
+    const bid = newBid({ agreement });
+    const ask = newAsk({ agreement });
     const bidSignature = sdk.market.sign712.bid(bob, domainInfo, bid);
     const askSignature = sdk.market.sign712.ask(alice, domainInfo, ask);
     const tx = await market.fillOrder(
+      agreement,
       bid,
       bidSignature,
       EIP_712,
@@ -401,12 +435,14 @@ TEST_CASES.push(async function* marketFills(props) {
 
   {
     const r0 = { recipient: signer.address, micros: 10000 };
-    const bid = newBid({ requiredRoyalties: [r0, r0, r0] });
-    const ask = newAsk({ requiredRoyalties: [r0, r0, r0] });
+    const agreement = newAgreement({ requiredRoyalties: [r0, r0, r0] });
+    const bid = newBid({ agreement });
+    const ask = newAsk({ agreement });
     const bidSignature = sdk.market.sign712.bid(alice, domainInfo, bid);
     const askSignature = sdk.market.sign712.ask(bob, domainInfo, ask);
     await market.set;
     const tx = await market.fillOrder(
+      agreement,
       bid,
       bidSignature,
       EIP_712,
