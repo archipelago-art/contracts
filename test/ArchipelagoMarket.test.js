@@ -1352,7 +1352,7 @@ describe("Market", () => {
       const ask = newAsk();
       await market.setEmergencyShutdown(true);
       const fail = fillOrder(market, bid, bidder, ask, asker);
-      expect(fail).to.be.revertedWith("Market is shutdown");
+      expect(fail).to.be.revertedWith("Market is shut down");
     });
     it("non-owner may not shut down the market", async () => {
       const { market, bidder } = await setup();

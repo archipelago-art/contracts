@@ -249,7 +249,7 @@ contract ArchipelagoMarket is Ownable {
         Ask memory ask,
         address asker
     ) internal {
-        require(!emergencyShutdown, "Market is shutdown");
+        require(!emergencyShutdown, "Market is shut down");
         uint256 tokenId = ask.tokenId;
         IERC721 token = ask.tokenAddress;
         require(
