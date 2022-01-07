@@ -21,4 +21,8 @@ function inputOfMethod(contract, name) {
 module.exports = [
   { filename: "ask.js", data: inputOfMethod(ArchipelagoMarket, "askHash") },
   { filename: "bid.js", data: inputOfMethod(ArchipelagoMarket, "bidHash") },
+  {
+    filename: "orderAgreement.js",
+    data: inputOfMethod(ArchipelagoMarket, "orderAgreementHash"),
+  },
 ];
