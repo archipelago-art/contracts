@@ -76,29 +76,33 @@ describe("ArtblocksTraitOracle", () => {
     });
   });
 
-  it("permits changing admin", async () => {
+  it("permits changing owner", async () => {
     const oracle = await ArtblocksTraitOracle.deploy();
     await oracle.deployed();
 
-    expect(await oracle.admin()).to.equal(signers[0].address);
+    expect(await oracle.owner()).to.equal(signers[0].address);
 
     await expect(
-      oracle.connect(signers[1]).transferAdmin(signers[1].address)
-    ).to.be.revertedWith(Errors.UNAUTHORIZED);
-
-    await expect(oracle.connect(signers[0]).transferAdmin(signers[1].address))
-      .to.emit(oracle, "AdminChanged")
-      .withArgs(signers[1].address);
-    expect(await oracle.admin()).to.equal(signers[1].address);
+      oracle.connect(signers[1]).transferOwnership(signers[1].address)
+    ).to.be.revertedWith(Errors.UNAUTHORIZED_OWNERSHIP_TRANSFER);
 
     await expect(
-      oracle.connect(signers[0]).transferAdmin(signers[0].address)
-    ).to.be.revertedWith(Errors.UNAUTHORIZED);
+      oracle.connect(signers[0]).transferOwnership(signers[1].address)
+    )
+      .to.emit(oracle, "OwnershipTransferred")
+      .withArgs(signers[0].address, signers[1].address);
+    expect(await oracle.owner()).to.equal(signers[1].address);
 
-    await expect(oracle.connect(signers[1]).transferAdmin(signers[0].address))
-      .to.emit(oracle, "AdminChanged")
-      .withArgs(signers[0].address);
-    expect(await oracle.admin()).to.equal(signers[0].address);
+    await expect(
+      oracle.connect(signers[0]).transferOwnership(signers[0].address)
+    ).to.be.revertedWith(Errors.UNAUTHORIZED_OWNERSHIP_TRANSFER);
+
+    await expect(
+      oracle.connect(signers[1]).transferOwnership(signers[0].address)
+    )
+      .to.emit(oracle, "OwnershipTransferred")
+      .withArgs(signers[1].address, signers[0].address);
+    expect(await oracle.owner()).to.equal(signers[0].address);
   });
 
   describe("computes trait IDs", () => {

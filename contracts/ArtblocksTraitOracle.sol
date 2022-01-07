@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./ArtblocksTraitOracleMessages.sol";
 import "./ITraitOracle.sol";
@@ -40,13 +41,12 @@ struct FeatureInfo {
     string name;
 }
 
-contract ArtblocksTraitOracle is IERC165, ITraitOracle {
+contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
     using ArtblocksTraitOracleMessages for SetProjectInfoMessage;
     using ArtblocksTraitOracleMessages for SetFeatureInfoMessage;
     using ArtblocksTraitOracleMessages for AddTraitMembershipsMessage;
     using Popcnt for uint256;
 
-    event AdminChanged(address indexed admin);
     event OracleSignerChanged(address indexed oracleSigner);
     event ProjectInfoSet(
         uint256 indexed traitId,
@@ -84,7 +84,6 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle {
     /// gives the token index within the project.
     uint256 constant PROJECT_STRIDE = 10**6;
 
-    address public admin;
     address public oracleSigner;
 
     mapping(uint256 => ProjectInfo) public projectTraitInfo;
@@ -112,11 +111,6 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle {
     /// (relative to start of project) are finalized.
     mapping(uint256 => mapping(uint256 => uint256)) traitFinalizations;
 
-    constructor() {
-        admin = msg.sender;
-        emit AdminChanged(msg.sender);
-    }
-
     function supportsInterface(bytes4 _interfaceId)
         external
         pure
@@ -128,17 +122,7 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle {
         return false;
     }
 
-    modifier onlyAdmin() {
-        require(msg.sender == admin, ERR_UNAUTHORIZED);
-        _;
-    }
-
-    function transferAdmin(address _admin) external onlyAdmin {
-        admin = _admin;
-        emit AdminChanged(_admin);
-    }
-
-    function setOracleSigner(address _oracleSigner) external onlyAdmin {
+    function setOracleSigner(address _oracleSigner) external onlyOwner {
         oracleSigner = _oracleSigner;
         emit OracleSignerChanged(_oracleSigner);
     }

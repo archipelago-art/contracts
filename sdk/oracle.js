@@ -12,6 +12,7 @@ const Errors = Object.freeze({
   IMMUTABLE: "ArtblocksTraitOracle: IMMUTABLE",
   INVALID_ARGUMENT: "ArtblocksTraitOracle: INVALID_ARGUMENT",
   UNAUTHORIZED: "ArtblocksTraitOracle: UNAUTHORIZED",
+  UNAUTHORIZED_OWNERSHIP_TRANSFER: "Ownable: caller is not the owner",
 });
 
 const PROJECT_STRIDE = 10 ** 6;
