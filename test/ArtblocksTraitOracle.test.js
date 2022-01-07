@@ -333,10 +333,12 @@ describe("ArtblocksTraitOracle", () => {
       const otherTokenId = baseTokenId + 555;
       expect(!tokenIds.includes(otherTokenId));
 
-      const msg1 = { traitId, tokenIds: batch1 };
+      let traitLog = null;
+      const msg1 = { traitId, words: sdk.oracle.traitMembershipWords(batch1) };
+      traitLog = sdk.oracle.updateTraitLog(traitLog, [msg1]);
       await expect(addTraitMemberships(oracle, signer, msg1))
         .to.emit(oracle, "TraitMembershipExpanded")
-        .withArgs(traitId, batch1.length);
+        .withArgs(traitId, batch1.length, traitLog);
       expect(
         await oracle.hasTrait(ethers.constants.AddressZero, batch1[0], traitId)
       ).to.equal(true);
@@ -352,10 +354,11 @@ describe("ArtblocksTraitOracle", () => {
       ).to.equal(false);
       expect(await oracle.featureMembers(traitId)).to.equal(batch1.length);
 
-      const msg2 = { traitId, tokenIds: batch2 };
+      const msg2 = { traitId, words: sdk.oracle.traitMembershipWords(batch2) };
+      traitLog = sdk.oracle.updateTraitLog(traitLog, [msg2]);
       await expect(await addTraitMemberships(oracle, signer, msg2))
         .to.emit(oracle, "TraitMembershipExpanded")
-        .withArgs(traitId, tokenIds.length);
+        .withArgs(traitId, tokenIds.length, traitLog);
       expect(
         await oracle.hasTrait(ethers.constants.AddressZero, batch1[0], traitId)
       ).to.equal(true);
@@ -403,13 +406,19 @@ describe("ArtblocksTraitOracle", () => {
       const msg = { projectId, featureName, version };
       await setFeatureInfo(oracle, signer, msg);
 
+      let traitLog = null;
       const msg1 = {
         traitId,
-        tokenIds: [baseTokenId + 1, baseTokenId + 2, baseTokenId + 1],
+        words: sdk.oracle.traitMembershipWords([
+          baseTokenId + 1,
+          baseTokenId + 2,
+          baseTokenId + 1,
+        ]),
       };
+      traitLog = sdk.oracle.updateTraitLog(traitLog, [msg1]);
       await expect(addTraitMemberships(oracle, signer, msg1))
         .to.emit(oracle, "TraitMembershipExpanded")
-        .withArgs(traitId, 2);
+        .withArgs(traitId, 2, traitLog);
       expect(
         await oracle.hasTrait(
           ethers.constants.AddressZero,
@@ -435,11 +444,16 @@ describe("ArtblocksTraitOracle", () => {
 
       const msg2 = {
         traitId,
-        tokenIds: [baseTokenId + 2, baseTokenId + 3, baseTokenId + 2],
+        words: sdk.oracle.traitMembershipWords([
+          baseTokenId + 2,
+          baseTokenId + 3,
+          baseTokenId + 2,
+        ]),
       };
+      traitLog = sdk.oracle.updateTraitLog(traitLog, [msg2]);
       await expect(addTraitMemberships(oracle, signer, msg2))
         .to.emit(oracle, "TraitMembershipExpanded")
-        .withArgs(traitId, 3);
+        .withArgs(traitId, 3, traitLog);
       expect(
         await oracle.hasTrait(
           ethers.constants.AddressZero,
@@ -494,10 +508,14 @@ describe("ArtblocksTraitOracle", () => {
       await setFeatureInfo(oracle, signer, msg);
 
       const tokenIds = [0, 1];
-      const msg1 = { traitId, tokenIds };
+      const msg1 = {
+        traitId,
+        words: sdk.oracle.traitMembershipWords(tokenIds),
+      };
+      const traitLog = sdk.oracle.updateTraitLog(null, [msg1]);
       await expect(addTraitMemberships(oracle, signer, msg1))
         .to.emit(oracle, "TraitMembershipExpanded")
-        .withArgs(traitId, 2);
+        .withArgs(traitId, 2, traitLog);
     });
 
     it("rejects signatures from unauthorized accounts", async () => {
@@ -575,21 +593,22 @@ describe("ArtblocksTraitOracle", () => {
 
     it("allows additions after finalization of an unrelated word", async () => {
       const { oracle, signer } = await setUp();
-      await addTraitMemberships(oracle, signer, {
+      const msg1 = {
         traitId,
         words: [{ wordIndex: 0, mask: 0b101, finalized: true }],
-      });
+      };
+      await addTraitMemberships(oracle, signer, msg1);
       expect(await oracle.traitMembershipFinalizations(traitId, 0)).to.equal(
         0x01
       );
-      await expect(
-        addTraitMemberships(oracle, signer, {
-          traitId,
-          words: [{ wordIndex: 1, mask: 0b111, finalized: false }],
-        })
-      )
+      const msg2 = {
+        traitId,
+        words: [{ wordIndex: 1, mask: 0b111, finalized: false }],
+      };
+      const traitLog = sdk.oracle.updateTraitLog(null, [msg1, msg2]);
+      await expect(addTraitMemberships(oracle, signer, msg2))
         .to.emit(oracle, "TraitMembershipExpanded")
-        .withArgs(traitId, 5);
+        .withArgs(traitId, 5, traitLog);
     });
 
     it("requires the finalizing word to include all known members", async () => {

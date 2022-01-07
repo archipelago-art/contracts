@@ -62,7 +62,11 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
         string fullName,
         uint256 version
     );
-    event TraitMembershipExpanded(uint256 indexed traitId, uint256 newSize);
+    event TraitMembershipExpanded(
+        uint256 indexed traitId,
+        uint256 newSize,
+        bytes32 newLog
+    );
     event TraitMembershipFinalized(uint256 indexed traitId, uint256 wordIndex);
 
     string constant ERR_ALREADY_EXISTS = "ArtblocksTraitOracle: ALREADY_EXISTS";
@@ -110,6 +114,10 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
     /// statuses of tokens with IDs between 0 and 255 or between 512 and 767
     /// (relative to start of project) are finalized.
     mapping(uint256 => mapping(uint256 => uint256)) traitFinalizations;
+    /// For each trait ID `_t`, `traitUpdateLog[_t]` is a hash accumulator of
+    /// all the updates applied for trait `_t`. It starts at zero and is
+    /// updated with `_acc = keccak256(_acc, _msg.structHash())`.
+    mapping(uint256 => bytes32) public traitUpdateLog;
 
     function supportsInterface(bytes4 _interfaceId)
         external
@@ -230,11 +238,13 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
         bytes memory _signature,
         SignatureKind _signatureKind
     ) external {
-        _requireOracleSignature(_msg.structHash(), _signature, _signatureKind);
-        _addTraitMemberships(_msg.traitId, _msg.words);
+        bytes32 _structHash = _msg.structHash();
+        _requireOracleSignature(_structHash, _signature, _signatureKind);
+        _addTraitMemberships(_structHash, _msg.traitId, _msg.words);
     }
 
     function _addTraitMemberships(
+        bytes32 _structHash,
         uint256 _traitId,
         TraitMembershipWord[] memory _words
     ) internal {
@@ -270,7 +280,16 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
         }
         if (_newSize == _originalSize) return;
         traitMembersCount[_traitId] = _newSize;
-        emit TraitMembershipExpanded({traitId: _traitId, newSize: _newSize});
+
+        bytes32 _oldLog = traitUpdateLog[_traitId];
+        bytes32 _newLog = keccak256(abi.encodePacked(_oldLog, _structHash));
+        traitUpdateLog[_traitId] = _newLog;
+
+        emit TraitMembershipExpanded({
+            traitId: _traitId,
+            newSize: _newSize,
+            newLog: _newLog
+        });
     }
 
     /// Gets the location of the trait membership for the given token ID,

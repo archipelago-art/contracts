@@ -184,6 +184,12 @@ const signLegacy = Object.freeze({
   },
 });
 
+const hash = Object.freeze({
+  setProjectInfo: setProjectInfoStructHash,
+  setFeatureInfo: setFeatureInfoStructHash,
+  addTraitMemberships: addTraitMembershipsStructHash,
+});
+
 function traitMembershipWords(tokenIds) {
   const relativeIds = tokenIds
     .map((id) => ethers.BigNumber.from(id).mod(PROJECT_STRIDE).toBigInt())
@@ -217,6 +223,15 @@ function featureTraitId(projectId, featureName, version) {
   return ethers.utils.keccak256(blob);
 }
 
+function updateTraitLog(oldLog = null, msgs) {
+  if (oldLog == null) oldLog = ethers.constants.HashZero;
+  for (const msg of msgs) {
+    const structHash = addTraitMembershipsStructHash(msg);
+    oldLog = ethers.utils.keccak256(ethers.utils.concat([oldLog, structHash]));
+  }
+  return oldLog;
+}
+
 module.exports = {
   TraitType,
   Errors,
@@ -227,4 +242,5 @@ module.exports = {
   traitMembershipWords,
   projectTraitId,
   featureTraitId,
+  updateTraitLog,
 };
