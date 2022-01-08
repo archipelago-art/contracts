@@ -2,6 +2,8 @@ const ethers = require("ethers");
 
 const { hashLegacyMessage } = require("./signatureChecker");
 
+const Bytes24Zero = "0x" + "00".repeat(24);
+
 const TraitType = Object.freeze({
   PROJECT: 0,
   FEATURE: 1,
@@ -55,6 +57,8 @@ const SetFeatureInfoMessage = [
 const AddTraitMembershipsMessage = [
   { type: "uint256", name: "traitId" },
   { type: "TraitMembershipWord[]", name: "words" },
+  { type: "uint32", name: "numTokensFinalized" },
+  { type: "bytes24", name: "expectedLastLog" },
 ];
 const TraitMembershipWord = [
   { type: "uint256", name: "wordIndex" },
@@ -93,7 +97,7 @@ const TYPENAME_SET_PROJECT_INFO =
 const TYPENAME_SET_FEATURE_INFO =
   "SetFeatureInfoMessage(uint256 projectId,string featureName,uint256 version)";
 const TYPENAME_ADD_TRAIT_MEMBERSHIPS =
-  "AddTraitMembershipsMessage(uint256 traitId,TraitMembershipWord[] words)";
+  "AddTraitMembershipsMessage(uint256 traitId,TraitMembershipWord[] words,uint32 numTokensFinalized,bytes24 expectedLastLog)";
 
 const TYPEHASH_TRAIT_MEMBERSHIP_WORD = utf8Hash(TYPENAME_TRAIT_MEMBERSHIP_WORD);
 const TYPEHASH_SET_PROJECT_INFO = utf8Hash(TYPENAME_SET_PROJECT_INFO);
@@ -148,7 +152,7 @@ function setFeatureInfoStructHash(msg) {
 function addTraitMembershipsStructHash(msg) {
   return ethers.utils.keccak256(
     ethers.utils.defaultAbiCoder.encode(
-      ["bytes32", "uint256", "bytes32"],
+      ["bytes32", "uint256", "bytes32", "uint32", "bytes24"],
       [
         TYPEHASH_ADD_TRAIT_MEMBERSHIPS,
         msg.traitId,
@@ -158,6 +162,8 @@ function addTraitMembershipsStructHash(msg) {
             [msg.words.map(traitMembershipWordStructHash)]
           )
         ),
+        msg.numTokensFinalized,
+        msg.expectedLastLog,
       ]
     )
   );
@@ -224,7 +230,7 @@ function featureTraitId(projectId, featureName, version) {
 }
 
 function updateTraitLog(oldLog = null, msgs) {
-  let log = oldLog != null ? oldLog : "0x" + "00".repeat(24);
+  let log = oldLog != null ? oldLog : Bytes24Zero;
   for (const msg of msgs) {
     const structHash = addTraitMembershipsStructHash(msg);
     const hash = ethers.utils.keccak256(
@@ -244,10 +250,17 @@ function addTraitMembershipsMessage(baseMsg) {
     msg.words = traitMembershipWords(msg.tokenIds);
   }
   delete msg.tokenIds;
+  if (msg.numTokensFinalized == null) {
+    msg.numTokensFinalized = 0;
+  }
+  if (msg.expectedLastLog == null) {
+    msg.expectedLastLog = Bytes24Zero;
+  }
   return msg;
 }
 
 module.exports = {
+  Bytes24Zero,
   TraitType,
   Errors,
   PROJECT_STRIDE,

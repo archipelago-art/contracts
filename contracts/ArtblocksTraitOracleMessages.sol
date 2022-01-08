@@ -17,6 +17,20 @@ struct SetFeatureInfoMessage {
 struct AddTraitMembershipsMessage {
     uint256 traitId;
     TraitMembershipWord[] words;
+    /// NOT YET USED.
+    ///
+    /// If `numTokensFinalized` is greater than the current number of tokens
+    /// finalized for this trait, then `expectedLastLog` must equal the
+    /// previous value of the hash-update log for this trait (not including the
+    /// update from this message), and the number of tokens finalized will be
+    /// increased to `numTokensFinalized`. If the last log does not match, this
+    ///
+    /// If `numTokensFinalized` is *not* greater than the current number of
+    /// finalized tokens, then this field and `expectedLastLog` are ignored
+    /// (even if the last log does not match). In particular, they are always
+    /// ignored when `numTokensFinalized` is zero or if a message is replayed.
+    uint32 numTokensFinalized;
+    bytes24 expectedLastLog;
 }
 
 /// A set of token IDs within a multiple-of-256 block.
@@ -48,7 +62,7 @@ library ArtblocksTraitOracleMessages {
         );
     bytes32 internal constant TYPEHASH_ADD_TRAIT_MEMBERSHIPS =
         keccak256(
-            "AddTraitMembershipsMessage(uint256 traitId,TraitMembershipWord[] words)TraitMembershipWord(uint256 wordIndex,uint256 mask,bool finalized)"
+            "AddTraitMembershipsMessage(uint256 traitId,TraitMembershipWord[] words,uint32 numTokensFinalized,bytes24 expectedLastLog)TraitMembershipWord(uint256 wordIndex,uint256 mask,bool finalized)"
         );
     bytes32 internal constant TYPEHASH_TRAIT_MEMBERSHIP_WORD =
         keccak256(
@@ -98,7 +112,9 @@ library ArtblocksTraitOracleMessages {
                 abi.encodePacked(
                     TYPEHASH_ADD_TRAIT_MEMBERSHIPS,
                     _self.traitId,
-                    _self.words.structHash()
+                    _self.words.structHash(),
+                    uint256(_self.numTokensFinalized),
+                    bytes32(_self.expectedLastLog)
                 )
             );
     }
