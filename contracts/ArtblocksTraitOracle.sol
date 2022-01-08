@@ -41,6 +41,19 @@ struct FeatureInfo {
     string name;
 }
 
+struct FeatureMetadata {
+    /// The number of distinct token IDs that currently have this trait: i.e.,
+    /// the sum of the population counts of `traitMembers[_t][_i]` for each
+    /// `_i`.
+    uint32 currentSize;
+    /// Reserved; not yet used.
+    uint32 finalized;
+    /// A hash accumulator of updates to this trait. Initially `0`; updated for
+    /// each new message `_msg` by appending `_msg.structHash()` and applying
+    /// `keccak256`.
+    bytes32 log;
+}
+
 contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
     using ArtblocksTraitOracleMessages for SetProjectInfoMessage;
     using ArtblocksTraitOracleMessages for SetFeatureInfoMessage;
@@ -100,10 +113,9 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
     /// `traitMembers[_traitId][_tokenId / 256]` represents whether `_tokenId`
     /// has trait `_traitId`.
     mapping(uint256 => mapping(uint256 => uint256)) traitMembers;
-    /// `traitMembersCount[_traitId]` is the number of distinct `_tokenId`s
-    /// that have trait `_traitId`. In terms of encoding, it's the sum of the
-    /// population counts of all `traitMembers[_traitId][_]` values.
-    mapping(uint256 => uint256) traitMembersCount;
+    /// Metadata for each feature trait; see struct definition. Not defined for
+    /// project traits.
+    mapping(uint256 => FeatureMetadata) traitMetadata;
     /// For each trait ID, a set of words in `traitMembers[_]` that are
     /// finalized. Encoded by packing 256 word indices into each word: the
     /// `_wordIndex % 256`th bit (counting form the LSB) of
@@ -114,10 +126,6 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
     /// statuses of tokens with IDs between 0 and 255 or between 512 and 767
     /// (relative to start of project) are finalized.
     mapping(uint256 => mapping(uint256 => uint256)) traitFinalizations;
-    /// For each trait ID `_t`, `traitUpdateLog[_t]` is a hash accumulator of
-    /// all the updates applied for trait `_t`. It starts at zero and is
-    /// updated with `_acc = keccak256(_acc, _msg.structHash())`.
-    mapping(uint256 => bytes32) public traitUpdateLog;
 
     function supportsInterface(bytes4 _interfaceId)
         external
@@ -252,8 +260,9 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
             !_stringEmpty(featureTraitInfo[_traitId].name),
             ERR_INVALID_ARGUMENT
         );
-        uint256 _originalSize = traitMembersCount[_traitId];
-        uint256 _newSize = _originalSize;
+        FeatureMetadata memory _oldMetadata = traitMetadata[_traitId];
+        uint32 _originalSize = _oldMetadata.currentSize;
+        uint32 _newSize = _originalSize;
 
         for (uint256 _i = 0; _i < _words.length; _i++) {
             TraitMembershipWord memory _word = _words[_i];
@@ -275,15 +284,20 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
                 }
                 _finalize(_traitId, _word.wordIndex);
             }
-            _newSize += (_newWord ^ _oldWord).popcnt();
+            _newSize += uint32((_newWord ^ _oldWord).popcnt());
             traitMembers[_traitId][_word.wordIndex] = _newWord;
         }
         if (_newSize == _originalSize) return;
-        traitMembersCount[_traitId] = _newSize;
 
-        bytes32 _oldLog = traitUpdateLog[_traitId];
+        bytes32 _oldLog = _oldMetadata.log;
         bytes32 _newLog = keccak256(abi.encodePacked(_oldLog, _structHash));
-        traitUpdateLog[_traitId] = _newLog;
+
+        FeatureMetadata memory _newMetadata = FeatureMetadata({
+            currentSize: _newSize,
+            finalized: _oldMetadata.finalized,
+            log: _newLog
+        });
+        traitMetadata[_traitId] = _newMetadata;
 
         emit TraitMembershipExpanded({
             traitId: _traitId,
@@ -475,7 +489,7 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
         view
         returns (uint256)
     {
-        return traitMembersCount[_featureTraitId];
+        return traitMetadata[_featureTraitId].currentSize;
     }
 
     /// Dumb helper to test whether a string is empty, because Solidity doesn't
