@@ -224,12 +224,18 @@ function featureTraitId(projectId, featureName, version) {
 }
 
 function updateTraitLog(oldLog = null, msgs) {
-  if (oldLog == null) oldLog = ethers.constants.HashZero;
+  let log = oldLog != null ? oldLog : "0x" + "00".repeat(24);
   for (const msg of msgs) {
     const structHash = addTraitMembershipsStructHash(msg);
-    oldLog = ethers.utils.keccak256(ethers.utils.concat([oldLog, structHash]));
+    const hash = ethers.utils.keccak256(
+      ethers.utils.defaultAbiCoder.encode(
+        ["bytes24", "bytes32"],
+        [log, structHash]
+      )
+    );
+    log = ethers.utils.hexDataSlice(hash, 0, 24);
   }
-  return oldLog;
+  return log;
 }
 
 module.exports = {

@@ -49,9 +49,9 @@ struct FeatureMetadata {
     /// Reserved; not yet used.
     uint32 finalized;
     /// A hash accumulator of updates to this trait. Initially `0`; updated for
-    /// each new message `_msg` by appending `_msg.structHash()` and applying
-    /// `keccak256`.
-    bytes32 log;
+    /// each new message `_msg` by ABI-encoding `(log, _msg.structHash())`,
+    /// applying `keccak256`, and truncating the result back to `bytes24`.
+    bytes24 log;
 }
 
 contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
@@ -78,7 +78,7 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
     event TraitMembershipExpanded(
         uint256 indexed traitId,
         uint256 newSize,
-        bytes32 newLog
+        bytes24 newLog
     );
     event TraitMembershipFinalized(uint256 indexed traitId, uint256 wordIndex);
 
@@ -289,8 +289,8 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
         }
         if (_newSize == _originalSize) return;
 
-        bytes32 _oldLog = _oldMetadata.log;
-        bytes32 _newLog = keccak256(abi.encodePacked(_oldLog, _structHash));
+        bytes24 _oldLog = _oldMetadata.log;
+        bytes24 _newLog = bytes24(keccak256(abi.encode(_oldLog, _structHash)));
 
         FeatureMetadata memory _newMetadata = FeatureMetadata({
             currentSize: _newSize,
