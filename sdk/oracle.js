@@ -238,6 +238,15 @@ function updateTraitLog(oldLog = null, msgs) {
   return log;
 }
 
+function addTraitMembershipsMessage(baseMsg) {
+  const msg = { ...baseMsg };
+  if (msg.words == null) {
+    msg.words = traitMembershipWords(msg.tokenIds);
+  }
+  delete msg.tokenIds;
+  return msg;
+}
+
 module.exports = {
   TraitType,
   Errors,
@@ -249,4 +258,5 @@ module.exports = {
   projectTraitId,
   featureTraitId,
   updateTraitLog,
+  addTraitMembershipsMessage,
 };
