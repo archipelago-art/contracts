@@ -52,7 +52,7 @@ describe("ArtblocksOracle", () => {
   });
 
   async function featureSize(oracle, traitId) {
-    const [size] = await oracle.traitMetadata(traitId);
+    const [size] = await oracle.featureMetadata(traitId);
     return size;
   }
 
@@ -576,7 +576,7 @@ describe("ArtblocksOracle", () => {
 
     it("allows basic finalization and reverts on later modifications", async () => {
       const { oracle, signer } = await setUp();
-      expect(await oracle.traitMetadata(traitId)).to.deep.equal([
+      expect(await oracle.featureMetadata(traitId)).to.deep.equal([
         0,
         0,
         sdk.artblocks.INITIAL_TRAIT_LOG,
@@ -591,7 +591,7 @@ describe("ArtblocksOracle", () => {
       await expect(updateTrait(oracle, signer, msg1))
         .to.emit(oracle, "TraitUpdated")
         .withArgs(traitId, 2, 256, log1);
-      expect(await oracle.traitMetadata(traitId)).to.deep.equal([2, 256, log1]);
+      expect(await oracle.featureMetadata(traitId)).to.deep.equal([2, 256, log1]);
 
       await expect(
         updateTrait(oracle, signer, {
@@ -612,7 +612,7 @@ describe("ArtblocksOracle", () => {
       });
       const log1 = sdk.artblocks.updateTraitLog(log0, [msg1]);
       await updateTrait(oracle, signer, msg1);
-      expect(await oracle.traitMetadata(traitId)).to.deep.equal([2, 256, log1]);
+      expect(await oracle.featureMetadata(traitId)).to.deep.equal([2, 256, log1]);
       const msg2 = sdk.artblocks.updateTraitMessage({
         traitId,
         words: [{ wordIndex: 1, mask: 0b111 }],
@@ -621,7 +621,7 @@ describe("ArtblocksOracle", () => {
       await expect(updateTrait(oracle, signer, msg2))
         .to.emit(oracle, "TraitUpdated")
         .withArgs(traitId, 5, 256, log2);
-      expect(await oracle.traitMetadata(traitId)).to.deep.equal([5, 256, log2]);
+      expect(await oracle.featureMetadata(traitId)).to.deep.equal([5, 256, log2]);
     });
 
     it("permits non-finalizing no-op additions after finalization", async () => {
@@ -675,7 +675,7 @@ describe("ArtblocksOracle", () => {
       await expect(updateTrait(oracle, signer, msg1))
         .to.emit(oracle, "TraitUpdated")
         .withArgs(traitId, 3, 259, log1);
-      expect(await oracle.traitMetadata(traitId)).to.deep.equal([3, 259, log1]);
+      expect(await oracle.featureMetadata(traitId)).to.deep.equal([3, 259, log1]);
 
       // Not okay to add memberships in a completely finalized word.
       await expect(

@@ -22,6 +22,7 @@ enum TraitType {
     FEATURE
 }
 
+/// Static information about a project trait (immutable once written).
 struct ProjectInfo {
     /// The ERC-721 contract for tokens belonging to this project.
     IERC721 tokenContract;
@@ -34,6 +35,7 @@ struct ProjectInfo {
     string name;
 }
 
+/// Static information about a feature trait (immutable once written).
 struct FeatureInfo {
     /// The ERC-721 contract for tokens belonging to this trait's project.
     IERC721 tokenContract;
@@ -45,9 +47,11 @@ struct FeatureInfo {
     string name;
 }
 
+/// The current state of a feature trait, updated as more memberships and
+/// finalizations are recorded.
 struct FeatureMetadata {
     /// The number of distinct token IDs that currently have this trait: i.e.,
-    /// the sum of the population counts of `traitMembers[_t][_i]` for each
+    /// the sum of the population counts of `featureMembers[_t][_i]` for each
     /// `_i`.
     uint32 currentSize;
     /// Token indices `0` (inclusive) through `numFinalized` (exclusive),
@@ -117,12 +121,12 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
     /// (Project trait membership is tracked implicitly through Art Blocks
     /// token IDs.) Encoded by packing 256 token IDs into each word: the
     /// `_tokenId % 256`th bit (counting from the LSB) of
-    /// `traitMembers[_traitId][_tokenId / 256]` represents whether `_tokenId`
+    /// `featureMembers[_traitId][_tokenId / 256]` represents whether `_tokenId`
     /// has trait `_traitId`.
-    mapping(bytes32 => mapping(uint256 => uint256)) traitMembers;
+    mapping(bytes32 => mapping(uint256 => uint256)) featureMembers;
     /// Metadata for each feature trait; see struct definition. Not defined for
     /// project traits.
-    mapping(bytes32 => FeatureMetadata) traitMetadataMap;
+    mapping(bytes32 => FeatureMetadata) featureMetadataMap;
 
     function supportsInterface(bytes4 _interfaceId)
         external
@@ -242,7 +246,7 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
             !_stringEmpty(featureTraitInfo[_traitId].name),
             ERR_INVALID_ARGUMENT
         );
-        FeatureMetadata memory _oldMetadata = traitMetadataMap[_traitId];
+        FeatureMetadata memory _oldMetadata = featureMetadataMap[_traitId];
 
         // Check whether we're increasing the number of finalized tokens.
         // If so, the current trait log must match the given one.
@@ -259,7 +263,7 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
             TraitMembershipWord memory _word = _msg.words[_i];
             uint256 _wordIndex = _word.wordIndex;
 
-            uint256 _oldWord = traitMembers[_traitId][_wordIndex];
+            uint256 _oldWord = featureMembers[_traitId][_wordIndex];
             uint256 _newTokensMask = _word.mask & ~_oldWord;
 
             // It's an error to update any tokens in this word that are already
@@ -268,7 +272,7 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
                 _finalizedTokensMask(_oldMetadata.numFinalized, _wordIndex);
             require(_errantUpdatesMask == 0, ERR_IMMUTABLE);
 
-            traitMembers[_traitId][_wordIndex] = _oldWord | _newTokensMask;
+            featureMembers[_traitId][_wordIndex] = _oldWord | _newTokensMask;
             _newSize += uint32(_newTokensMask.popcnt());
         }
 
@@ -286,7 +290,7 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
             numFinalized: _newNumFinalized,
             log: _newLog
         });
-        traitMetadataMap[_traitId] = _newMetadata;
+        featureMetadataMap[_traitId] = _newMetadata;
 
         emit TraitUpdated({
             traitId: _traitId,
@@ -347,7 +351,7 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         uint256 _tokenIndex = _tokenId - (uint256(_projectId) * PROJECT_STRIDE);
         uint256 _wordIndex = _tokenIndex >> 8;
         uint256 _mask = 1 << (_tokenIndex & 0xff);
-        return (traitMembers[_traitId][_wordIndex] & _mask) != 0;
+        return (featureMembers[_traitId][_wordIndex] & _mask) != 0;
     }
 
     function projectTraitId(uint32 _projectId, uint32 _version)
@@ -379,7 +383,7 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         return bytes32((_hash & ~uint256(0xff)) | uint256(TraitType.FEATURE));
     }
 
-    function traitMetadata(bytes32 _featureTraitId)
+    function featureMetadata(bytes32 _featureTraitId)
         external
         view
         returns (
@@ -388,7 +392,7 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
             bytes24 _log
         )
     {
-        FeatureMetadata memory _meta = traitMetadataMap[_featureTraitId];
+        FeatureMetadata memory _meta = featureMetadataMap[_featureTraitId];
         _currentSize = _meta.currentSize;
         _numFinalized = _meta.numFinalized;
         _log = _meta.log;
@@ -401,7 +405,7 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
     }
 
     /// Given that the first `_numFinalized` tokens for trait `_t` have been
-    /// finalized, returns a mask into `traitMembers[_t][_wordIndex]` of
+    /// finalized, returns a mask into `featureMembers[_t][_wordIndex]` of
     /// memberships that are finalized and thus not permitted to be updated.
     ///
     /// For instance, if `_numFinalized == 259`, then token indices 0 through 258
