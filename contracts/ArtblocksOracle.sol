@@ -229,7 +229,6 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         });
     }
 
-    /// Adds tokens as members of a feature trait.
     function updateTrait(
         UpdateTraitMessage memory _msg,
         bytes memory _signature,
@@ -245,7 +244,8 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         );
         FeatureMetadata memory _oldMetadata = traitMetadataMap[_traitId];
 
-        uint32 _newSize = _oldMetadata.currentSize;
+        // Check whether we're increasing the number of finalized tokens.
+        // If so, the current trait log must match the given one.
         uint32 _newNumFinalized = _oldMetadata.numFinalized;
         uint32 _msgNumFinalized = uint32(uint256(_msg.finalization));
         if (_msgNumFinalized > _newNumFinalized) {
@@ -254,31 +254,29 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
             require(_oldMetadata.log == _expectedLastLog, ERR_INVALID_STATE);
         }
 
+        uint32 _newSize = _oldMetadata.currentSize;
         for (uint256 _i = 0; _i < _msg.words.length; _i++) {
             TraitMembershipWord memory _word = _msg.words[_i];
-            uint256 _oldWord = traitMembers[_traitId][_word.wordIndex];
-            uint256 _updates = _word.mask & ~_oldWord;
+            uint256 _wordIndex = _word.wordIndex;
+
+            uint256 _oldWord = traitMembers[_traitId][_wordIndex];
+            uint256 _newTokensMask = _word.mask & ~_oldWord;
 
             // It's an error to update any tokens in this word that are already
-            // finalized.
-            uint256 _errantUpdates = _updates &
-                finalizedTokensMask(_oldMetadata.numFinalized, _word.wordIndex);
-            require(_errantUpdates == 0, ERR_IMMUTABLE);
+            // finalized (i.e., were finalized prior to this message).
+            uint256 _errantUpdatesMask = _newTokensMask &
+                _finalizedTokensMask(_oldMetadata.numFinalized, _wordIndex);
+            require(_errantUpdatesMask == 0, ERR_IMMUTABLE);
 
-            uint256 _newWord = _oldWord | _updates;
-
-            _newSize += uint32(_updates.popcnt());
-            traitMembers[_traitId][_word.wordIndex] = _newWord;
+            traitMembers[_traitId][_wordIndex] = _oldWord | _newTokensMask;
+            _newSize += uint32(_newTokensMask.popcnt());
         }
 
         // If this message didn't add or finalize any new memberships, we don't
         // want to update the hash log *or* emit an event.
-        if (
-            _newSize == _oldMetadata.currentSize &&
-            _newNumFinalized == _oldMetadata.numFinalized
-        ) {
-            return;
-        }
+        bool _wasNoop = (_newSize == _oldMetadata.currentSize) &&
+            (_newNumFinalized == _oldMetadata.numFinalized);
+        if (_wasNoop) return;
 
         bytes24 _oldLog = _oldMetadata.log;
         bytes24 _newLog = bytes24(keccak256(abi.encode(_oldLog, _structHash)));
@@ -304,6 +302,7 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         bytes calldata _trait
     ) external view override returns (bool) {
         bytes32 _traitId = bytes32(_trait);
+
         uint8 _discriminant = uint8(uint256(_traitId));
         if (_discriminant == uint8(TraitType.PROJECT)) {
             return _hasProjectTrait(_tokenContract, _tokenId, _traitId);
@@ -426,7 +425,7 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
     ///         have been finalized, so the result has the low 3 bits set
     ///     `_finalizedTokensMask(259, 2) == 0`
     ///         because no tokens in word 2 (or higher) have been finalized
-    function finalizedTokensMask(uint32 _numFinalized, uint256 _wordIndex)
+    function _finalizedTokensMask(uint32 _numFinalized, uint256 _wordIndex)
         internal
         pure
         returns (uint256)
