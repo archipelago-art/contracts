@@ -247,9 +247,10 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
 
         uint32 _newSize = _oldMetadata.currentSize;
         uint32 _newNumFinalized = _oldMetadata.numFinalized;
-        if (_msg.numTokensFinalized > _newNumFinalized) {
-            _newNumFinalized = _msg.numTokensFinalized;
-            bytes24 _expectedLastLog = _msg.expectedLastLog;
+        uint32 _msgNumFinalized = uint32(uint256(_msg.finalization));
+        if (_msgNumFinalized > _newNumFinalized) {
+            _newNumFinalized = _msgNumFinalized;
+            bytes24 _expectedLastLog = bytes24(_msg.finalization);
             require(_oldMetadata.log == _expectedLastLog, ERR_INVALID_STATE);
         }
 

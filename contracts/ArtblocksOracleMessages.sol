@@ -21,6 +21,10 @@ struct SetFeatureInfoMessage {
 struct UpdateTraitMessage {
     bytes32 traitId;
     TraitMembershipWord[] words;
+    /// Define `numTokensFinalized` as `uint32(uint256(finalization))`
+    /// (the low/last 4 bytes) and `expectedLastLog` as `bytes24(finalization)`
+    /// (the high/first 24 bytes).
+    ///
     /// If `numTokensFinalized` is greater than the current number of tokens
     /// finalized for this trait, then `expectedLastLog` must equal the
     /// previous value of the hash-update log for this trait (not including the
@@ -31,8 +35,7 @@ struct UpdateTraitMessage {
     /// finalized tokens, then this field and `expectedLastLog` are ignored
     /// (even if the last log does not match). In particular, they are always
     /// ignored when `numTokensFinalized` is zero or if a message is replayed.
-    uint32 numTokensFinalized;
-    bytes24 expectedLastLog;
+    bytes32 finalization;
 }
 
 /// A set of token IDs within a multiple-of-256 block.
@@ -61,7 +64,7 @@ library ArtblocksOracleMessages {
         );
     bytes32 internal constant TYPEHASH_UPDATE_TRAIT =
         keccak256(
-            "UpdateTraitMessage(bytes32 traitId,TraitMembershipWord[] words,uint32 numTokensFinalized,bytes24 expectedLastLog)TraitMembershipWord(uint256 wordIndex,uint256 mask)"
+            "UpdateTraitMessage(bytes32 traitId,TraitMembershipWord[] words,bytes32 finalization)TraitMembershipWord(uint256 wordIndex,uint256 mask)"
         );
     bytes32 internal constant TYPEHASH_TRAIT_MEMBERSHIP_WORD =
         keccak256("TraitMembershipWord(uint256 wordIndex,uint256 mask)");
@@ -112,8 +115,7 @@ library ArtblocksOracleMessages {
                     TYPEHASH_UPDATE_TRAIT,
                     _self.traitId,
                     _self.words.structHash(),
-                    _self.numTokensFinalized,
-                    _self.expectedLastLog
+                    _self.finalization
                 )
             );
     }

@@ -58,8 +58,7 @@ const SetFeatureInfoMessage = [
 const UpdateTraitMessage = [
   { type: "bytes32", name: "traitId" },
   { type: "TraitMembershipWord[]", name: "words" },
-  { type: "uint32", name: "numTokensFinalized" },
-  { type: "bytes24", name: "expectedLastLog" },
+  { type: "bytes32", name: "finalization" },
 ];
 const TraitMembershipWord = [
   { type: "uint256", name: "wordIndex" },
@@ -97,7 +96,7 @@ const TYPENAME_SET_PROJECT_INFO =
 const TYPENAME_SET_FEATURE_INFO =
   "SetFeatureInfoMessage(uint32 version,address tokenContract,uint32 projectId,string featureName)";
 const TYPENAME_UPDATE_TRAIT =
-  "UpdateTraitMessage(bytes32 traitId,TraitMembershipWord[] words,uint32 numTokensFinalized,bytes24 expectedLastLog)";
+  "UpdateTraitMessage(bytes32 traitId,TraitMembershipWord[] words,bytes32 finalization)";
 
 const TYPEHASH_TRAIT_MEMBERSHIP_WORD = utf8Hash(TYPENAME_TRAIT_MEMBERSHIP_WORD);
 const TYPEHASH_SET_PROJECT_INFO = utf8Hash(TYPENAME_SET_PROJECT_INFO);
@@ -149,7 +148,7 @@ function setFeatureInfoStructHash(msg) {
 function updateTraitStructHash(msg) {
   return ethers.utils.keccak256(
     ethers.utils.defaultAbiCoder.encode(
-      ["bytes32", "bytes32", "bytes32", "uint32", "bytes24"],
+      ["bytes32", "bytes32", "bytes32", "bytes32"],
       [
         TYPEHASH_UPDATE_TRAIT,
         msg.traitId,
@@ -159,8 +158,7 @@ function updateTraitStructHash(msg) {
             [msg.words.map(traitMembershipWordStructHash)]
           )
         ),
-        msg.numTokensFinalized,
-        msg.expectedLastLog,
+        msg.finalization,
       ]
     )
   );
@@ -253,12 +251,16 @@ function updateTraitMessage(baseMsg) {
     msg.words = traitMembershipWords(msg.tokenIds);
   }
   delete msg.tokenIds;
-  if (msg.numTokensFinalized == null) {
-    msg.numTokensFinalized = 0;
+  if (msg.finalization == null) {
+    const numTokensFinalized = msg.numTokensFinalized || 0;
+    const expectedLastLog = msg.expectedLastLog || Bytes24Zero;
+    msg.finalization = ethers.utils.solidityPack(
+      ["bytes24", "uint32", "uint32"],
+      [expectedLastLog, 0 /* padding */, numTokensFinalized]
+    );
   }
-  if (msg.expectedLastLog == null) {
-    msg.expectedLastLog = Bytes24Zero;
-  }
+  delete msg.numTokensFinalized;
+  delete msg.expectedLastLog;
   return msg;
 }
 
