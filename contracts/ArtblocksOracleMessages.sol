@@ -4,18 +4,18 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 struct SetProjectInfoMessage {
-    uint256 projectId;
-    uint256 version;
-    string projectName;
-    uint256 size;
+    uint32 version;
     IERC721 tokenContract;
+    uint32 projectId;
+    uint32 size;
+    string projectName;
 }
 
 struct SetFeatureInfoMessage {
-    uint256 projectId;
-    string featureName;
-    uint256 version;
+    uint32 version;
     IERC721 tokenContract;
+    uint32 projectId;
+    string featureName;
 }
 
 struct UpdateTraitMessage {
@@ -53,11 +53,11 @@ library ArtblocksOracleMessages {
 
     bytes32 internal constant TYPEHASH_SET_PROJECT_INFO =
         keccak256(
-            "SetProjectInfoMessage(uint256 projectId,uint256 version,string projectName,uint256 size,address tokenContract)"
+            "SetProjectInfoMessage(uint32 version,address tokenContract,uint32 projectId,uint32 size,string projectName)"
         );
     bytes32 internal constant TYPEHASH_SET_FEATURE_INFO =
         keccak256(
-            "SetFeatureInfoMessage(uint256 projectId,string featureName,uint256 version,address tokenContract)"
+            "SetFeatureInfoMessage(uint32 version,address tokenContract,uint32 projectId,string featureName)"
         );
     bytes32 internal constant TYPEHASH_UPDATE_TRAIT =
         keccak256(
@@ -75,11 +75,11 @@ library ArtblocksOracleMessages {
             keccak256(
                 abi.encode(
                     TYPEHASH_SET_PROJECT_INFO,
-                    _self.projectId,
                     _self.version,
-                    keccak256(abi.encodePacked(_self.projectName)),
+                    _self.tokenContract,
+                    _self.projectId,
                     _self.size,
-                    _self.tokenContract
+                    keccak256(abi.encodePacked(_self.projectName))
                 )
             );
     }
@@ -93,10 +93,10 @@ library ArtblocksOracleMessages {
             keccak256(
                 abi.encode(
                     TYPEHASH_SET_FEATURE_INFO,
-                    _self.projectId,
-                    keccak256(abi.encodePacked(_self.featureName)),
                     _self.version,
-                    _self.tokenContract
+                    _self.tokenContract,
+                    _self.projectId,
+                    keccak256(abi.encodePacked(_self.featureName))
                 )
             );
     }

@@ -23,26 +23,26 @@ enum TraitType {
 }
 
 struct ProjectInfo {
-    /// The integer index of this project: e.g., `0` for "Chromie Squiggle" or
-    /// `23` for "Archetype".
-    uint256 projectId;
-    /// The human-readable name of this project, like "Archetype".
-    string name;
-    /// The number of tokens in this project, like `600`.
-    uint256 size;
     /// The ERC-721 contract for tokens belonging to this project.
     IERC721 tokenContract;
+    /// The integer index of this project: e.g., `0` for "Chromie Squiggle" or
+    /// `23` for "Archetype".
+    uint32 projectId;
+    /// The number of tokens in this project, like `600`.
+    uint32 size;
+    /// The human-readable name of this project, like "Archetype".
+    string name;
 }
 
 struct FeatureInfo {
+    /// The ERC-721 contract for tokens belonging to this trait's project.
+    IERC721 tokenContract;
     /// The integer index of the project that this feature is a part of: e.g.,
     /// for the "Palette: Paddle" trait on Archetypes, this value is `23`,
     /// which is the ID of the Archetype project.
-    uint256 projectId;
+    uint32 projectId;
     /// The human-readable name of this feature, like "Palette: Paddle".
     string name;
-    /// The ERC-721 contract for tokens belonging to this trait's project.
-    IERC721 tokenContract;
 }
 
 struct FeatureMetadata {
@@ -69,18 +69,18 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
     event OracleSignerChanged(address indexed oracleSigner);
     event ProjectInfoSet(
         bytes32 indexed traitId,
-        uint256 indexed projectId,
+        uint32 indexed projectId,
         string name,
-        uint256 version,
-        uint256 size,
+        uint32 version,
+        uint32 size,
         IERC721 tokenContract
     );
     event FeatureInfoSet(
         bytes32 indexed traitId,
-        uint256 indexed projectId,
+        uint32 indexed projectId,
         string indexed name,
         string fullName,
-        uint256 version,
+        uint32 version,
         IERC721 tokenContract
     );
     event TraitUpdated(
@@ -182,10 +182,10 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
     }
 
     function _setProjectInfo(
-        uint256 _projectId,
-        uint256 _version,
+        uint32 _projectId,
+        uint32 _version,
         string memory _projectName,
-        uint256 _size,
+        uint32 _size,
         IERC721 _tokenContract
     ) internal {
         require(_size > 0, ERR_INVALID_ARGUMENT);
@@ -223,9 +223,9 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
     }
 
     function _setFeatureInfo(
-        uint256 _projectId,
+        uint32 _projectId,
         string memory _featureName,
-        uint256 _version,
+        uint32 _version,
         IERC721 _tokenContract
     ) internal {
         require(!_stringEmpty(_featureName), ERR_INVALID_ARGUMENT);
@@ -380,8 +380,8 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         // This affirms memberships even for traits that aren't finalized; it's
         // the responsibility of a conscientious frontend to discourage users
         // from making bids on such traits.
-        uint256 _projectId = featureTraitInfo[_traitId].projectId;
-        uint256 _minTokenId = _projectId * PROJECT_STRIDE;
+        uint32 _projectId = featureTraitInfo[_traitId].projectId;
+        uint256 _minTokenId = uint256(_projectId) * PROJECT_STRIDE;
 
         // Make sure that the token is in the right range for the project.
         if (_tokenId < _minTokenId) return false;
@@ -393,7 +393,7 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         return traitMembers[_traitId][_wordIndex] & _mask != 0;
     }
 
-    function projectTraitId(uint256 _projectId, uint256 _version)
+    function projectTraitId(uint32 _projectId, uint32 _version)
         public
         pure
         returns (bytes32)
@@ -408,9 +408,9 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
     }
 
     function featureTraitId(
-        uint256 _projectId,
+        uint32 _projectId,
         string memory _featureName,
-        uint256 _version
+        uint32 _version
     ) public pure returns (bytes32) {
         bytes memory _blob = abi.encode(
             TraitType.FEATURE,

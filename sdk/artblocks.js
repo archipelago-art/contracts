@@ -43,17 +43,17 @@ function rawDomainSeparator(domainInfo) {
 }
 
 const SetProjectInfoMessage = [
-  { type: "uint256", name: "projectId" },
-  { type: "uint256", name: "version" },
-  { type: "string", name: "projectName" },
-  { type: "uint256", name: "size" },
+  { type: "uint32", name: "version" },
   { type: "address", name: "tokenContract" },
+  { type: "uint32", name: "projectId" },
+  { type: "uint32", name: "size" },
+  { type: "string", name: "projectName" },
 ];
 const SetFeatureInfoMessage = [
-  { type: "uint256", name: "projectId" },
-  { type: "string", name: "featureName" },
-  { type: "uint256", name: "version" },
+  { type: "uint32", name: "version" },
   { type: "address", name: "tokenContract" },
+  { type: "uint32", name: "projectId" },
+  { type: "string", name: "featureName" },
 ];
 const UpdateTraitMessage = [
   { type: "bytes32", name: "traitId" },
@@ -93,9 +93,9 @@ const sign712 = Object.freeze({
 const TYPENAME_TRAIT_MEMBERSHIP_WORD =
   "TraitMembershipWord(uint256 wordIndex,uint256 mask)";
 const TYPENAME_SET_PROJECT_INFO =
-  "SetProjectInfoMessage(uint256 projectId,uint256 version,string projectName,uint256 size,address tokenContract)";
+  "SetProjectInfoMessage(uint32 version,address tokenContract,uint32 projectId,uint32 size,string projectName)";
 const TYPENAME_SET_FEATURE_INFO =
-  "SetFeatureInfoMessage(uint256 projectId,string featureName,uint256 version,address tokenContract)";
+  "SetFeatureInfoMessage(uint32 version,address tokenContract,uint32 projectId,string featureName)";
 const TYPENAME_UPDATE_TRAIT =
   "UpdateTraitMessage(bytes32 traitId,TraitMembershipWord[] words,uint32 numTokensFinalized,bytes24 expectedLastLog)";
 
@@ -118,14 +118,14 @@ function traitMembershipWordStructHash(word) {
 function setProjectInfoStructHash(msg) {
   return ethers.utils.keccak256(
     ethers.utils.defaultAbiCoder.encode(
-      ["bytes32", "uint256", "uint256", "bytes32", "uint256", "address"],
+      ["bytes32", "uint32", "address", "uint32", "uint32", "bytes32"],
       [
         TYPEHASH_SET_PROJECT_INFO,
-        msg.projectId,
         msg.version,
-        utf8Hash(msg.projectName),
-        msg.size,
         msg.tokenContract,
+        msg.projectId,
+        msg.size,
+        utf8Hash(msg.projectName),
       ]
     )
   );
@@ -134,13 +134,13 @@ function setProjectInfoStructHash(msg) {
 function setFeatureInfoStructHash(msg) {
   return ethers.utils.keccak256(
     ethers.utils.defaultAbiCoder.encode(
-      ["bytes32", "uint256", "bytes32", "uint256", "address"],
+      ["bytes32", "uint32", "address", "uint32", "bytes32"],
       [
         TYPEHASH_SET_FEATURE_INFO,
-        msg.projectId,
-        utf8Hash(msg.featureName),
         msg.version,
         msg.tokenContract,
+        msg.projectId,
+        utf8Hash(msg.featureName),
       ]
     )
   );

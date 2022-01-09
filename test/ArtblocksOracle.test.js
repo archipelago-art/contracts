@@ -233,10 +233,10 @@ describe("ArtblocksOracle", () => {
           tokenContract
         );
       expect(await oracle.projectTraitInfo(traitId)).to.deep.equal([
-        ethers.BigNumber.from(projectId),
-        projectName,
-        ethers.BigNumber.from(size),
         tokenContract,
+        projectId,
+        size,
+        projectName,
       ]);
 
       const msg2 = { ...msg1, size: size + 1 };
@@ -271,9 +271,9 @@ describe("ArtblocksOracle", () => {
           tokenContract
         );
       expect(await oracle.featureTraitInfo(traitId)).to.deep.equal([
-        ethers.BigNumber.from(projectId),
-        featureName,
         tokenContract,
+        projectId,
+        featureName,
       ]);
 
       await expect(setFeatureInfo(oracle, signers[1], msg)).to.be.revertedWith(
