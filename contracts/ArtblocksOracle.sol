@@ -118,11 +118,12 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
     mapping(bytes32 => FeatureInfo) public featureTraitInfo;
 
     /// Append-only relation on `TraitId * TokenId`, for feature traits only.
-    /// (Project trait membership is tracked implicitly through Art Blocks
-    /// token IDs.) Encoded by packing 256 token IDs into each word: the
-    /// `_tokenId % 256`th bit (counting from the LSB) of
-    /// `featureMembers[_traitId][_tokenId / 256]` represents whether `_tokenId`
-    /// has trait `_traitId`.
+    /// (Project trait membership is determined from the token ID itself.)
+    ///
+    /// Encoded by packing 256 token indices into each word: if a token has
+    /// index `_i` in its project (i.e., `_i == _tokenId % PROJECT_STRIDE`),
+    /// then the token has trait `_t` iff the `_i % 256`th bit (counting from
+    /// the LSB) of `featureMembers[_t][_i / 256]` is `1`.
     mapping(bytes32 => mapping(uint256 => uint256)) featureMembers;
     /// Metadata for each feature trait; see struct definition. Not defined for
     /// project traits.
