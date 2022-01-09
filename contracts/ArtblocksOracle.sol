@@ -126,7 +126,7 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
     mapping(bytes32 => mapping(uint256 => uint256)) featureMembers;
     /// Metadata for each feature trait; see struct definition. Not defined for
     /// project traits.
-    mapping(bytes32 => FeatureMetadata) featureMetadataMap;
+    mapping(bytes32 => FeatureMetadata) public featureMetadata;
 
     function supportsInterface(bytes4 _interfaceId)
         external
@@ -246,7 +246,7 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
             !_stringEmpty(featureTraitInfo[_traitId].name),
             ERR_INVALID_ARGUMENT
         );
-        FeatureMetadata memory _oldMetadata = featureMetadataMap[_traitId];
+        FeatureMetadata memory _oldMetadata = featureMetadata[_traitId];
 
         // Check whether we're increasing the number of finalized tokens.
         // If so, the current trait log must match the given one.
@@ -290,7 +290,7 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
             numFinalized: _newNumFinalized,
             log: _newLog
         });
-        featureMetadataMap[_traitId] = _newMetadata;
+        featureMetadata[_traitId] = _newMetadata;
 
         emit TraitUpdated({
             traitId: _traitId,
@@ -381,21 +381,6 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         );
         uint256 _hash = uint256(keccak256(_blob));
         return bytes32((_hash & ~uint256(0xff)) | uint256(TraitType.FEATURE));
-    }
-
-    function featureMetadata(bytes32 _featureTraitId)
-        external
-        view
-        returns (
-            uint32 _currentSize,
-            uint32 _numFinalized,
-            bytes24 _log
-        )
-    {
-        FeatureMetadata memory _meta = featureMetadataMap[_featureTraitId];
-        _currentSize = _meta.currentSize;
-        _numFinalized = _meta.numFinalized;
-        _log = _meta.log;
     }
 
     /// Dumb helper to test whether a string is empty, because Solidity doesn't
