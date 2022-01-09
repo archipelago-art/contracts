@@ -53,7 +53,7 @@ const SetFeatureInfoMessage = [
   { type: "string", name: "featureName" },
   { type: "uint256", name: "version" },
 ];
-const AddTraitMembershipsMessage = [
+const UpdateTraitMessage = [
   { type: "bytes32", name: "traitId" },
   { type: "TraitMembershipWord[]", name: "words" },
   { type: "uint32", name: "numTokensFinalized" },
@@ -79,10 +79,10 @@ const sign712 = Object.freeze({
       msg
     );
   },
-  addTraitMemberships(signer, domainInfo, msg) {
+  updateTrait(signer, domainInfo, msg) {
     return signer._signTypedData(
       domainSeparator(domainInfo),
-      { AddTraitMembershipsMessage, TraitMembershipWord },
+      { UpdateTraitMessage, TraitMembershipWord },
       msg
     );
   },
@@ -94,14 +94,14 @@ const TYPENAME_SET_PROJECT_INFO =
   "SetProjectInfoMessage(uint256 projectId,uint256 version,string projectName,uint256 size)";
 const TYPENAME_SET_FEATURE_INFO =
   "SetFeatureInfoMessage(uint256 projectId,string featureName,uint256 version)";
-const TYPENAME_ADD_TRAIT_MEMBERSHIPS =
-  "AddTraitMembershipsMessage(bytes32 traitId,TraitMembershipWord[] words,uint32 numTokensFinalized,bytes24 expectedLastLog)";
+const TYPENAME_UPDATE_TRAIT =
+  "UpdateTraitMessage(bytes32 traitId,TraitMembershipWord[] words,uint32 numTokensFinalized,bytes24 expectedLastLog)";
 
 const TYPEHASH_TRAIT_MEMBERSHIP_WORD = utf8Hash(TYPENAME_TRAIT_MEMBERSHIP_WORD);
 const TYPEHASH_SET_PROJECT_INFO = utf8Hash(TYPENAME_SET_PROJECT_INFO);
 const TYPEHASH_SET_FEATURE_INFO = utf8Hash(TYPENAME_SET_FEATURE_INFO);
-const TYPEHASH_ADD_TRAIT_MEMBERSHIPS = utf8Hash(
-  TYPENAME_ADD_TRAIT_MEMBERSHIPS + TYPENAME_TRAIT_MEMBERSHIP_WORD
+const TYPEHASH_UPDATE_TRAIT = utf8Hash(
+  TYPENAME_UPDATE_TRAIT + TYPENAME_TRAIT_MEMBERSHIP_WORD
 );
 
 function traitMembershipWordStructHash(word) {
@@ -142,12 +142,12 @@ function setFeatureInfoStructHash(msg) {
   );
 }
 
-function addTraitMembershipsStructHash(msg) {
+function updateTraitStructHash(msg) {
   return ethers.utils.keccak256(
     ethers.utils.defaultAbiCoder.encode(
       ["bytes32", "bytes32", "bytes32", "uint32", "bytes24"],
       [
-        TYPEHASH_ADD_TRAIT_MEMBERSHIPS,
+        TYPEHASH_UPDATE_TRAIT,
         msg.traitId,
         ethers.utils.keccak256(
           ethers.utils.solidityPack(
@@ -174,19 +174,15 @@ const signLegacy = Object.freeze({
   setFeatureInfo(signer, domainInfo, msg) {
     return signLegacyMessage(signer, domainInfo, setFeatureInfoStructHash(msg));
   },
-  addTraitMemberships(signer, domainInfo, msg) {
-    return signLegacyMessage(
-      signer,
-      domainInfo,
-      addTraitMembershipsStructHash(msg)
-    );
+  updateTrait(signer, domainInfo, msg) {
+    return signLegacyMessage(signer, domainInfo, updateTraitStructHash(msg));
   },
 });
 
 const hash = Object.freeze({
   setProjectInfo: setProjectInfoStructHash,
   setFeatureInfo: setFeatureInfoStructHash,
-  addTraitMemberships: addTraitMembershipsStructHash,
+  updateTrait: updateTraitStructHash,
 });
 
 function traitMembershipWords(tokenIds) {
@@ -227,7 +223,7 @@ const INITIAL_TRAIT_LOG = Bytes24Zero;
 function updateTraitLog(oldLog = null, msgs) {
   let log = oldLog != null ? oldLog : INITIAL_TRAIT_LOG;
   for (const msg of msgs) {
-    const structHash = addTraitMembershipsStructHash(msg);
+    const structHash = updateTraitStructHash(msg);
     const hash = ethers.utils.keccak256(
       ethers.utils.defaultAbiCoder.encode(
         ["bytes24", "bytes32"],
@@ -239,7 +235,7 @@ function updateTraitLog(oldLog = null, msgs) {
   return log;
 }
 
-function addTraitMembershipsMessage(baseMsg) {
+function updateTraitMessage(baseMsg) {
   const msg = { ...baseMsg };
   if (msg.words == null) {
     msg.words = traitMembershipWords(msg.tokenIds);
@@ -266,5 +262,5 @@ module.exports = {
   featureTraitId,
   updateTraitLog,
   INITIAL_TRAIT_LOG,
-  addTraitMembershipsMessage,
+  updateTraitMessage,
 };

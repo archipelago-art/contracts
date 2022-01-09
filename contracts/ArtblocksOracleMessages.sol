@@ -14,7 +14,7 @@ struct SetFeatureInfoMessage {
     uint256 version;
 }
 
-struct AddTraitMembershipsMessage {
+struct UpdateTraitMessage {
     bytes32 traitId;
     TraitMembershipWord[] words;
     /// If `numTokensFinalized` is greater than the current number of tokens
@@ -55,9 +55,9 @@ library ArtblocksOracleMessages {
         keccak256(
             "SetFeatureInfoMessage(uint256 projectId,string featureName,uint256 version)"
         );
-    bytes32 internal constant TYPEHASH_ADD_TRAIT_MEMBERSHIPS =
+    bytes32 internal constant TYPEHASH_UPDATE_TRAIT =
         keccak256(
-            "AddTraitMembershipsMessage(bytes32 traitId,TraitMembershipWord[] words,uint32 numTokensFinalized,bytes24 expectedLastLog)TraitMembershipWord(uint256 wordIndex,uint256 mask)"
+            "UpdateTraitMessage(bytes32 traitId,TraitMembershipWord[] words,uint32 numTokensFinalized,bytes24 expectedLastLog)TraitMembershipWord(uint256 wordIndex,uint256 mask)"
         );
     bytes32 internal constant TYPEHASH_TRAIT_MEMBERSHIP_WORD =
         keccak256("TraitMembershipWord(uint256 wordIndex,uint256 mask)");
@@ -95,7 +95,7 @@ library ArtblocksOracleMessages {
             );
     }
 
-    function structHash(AddTraitMembershipsMessage memory _self)
+    function structHash(UpdateTraitMessage memory _self)
         internal
         pure
         returns (bytes32)
@@ -103,7 +103,7 @@ library ArtblocksOracleMessages {
         return
             keccak256(
                 abi.encodePacked(
-                    TYPEHASH_ADD_TRAIT_MEMBERSHIPS,
+                    TYPEHASH_UPDATE_TRAIT,
                     _self.traitId,
                     _self.words.structHash(),
                     uint256(_self.numTokensFinalized),

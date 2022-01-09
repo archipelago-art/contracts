@@ -49,17 +49,13 @@ TEST_CASES.push(async function* oracleTraitMemberships(props) {
   }
 
   {
-    const msg = sdk.artblocks.addTraitMembershipsMessage({
+    const msg = sdk.artblocks.updateTraitMessage({
       traitId,
       words: [],
     });
-    const sig = await sdk.artblocks.sign712.addTraitMemberships(
-      signer,
-      domain,
-      msg
-    );
-    const tx = await oracle.addTraitMemberships(msg, sig, EIP_712);
-    yield ["addTraitMemberships: empty", await tx.wait()];
+    const sig = await sdk.artblocks.sign712.updateTrait(signer, domain, msg);
+    const tx = await oracle.updateTrait(msg, sig, EIP_712);
+    yield ["updateTrait: empty", await tx.wait()];
   }
 
   const baseTokenId = 23000000;
@@ -68,47 +64,32 @@ TEST_CASES.push(async function* oracleTraitMemberships(props) {
   );
 
   {
-    const msg = sdk.artblocks.addTraitMembershipsMessage({ traitId, tokenIds });
-    const sig = await sdk.artblocks.sign712.addTraitMemberships(
-      signer,
-      domain,
-      msg
-    );
-    const tx1 = await oracle.addTraitMemberships(msg, sig, EIP_712);
-    yield [
-      `addTraitMemberships: Paddle (${tokenIds.length})`,
-      await tx1.wait(),
-    ];
-    const tx2 = await oracle.addTraitMemberships(msg, sig, EIP_712);
-    yield ["addTraitMemberships: Paddle again (no-op)", await tx2.wait()];
+    const msg = sdk.artblocks.updateTraitMessage({ traitId, tokenIds });
+    const sig = await sdk.artblocks.sign712.updateTrait(signer, domain, msg);
+    const tx1 = await oracle.updateTrait(msg, sig, EIP_712);
+    yield [`updateTrait: Paddle (${tokenIds.length})`, await tx1.wait()];
+    const tx2 = await oracle.updateTrait(msg, sig, EIP_712);
+    yield ["updateTrait: Paddle again (no-op)", await tx2.wait()];
   }
 
   tokenIds = Array(256)
     .fill()
     .map((_, i) => baseTokenId + 0x0100 + i);
   {
-    const msg = sdk.artblocks.addTraitMembershipsMessage({ traitId, tokenIds });
-    const sig = await sdk.artblocks.sign712.addTraitMemberships(
-      signer,
-      domain,
-      msg
-    );
-    const tx = await oracle.addTraitMemberships(msg, sig, EIP_712);
-    yield ["addTraitMemberships: 256 consecutive", await tx.wait()];
+    const msg = sdk.artblocks.updateTraitMessage({ traitId, tokenIds });
+    const sig = await sdk.artblocks.sign712.updateTrait(signer, domain, msg);
+    const tx = await oracle.updateTrait(msg, sig, EIP_712);
+    yield ["updateTrait: 256 consecutive", await tx.wait()];
   }
 
   tokenIds = Array(256)
     .fill()
     .map((_, i) => baseTokenId + 0x0200 + i * 8);
   {
-    const msg = sdk.artblocks.addTraitMembershipsMessage({ traitId, tokenIds });
-    const sig = await sdk.artblocks.sign712.addTraitMemberships(
-      signer,
-      domain,
-      msg
-    );
-    const tx = await oracle.addTraitMemberships(msg, sig, EIP_712);
-    yield ["addTraitMemberships: 256 semi-scattered", await tx.wait()];
+    const msg = sdk.artblocks.updateTraitMessage({ traitId, tokenIds });
+    const sig = await sdk.artblocks.sign712.updateTrait(signer, domain, msg);
+    const tx = await oracle.updateTrait(msg, sig, EIP_712);
+    yield ["updateTrait: 256 semi-scattered", await tx.wait()];
   }
 });
 
@@ -185,16 +166,12 @@ TEST_CASES.push(async function* marketFills(props) {
     version
   );
 
-  const msg = sdk.artblocks.addTraitMembershipsMessage({
+  const msg = sdk.artblocks.updateTraitMessage({
     traitId,
     tokenIds: paddleIds,
   });
-  const sig = await sdk.artblocks.sign712.addTraitMemberships(
-    signer,
-    domain,
-    msg
-  );
-  await oracle.addTraitMemberships(msg, sig, EIP_712);
+  const sig = await sdk.artblocks.sign712.updateTrait(signer, domain, msg);
+  await oracle.updateTrait(msg, sig, EIP_712);
 
   // Token and weth setup
   const tokenId = baseTokenId + 250;

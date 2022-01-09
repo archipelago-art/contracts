@@ -59,7 +59,7 @@ struct FeatureMetadata {
 contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
     using ArtblocksOracleMessages for SetProjectInfoMessage;
     using ArtblocksOracleMessages for SetFeatureInfoMessage;
-    using ArtblocksOracleMessages for AddTraitMembershipsMessage;
+    using ArtblocksOracleMessages for UpdateTraitMessage;
     using Popcnt for uint256;
 
     event OracleSignerChanged(address indexed oracleSigner);
@@ -232,14 +232,14 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
     }
 
     /// Adds tokens as members of a feature trait.
-    function addTraitMemberships(
-        AddTraitMembershipsMessage memory _msg,
+    function updateTrait(
+        UpdateTraitMessage memory _msg,
         bytes memory _signature,
         SignatureKind _signatureKind
     ) external {
         bytes32 _structHash = _msg.structHash();
         _requireOracleSignature(_structHash, _signature, _signatureKind);
-        _addTraitMemberships(
+        _updateTrait(
             _structHash,
             _msg.traitId,
             _msg.words,
@@ -248,7 +248,7 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         );
     }
 
-    function _addTraitMemberships(
+    function _updateTrait(
         bytes32 _structHash,
         bytes32 _traitId,
         TraitMembershipWord[] memory _words,

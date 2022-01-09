@@ -24,15 +24,11 @@ async function setFeatureInfo(oracle, signer, msg) {
   return oracle.setFeatureInfo(msg, sig, SignatureKind.EIP_712);
 }
 
-async function addTraitMemberships(oracle, signer, msg) {
-  msg = sdk.artblocks.addTraitMembershipsMessage(msg);
+async function updateTrait(oracle, signer, msg) {
+  msg = sdk.artblocks.updateTraitMessage(msg);
   const domain = await domainInfo(oracle.address);
-  const sig = await sdk.artblocks.sign712.addTraitMemberships(
-    signer,
-    domain,
-    msg
-  );
-  return oracle.addTraitMemberships(msg, sig, SignatureKind.EIP_712);
+  const sig = await sdk.artblocks.sign712.updateTrait(signer, domain, msg);
+  return oracle.updateTrait(msg, sig, SignatureKind.EIP_712);
 }
 
 describe("ArtblocksOracle", () => {
@@ -171,7 +167,7 @@ describe("ArtblocksOracle", () => {
       ).to.emit(oracle, "FeatureInfoSet");
     });
 
-    it("for `addTraitMemberships`", async () => {
+    it("for `updateTrait`", async () => {
       const { oracle, signer } = await setUp();
       const projectId = 23;
       const baseTokenId = projectId * PROJECT_STRIDE;
@@ -183,21 +179,17 @@ describe("ArtblocksOracle", () => {
         version
       );
       await setFeatureInfo(oracle, signer, { projectId, featureName, version });
-      const msg = sdk.artblocks.addTraitMembershipsMessage({
+      const msg = sdk.artblocks.updateTraitMessage({
         traitId,
         tokenIds: [baseTokenId, baseTokenId + 1],
       });
-      const sig = await sdk.artblocks.signLegacy.addTraitMemberships(
+      const sig = await sdk.artblocks.signLegacy.updateTrait(
         signer,
         await domainInfo(oracle.address),
         msg
       );
       await expect(
-        oracle.addTraitMemberships(
-          msg,
-          sig,
-          SignatureKind.ETHEREUM_SIGNED_MESSAGE
-        )
+        oracle.updateTrait(msg, sig, SignatureKind.ETHEREUM_SIGNED_MESSAGE)
       ).to.emit(oracle, "TraitUpdated");
     });
   });
@@ -338,12 +330,12 @@ describe("ArtblocksOracle", () => {
       expect(!tokenIds.includes(otherTokenId));
 
       let traitLog = null;
-      const msg1 = sdk.artblocks.addTraitMembershipsMessage({
+      const msg1 = sdk.artblocks.updateTraitMessage({
         traitId,
         tokenIds: batch1,
       });
       traitLog = sdk.artblocks.updateTraitLog(traitLog, [msg1]);
-      await expect(addTraitMemberships(oracle, signer, msg1))
+      await expect(updateTrait(oracle, signer, msg1))
         .to.emit(oracle, "TraitUpdated")
         .withArgs(traitId, batch1.length, 0, traitLog);
       expect(
@@ -361,12 +353,12 @@ describe("ArtblocksOracle", () => {
       ).to.equal(false);
       expect(await oracle.featureMembers(traitId)).to.equal(batch1.length);
 
-      const msg2 = sdk.artblocks.addTraitMembershipsMessage({
+      const msg2 = sdk.artblocks.updateTraitMessage({
         traitId,
         tokenIds: batch2,
       });
       traitLog = sdk.artblocks.updateTraitLog(traitLog, [msg2]);
-      await expect(await addTraitMemberships(oracle, signer, msg2))
+      await expect(await updateTrait(oracle, signer, msg2))
         .to.emit(oracle, "TraitUpdated")
         .withArgs(traitId, tokenIds.length, 0, traitLog);
       expect(
@@ -390,7 +382,7 @@ describe("ArtblocksOracle", () => {
       const msg1 = { projectId, featureName, version };
       await setFeatureInfo(oracle, signer, msg1);
       const msg2 = { traitId, tokenIds: [baseTokenId + 250] };
-      await addTraitMemberships(oracle, signer, msg2);
+      await updateTrait(oracle, signer, msg2);
 
       expect(
         await oracle.hasTrait(
@@ -417,12 +409,12 @@ describe("ArtblocksOracle", () => {
       await setFeatureInfo(oracle, signer, msg);
 
       let traitLog = null;
-      const msg1 = sdk.artblocks.addTraitMembershipsMessage({
+      const msg1 = sdk.artblocks.updateTraitMessage({
         traitId,
         tokenIds: [baseTokenId + 1, baseTokenId + 2, baseTokenId + 1],
       });
       traitLog = sdk.artblocks.updateTraitLog(traitLog, [msg1]);
-      await expect(addTraitMemberships(oracle, signer, msg1))
+      await expect(updateTrait(oracle, signer, msg1))
         .to.emit(oracle, "TraitUpdated")
         .withArgs(traitId, 2, 0, traitLog);
       expect(
@@ -448,12 +440,12 @@ describe("ArtblocksOracle", () => {
       ).to.be.false;
       expect(await oracle.featureMembers(traitId)).to.equal(2);
 
-      const msg2 = sdk.artblocks.addTraitMembershipsMessage({
+      const msg2 = sdk.artblocks.updateTraitMessage({
         traitId,
         tokenIds: [baseTokenId + 2, baseTokenId + 3, baseTokenId + 2],
       });
       traitLog = sdk.artblocks.updateTraitLog(traitLog, [msg2]);
-      await expect(addTraitMemberships(oracle, signer, msg2))
+      await expect(updateTrait(oracle, signer, msg2))
         .to.emit(oracle, "TraitUpdated")
         .withArgs(traitId, 3, 0, traitLog);
       expect(
@@ -493,7 +485,7 @@ describe("ArtblocksOracle", () => {
 
       const tokenIds = [0, 1];
       const msg = { traitId, tokenIds };
-      await expect(addTraitMemberships(oracle, signer, msg)).to.be.revertedWith(
+      await expect(updateTrait(oracle, signer, msg)).to.be.revertedWith(
         Errors.INVALID_ARGUMENT
       );
     });
@@ -510,12 +502,12 @@ describe("ArtblocksOracle", () => {
       await setFeatureInfo(oracle, signer, msg);
 
       const tokenIds = [0, 1];
-      const msg1 = sdk.artblocks.addTraitMembershipsMessage({
+      const msg1 = sdk.artblocks.updateTraitMessage({
         traitId,
         tokenIds,
       });
       const traitLog = sdk.artblocks.updateTraitLog(null, [msg1]);
-      await expect(addTraitMemberships(oracle, signer, msg1))
+      await expect(updateTrait(oracle, signer, msg1))
         .to.emit(oracle, "TraitUpdated")
         .withArgs(traitId, 2, 0, traitLog);
     });
@@ -526,9 +518,9 @@ describe("ArtblocksOracle", () => {
       await setFeatureInfo(oracle, signer, msg);
 
       const msg1 = { traitId, tokenIds: [1, 2, 1] };
-      await expect(
-        addTraitMemberships(oracle, nonSigner, msg1)
-      ).to.be.revertedWith(Errors.UNAUTHORIZED);
+      await expect(updateTrait(oracle, nonSigner, msg1)).to.be.revertedWith(
+        Errors.UNAUTHORIZED
+      );
     });
 
     it("rejects signatures for other valid messages", async () => {
@@ -536,21 +528,21 @@ describe("ArtblocksOracle", () => {
       const msg = { projectId, featureName, version };
       await setFeatureInfo(oracle, signer, msg);
 
-      const msg1 = sdk.artblocks.addTraitMembershipsMessage({
+      const msg1 = sdk.artblocks.updateTraitMessage({
         traitId,
         tokenIds: [1, 2],
       });
-      const sig1 = await sdk.artblocks.sign712.addTraitMemberships(
+      const sig1 = await sdk.artblocks.sign712.updateTrait(
         signer,
         await domainInfo(oracle.address),
         msg1
       );
-      const msg2 = sdk.artblocks.addTraitMembershipsMessage({
+      const msg2 = sdk.artblocks.updateTraitMessage({
         traitId,
         tokenIds: [3, 4],
       });
       await expect(
-        oracle.addTraitMemberships(msg2, sig1, SignatureKind.EIP_712)
+        oracle.updateTrait(msg2, sig1, SignatureKind.EIP_712)
       ).to.be.revertedWith(Errors.UNAUTHORIZED);
     });
   });
@@ -582,20 +574,20 @@ describe("ArtblocksOracle", () => {
         0,
         sdk.artblocks.INITIAL_TRAIT_LOG,
       ]);
-      const msg1 = sdk.artblocks.addTraitMembershipsMessage({
+      const msg1 = sdk.artblocks.updateTraitMessage({
         traitId,
         words: [{ wordIndex: 0, mask: 0b101 }],
         numTokensFinalized: 256,
         expectedLastLog: sdk.artblocks.INITIAL_TRAIT_LOG,
       });
       const log1 = sdk.artblocks.updateTraitLog(null, [msg1]);
-      await expect(addTraitMemberships(oracle, signer, msg1))
+      await expect(updateTrait(oracle, signer, msg1))
         .to.emit(oracle, "TraitUpdated")
         .withArgs(traitId, 2, 256, log1);
       expect(await oracle.traitMetadata(traitId)).to.deep.equal([2, 256, log1]);
 
       await expect(
-        addTraitMemberships(oracle, signer, {
+        updateTrait(oracle, signer, {
           traitId,
           words: [{ wordIndex: 0, mask: 0b111 }],
         })
@@ -605,21 +597,21 @@ describe("ArtblocksOracle", () => {
     it("allows additions after finalization of tokens in lower words", async () => {
       const { oracle, signer } = await setUp();
       const log0 = sdk.artblocks.INITIAL_TRAIT_LOG;
-      const msg1 = sdk.artblocks.addTraitMembershipsMessage({
+      const msg1 = sdk.artblocks.updateTraitMessage({
         traitId,
         words: [{ wordIndex: 0, mask: 0b101 }],
         numTokensFinalized: 256,
         expectedLastLog: log0,
       });
       const log1 = sdk.artblocks.updateTraitLog(log0, [msg1]);
-      await addTraitMemberships(oracle, signer, msg1);
+      await updateTrait(oracle, signer, msg1);
       expect(await oracle.traitMetadata(traitId)).to.deep.equal([2, 256, log1]);
-      const msg2 = sdk.artblocks.addTraitMembershipsMessage({
+      const msg2 = sdk.artblocks.updateTraitMessage({
         traitId,
         words: [{ wordIndex: 1, mask: 0b111 }],
       });
       const log2 = sdk.artblocks.updateTraitLog(log1, [msg2]);
-      await expect(addTraitMemberships(oracle, signer, msg2))
+      await expect(updateTrait(oracle, signer, msg2))
         .to.emit(oracle, "TraitUpdated")
         .withArgs(traitId, 5, 256, log2);
       expect(await oracle.traitMetadata(traitId)).to.deep.equal([5, 256, log2]);
@@ -627,14 +619,14 @@ describe("ArtblocksOracle", () => {
 
     it("permits non-finalizing no-op additions after finalization", async () => {
       const { oracle, signer } = await setUp();
-      await addTraitMemberships(oracle, signer, {
+      await updateTrait(oracle, signer, {
         traitId,
         words: [{ wordIndex: 0, mask: 0b111 }],
         numTokensFinalized: 256,
         expectedLastLog: sdk.artblocks.INITIAL_TRAIT_LOG,
       });
       expect(
-        await addTraitMemberships(oracle, signer, {
+        await updateTrait(oracle, signer, {
           traitId,
           words: [{ wordIndex: 0, mask: 0b101 }],
         })
@@ -643,14 +635,14 @@ describe("ArtblocksOracle", () => {
 
     it("permits finalizing no-op additions after finalization", async () => {
       const { oracle, signer } = await setUp();
-      await addTraitMemberships(oracle, signer, {
+      await updateTrait(oracle, signer, {
         traitId,
         words: [{ wordIndex: 0, mask: 0b111 }],
         numTokensFinalized: 256,
         expectedLastLog: sdk.artblocks.INITIAL_TRAIT_LOG,
       });
       expect(
-        await addTraitMemberships(oracle, signer, {
+        await updateTrait(oracle, signer, {
           traitId,
           words: [{ wordIndex: 0, mask: 0b111 }],
           numTokensFinalized: 256,
@@ -663,7 +655,7 @@ describe("ArtblocksOracle", () => {
     it("may finalize part of a word", async () => {
       const { oracle, signer } = await setUp();
       const log0 = sdk.artblocks.INITIAL_TRAIT_LOG;
-      const msg1 = sdk.artblocks.addTraitMembershipsMessage({
+      const msg1 = sdk.artblocks.updateTraitMessage({
         traitId,
         words: [
           { wordIndex: 0, mask: 0b101 },
@@ -673,14 +665,14 @@ describe("ArtblocksOracle", () => {
         expectedLastLog: log0,
       });
       const log1 = sdk.artblocks.updateTraitLog(log0, [msg1]);
-      await expect(addTraitMemberships(oracle, signer, msg1))
+      await expect(updateTrait(oracle, signer, msg1))
         .to.emit(oracle, "TraitUpdated")
         .withArgs(traitId, 3, 259, log1);
       expect(await oracle.traitMetadata(traitId)).to.deep.equal([3, 259, log1]);
 
       // Not okay to add memberships in a completely finalized word.
       await expect(
-        addTraitMemberships(oracle, signer, {
+        updateTrait(oracle, signer, {
           traitId,
           words: [{ wordIndex: 0, mask: 0b1000 }],
         })
@@ -689,7 +681,7 @@ describe("ArtblocksOracle", () => {
       // Not okay to add memberships in the finalized portion of a partially
       // finalized word.
       await expect(
-        addTraitMemberships(oracle, signer, {
+        updateTrait(oracle, signer, {
           traitId,
           words: [{ wordIndex: 1, mask: 0b0100 }],
         })
@@ -697,29 +689,29 @@ describe("ArtblocksOracle", () => {
 
       // Okay to add memberships in the unfinalized portion of a partially
       // finalized word.
-      const msg2 = sdk.artblocks.addTraitMembershipsMessage({
+      const msg2 = sdk.artblocks.updateTraitMessage({
         traitId,
         words: [{ wordIndex: 1, mask: 0b1000 }],
       });
       const log2 = sdk.artblocks.updateTraitLog(log1, [msg2]);
-      expect(await addTraitMemberships(oracle, signer, msg2))
+      expect(await updateTrait(oracle, signer, msg2))
         .to.emit(oracle, "TraitUpdated")
         .withArgs(traitId, 4, 259, log2);
 
       // Okay to add memberships in a completely unfinalized word.
-      const msg3 = sdk.artblocks.addTraitMembershipsMessage({
+      const msg3 = sdk.artblocks.updateTraitMessage({
         traitId,
         words: [{ wordIndex: 2, mask: 0b0001 }],
       });
       const log3 = sdk.artblocks.updateTraitLog(log2, [msg3]);
-      expect(await addTraitMemberships(oracle, signer, msg3))
+      expect(await updateTrait(oracle, signer, msg3))
         .to.emit(oracle, "TraitUpdated")
         .withArgs(traitId, 5, 259, log3);
     });
 
     it("properly finalizes more than 65536 tokens", async () => {
       const { oracle, signer } = await setUp();
-      await addTraitMemberships(oracle, signer, {
+      await updateTrait(oracle, signer, {
         traitId,
         words: [
           { wordIndex: 0, mask: 0b101 },
@@ -739,7 +731,7 @@ describe("ArtblocksOracle", () => {
       ];
 
       for (const { wordIndex, mask, okay } of tests) {
-        const result = addTraitMemberships(oracle, signer, {
+        const result = updateTrait(oracle, signer, {
           traitId,
           words: [{ wordIndex, mask }],
         });
@@ -754,17 +746,17 @@ describe("ArtblocksOracle", () => {
     it("rejects finalizations with incorrect trait logs", async () => {
       const { oracle, signer } = await setUp();
       const log0 = sdk.artblocks.INITIAL_TRAIT_LOG;
-      const msg1 = sdk.artblocks.addTraitMembershipsMessage({
+      const msg1 = sdk.artblocks.updateTraitMessage({
         traitId,
         words: [{ wordIndex: 0, mask: 0b101 }],
         numTokensFinalized: 5,
         expectedLastLog: log0,
       });
       const log1 = sdk.artblocks.updateTraitLog(log0, [msg1]);
-      await addTraitMemberships(oracle, signer, msg1);
+      await updateTrait(oracle, signer, msg1);
 
       await expect(
-        addTraitMemberships(oracle, signer, {
+        updateTrait(oracle, signer, {
           traitId,
           words: [],
           numTokensFinalized: 6,
