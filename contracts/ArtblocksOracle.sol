@@ -319,20 +319,14 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         uint256 _tokenId,
         bytes32 _traitId
     ) internal view returns (bool) {
-        if (projectTraitInfo[_traitId].tokenContract != _tokenContract) {
-            return false;
-        }
+        ProjectInfo storage _info = projectTraitInfo[_traitId];
+        IERC721 _projectContract = _info.tokenContract;
+        uint256 _projectId = _info.projectId;
+        uint256 _projectSize = _info.size;
 
-        uint256 _projectSize = projectTraitInfo[_traitId].size;
-        if (_projectSize == 0) return false; // gas
-
-        uint256 _tokenProjectId = _tokenId / PROJECT_STRIDE;
-        uint256 _traitProjectId = projectTraitInfo[_traitId].projectId;
-        if (_tokenProjectId != _traitProjectId) return false;
-
-        uint256 _tokenIndexInProject = _tokenId % PROJECT_STRIDE;
-        if (_tokenIndexInProject >= _projectSize) return false;
-
+        if (_tokenContract != _projectContract) return false;
+        if (_tokenId / PROJECT_STRIDE != _projectId) return false;
+        if (_tokenId % PROJECT_STRIDE >= _projectSize) return false;
         return true;
     }
 
@@ -341,24 +335,20 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         uint256 _tokenId,
         bytes32 _traitId
     ) internal view returns (bool) {
-        if (featureTraitInfo[_traitId].tokenContract != _tokenContract) {
-            return false;
-        }
+        FeatureInfo storage _info = featureTraitInfo[_traitId];
+        IERC721 _traitContract = _info.tokenContract;
+        uint256 _projectId = _info.projectId;
+
+        if (_tokenContract != _traitContract) return false;
+        if (_tokenId / PROJECT_STRIDE != _projectId) return false;
 
         // This affirms memberships even for traits that aren't finalized; it's
         // the responsibility of a conscientious frontend to discourage users
         // from making bids on such traits.
-        uint32 _projectId = featureTraitInfo[_traitId].projectId;
-        uint256 _minTokenId = uint256(_projectId) * PROJECT_STRIDE;
-
-        // Make sure that the token is in the right range for the project.
-        if (_tokenId < _minTokenId) return false;
-        uint256 _tokenIndex = _tokenId - _minTokenId;
-        if (_tokenIndex > PROJECT_STRIDE) return false;
-
+        uint256 _tokenIndex = _tokenId - (uint256(_projectId) * PROJECT_STRIDE);
         uint256 _wordIndex = _tokenIndex >> 8;
         uint256 _mask = 1 << (_tokenIndex & 0xff);
-        return traitMembers[_traitId][_wordIndex] & _mask != 0;
+        return (traitMembers[_traitId][_wordIndex] & _mask) != 0;
     }
 
     function projectTraitId(uint32 _projectId, uint32 _version)
