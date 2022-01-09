@@ -571,7 +571,7 @@ describe("ArtblocksTraitOracle", () => {
       ]);
       const msg1 = sdk.oracle.addTraitMembershipsMessage({
         traitId,
-        words: [{ wordIndex: 0, mask: 0b101, finalized: false }],
+        words: [{ wordIndex: 0, mask: 0b101 }],
         numTokensFinalized: 256,
         expectedLastLog: sdk.oracle.INITIAL_TRAIT_LOG,
       });
@@ -584,7 +584,7 @@ describe("ArtblocksTraitOracle", () => {
       await expect(
         addTraitMemberships(oracle, signer, {
           traitId,
-          words: [{ wordIndex: 0, mask: 0b111, finalized: false }],
+          words: [{ wordIndex: 0, mask: 0b111 }],
         })
       ).to.be.revertedWith(Errors.IMMUTABLE);
     });
@@ -594,7 +594,7 @@ describe("ArtblocksTraitOracle", () => {
       const log0 = sdk.oracle.INITIAL_TRAIT_LOG;
       const msg1 = sdk.oracle.addTraitMembershipsMessage({
         traitId,
-        words: [{ wordIndex: 0, mask: 0b101, finalized: false }],
+        words: [{ wordIndex: 0, mask: 0b101 }],
         numTokensFinalized: 256,
         expectedLastLog: log0,
       });
@@ -603,7 +603,7 @@ describe("ArtblocksTraitOracle", () => {
       expect(await oracle.traitMetadata(traitId)).to.deep.equal([2, 256, log1]);
       const msg2 = sdk.oracle.addTraitMembershipsMessage({
         traitId,
-        words: [{ wordIndex: 1, mask: 0b111, finalized: false }],
+        words: [{ wordIndex: 1, mask: 0b111 }],
       });
       const log2 = sdk.oracle.updateTraitLog(log1, [msg2]);
       await expect(addTraitMemberships(oracle, signer, msg2))
@@ -616,14 +616,14 @@ describe("ArtblocksTraitOracle", () => {
       const { oracle, signer } = await setUp();
       await addTraitMemberships(oracle, signer, {
         traitId,
-        words: [{ wordIndex: 0, mask: 0b111, finalized: false }],
+        words: [{ wordIndex: 0, mask: 0b111 }],
         numTokensFinalized: 256,
         expectedLastLog: sdk.oracle.INITIAL_TRAIT_LOG,
       });
       expect(
         await addTraitMemberships(oracle, signer, {
           traitId,
-          words: [{ wordIndex: 0, mask: 0b101, finalized: false }],
+          words: [{ wordIndex: 0, mask: 0b101 }],
         })
       ).not.to.emit(oracle, "TraitUpdated");
     });
@@ -632,14 +632,14 @@ describe("ArtblocksTraitOracle", () => {
       const { oracle, signer } = await setUp();
       await addTraitMemberships(oracle, signer, {
         traitId,
-        words: [{ wordIndex: 0, mask: 0b111, finalized: false }],
+        words: [{ wordIndex: 0, mask: 0b111 }],
         numTokensFinalized: 256,
         expectedLastLog: sdk.oracle.INITIAL_TRAIT_LOG,
       });
       expect(
         await addTraitMemberships(oracle, signer, {
           traitId,
-          words: [{ wordIndex: 0, mask: 0b111, finalized: false }],
+          words: [{ wordIndex: 0, mask: 0b111 }],
           numTokensFinalized: 256,
           // Not the current trait log, but ignored because this is a no-op.
           expectedLastLog: sdk.oracle.INITIAL_TRAIT_LOG,
@@ -653,8 +653,8 @@ describe("ArtblocksTraitOracle", () => {
       const msg1 = sdk.oracle.addTraitMembershipsMessage({
         traitId,
         words: [
-          { wordIndex: 0, mask: 0b101, finalized: false },
-          { wordIndex: 1, mask: 0b010, finalized: false },
+          { wordIndex: 0, mask: 0b101 },
+          { wordIndex: 1, mask: 0b010 },
         ],
         numTokensFinalized: 259,
         expectedLastLog: log0,
@@ -669,7 +669,7 @@ describe("ArtblocksTraitOracle", () => {
       await expect(
         addTraitMemberships(oracle, signer, {
           traitId,
-          words: [{ wordIndex: 0, mask: 0b1000, finalized: false }],
+          words: [{ wordIndex: 0, mask: 0b1000 }],
         })
       ).to.be.revertedWith(Errors.IMMUTABLE);
 
@@ -678,7 +678,7 @@ describe("ArtblocksTraitOracle", () => {
       await expect(
         addTraitMemberships(oracle, signer, {
           traitId,
-          words: [{ wordIndex: 1, mask: 0b0100, finalized: false }],
+          words: [{ wordIndex: 1, mask: 0b0100 }],
         })
       ).to.be.revertedWith(Errors.IMMUTABLE);
 
@@ -686,7 +686,7 @@ describe("ArtblocksTraitOracle", () => {
       // finalized word.
       const msg2 = sdk.oracle.addTraitMembershipsMessage({
         traitId,
-        words: [{ wordIndex: 1, mask: 0b1000, finalized: false }],
+        words: [{ wordIndex: 1, mask: 0b1000 }],
       });
       const log2 = sdk.oracle.updateTraitLog(log1, [msg2]);
       expect(await addTraitMemberships(oracle, signer, msg2))
@@ -696,7 +696,7 @@ describe("ArtblocksTraitOracle", () => {
       // Okay to add memberships in a completely unfinalized word.
       const msg3 = sdk.oracle.addTraitMembershipsMessage({
         traitId,
-        words: [{ wordIndex: 2, mask: 0b0001, finalized: false }],
+        words: [{ wordIndex: 2, mask: 0b0001 }],
       });
       const log3 = sdk.oracle.updateTraitLog(log2, [msg3]);
       expect(await addTraitMemberships(oracle, signer, msg3))
@@ -709,8 +709,8 @@ describe("ArtblocksTraitOracle", () => {
       await addTraitMemberships(oracle, signer, {
         traitId,
         words: [
-          { wordIndex: 0, mask: 0b101, finalized: false },
-          { wordIndex: 257, mask: 0b010, finalized: false },
+          { wordIndex: 0, mask: 0b101 },
+          { wordIndex: 257, mask: 0b010 },
         ],
         numTokensFinalized: 256 * 258 + 2,
       });
@@ -728,7 +728,7 @@ describe("ArtblocksTraitOracle", () => {
       for (const { wordIndex, mask, okay } of tests) {
         const result = addTraitMemberships(oracle, signer, {
           traitId,
-          words: [{ wordIndex, mask, finalized: false }],
+          words: [{ wordIndex, mask }],
         });
         if (okay) {
           await expect(result).to.emit(oracle, "TraitUpdated");
@@ -743,7 +743,7 @@ describe("ArtblocksTraitOracle", () => {
       const log0 = sdk.oracle.INITIAL_TRAIT_LOG;
       const msg1 = sdk.oracle.addTraitMembershipsMessage({
         traitId,
-        words: [{ wordIndex: 0, mask: 0b101, finalized: false }],
+        words: [{ wordIndex: 0, mask: 0b101 }],
         numTokensFinalized: 5,
         expectedLastLog: log0,
       });

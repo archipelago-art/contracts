@@ -41,9 +41,6 @@ struct TraitMembershipWord {
     /// `wordIndex * 256 + _i` (relative to the start of the project) is in the
     /// set.
     uint256 mask;
-    /// If set, the multiple-of-256 block is finalized to exactly the tokens
-    /// listed in `mask`; no more tokens may be added later.
-    bool finalized;
 }
 
 library ArtblocksTraitOracleMessages {
@@ -60,11 +57,11 @@ library ArtblocksTraitOracleMessages {
         );
     bytes32 internal constant TYPEHASH_ADD_TRAIT_MEMBERSHIPS =
         keccak256(
-            "AddTraitMembershipsMessage(uint256 traitId,TraitMembershipWord[] words,uint32 numTokensFinalized,bytes24 expectedLastLog)TraitMembershipWord(uint256 wordIndex,uint256 mask,bool finalized)"
+            "AddTraitMembershipsMessage(uint256 traitId,TraitMembershipWord[] words,uint32 numTokensFinalized,bytes24 expectedLastLog)TraitMembershipWord(uint256 wordIndex,uint256 mask)"
         );
     bytes32 internal constant TYPEHASH_TRAIT_MEMBERSHIP_WORD =
         keccak256(
-            "TraitMembershipWord(uint256 wordIndex,uint256 mask,bool finalized)"
+            "TraitMembershipWord(uint256 wordIndex,uint256 mask)"
         );
 
     function structHash(SetProjectInfoMessage memory _self)
@@ -127,8 +124,7 @@ library ArtblocksTraitOracleMessages {
                 abi.encode(
                     TYPEHASH_TRAIT_MEMBERSHIP_WORD,
                     _self.wordIndex,
-                    _self.mask,
-                    _self.finalized
+                    _self.mask
                 )
             );
     }
