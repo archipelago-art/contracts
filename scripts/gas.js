@@ -33,6 +33,7 @@ TEST_CASES.push(async function* oracleTraitMemberships(props) {
   await oracle.setOracleSigner(signer.address);
 
   const projectId = 23;
+  const projectName = "Archetype";
   const featureName = "Palette: Paddle";
   const version = 0;
   const traitId = sdk.artblocks.featureTraitId(projectId, featureName, version);
@@ -41,6 +42,13 @@ TEST_CASES.push(async function* oracleTraitMemberships(props) {
     chainId: await ethers.provider.send("eth_chainId"),
   };
   const tokenContract = "0xa7d8d9ef8d8ce8992df33d8b8cf4aebabd5bd270";
+
+  {
+    const msg = { version, tokenContract, projectId, size: 600, projectName };
+    const sig = await sdk.artblocks.sign712.setProjectInfo(signer, domain, msg);
+    const tx = await oracle.setProjectInfo(msg, sig, EIP_712);
+    yield ["setProjectInfo", await tx.wait()];
+  }
 
   {
     const msg = { projectId, featureName, version, tokenContract };
