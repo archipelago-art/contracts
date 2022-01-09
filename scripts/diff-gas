@@ -1,0 +1,31 @@
+#!/bin/sh
+set -eu
+
+usage() {
+    printf '%s\n' \
+        'usage: diff-gas <before-file> <output-file>' \
+        '    where each <file> is the output of `node scripts/gas.js -j`' \
+        ;
+}
+
+main() {
+    if [ $# -ne 2 ]; then
+        usage >&2
+        return 1
+    fi
+    if ! command -v jq >/dev/null 2>/dev/null; then
+        printf >&2 '%s\n' 'fatal: missing `jq`; please install it'
+        return 1
+    fi
+    jq -c --slurpfile before "$1" --slurpfile after "$2" -n '
+        def build_index($k):
+            map({(.label): {label: .label, ($k): .gas | tonumber}}) | add;
+        ($before | build_index("before")) * ($after | build_index("after"))
+        | .[]
+        | select(.before and .after)  # drop entries in only one file
+        | .delta = .after - .before
+        | select(.delta != 0)
+    '
+}
+
+main "$@"

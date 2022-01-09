@@ -39,3 +39,13 @@ the specific case of Art Blocks projects.
 ### Prettify code
 
 `npm run fix`
+
+### Diff gas across a change
+
+```shell
+$ git checkout before-my-change
+$ npx hardhat compile && node scripts/gas.js -j >/tmp/before
+$ git checkout my-change
+$ npx hardhat compile && node scripts/gas.js -j >/tmp/after
+$ ./scripts/diff-gas /tmp/before /tmp/after
+```
