@@ -69,7 +69,7 @@ library ArtblocksOracleMessages {
     {
         return
             keccak256(
-                abi.encodePacked(
+                abi.encode(
                     TYPEHASH_SET_PROJECT_INFO,
                     _self.projectId,
                     _self.version,
@@ -86,7 +86,7 @@ library ArtblocksOracleMessages {
     {
         return
             keccak256(
-                abi.encodePacked(
+                abi.encode(
                     TYPEHASH_SET_FEATURE_INFO,
                     _self.projectId,
                     keccak256(abi.encodePacked(_self.featureName)),
@@ -102,12 +102,12 @@ library ArtblocksOracleMessages {
     {
         return
             keccak256(
-                abi.encodePacked(
+                abi.encode(
                     TYPEHASH_UPDATE_TRAIT,
                     _self.traitId,
                     _self.words.structHash(),
-                    uint256(_self.numTokensFinalized),
-                    bytes32(_self.expectedLastLog)
+                    _self.numTokensFinalized,
+                    _self.expectedLastLog
                 )
             );
     }
