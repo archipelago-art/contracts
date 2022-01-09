@@ -43,9 +43,9 @@ struct TraitMembershipWord {
     uint256 mask;
 }
 
-library ArtblocksTraitOracleMessages {
-    using ArtblocksTraitOracleMessages for TraitMembershipWord;
-    using ArtblocksTraitOracleMessages for TraitMembershipWord[];
+library ArtblocksOracleMessages {
+    using ArtblocksOracleMessages for TraitMembershipWord;
+    using ArtblocksOracleMessages for TraitMembershipWord[];
 
     bytes32 internal constant TYPEHASH_SET_PROJECT_INFO =
         keccak256(

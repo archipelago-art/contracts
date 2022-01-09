@@ -8,11 +8,11 @@ const TraitType = Object.freeze({
 });
 
 const Errors = Object.freeze({
-  ALREADY_EXISTS: "ArtblocksTraitOracle: ALREADY_EXISTS",
-  IMMUTABLE: "ArtblocksTraitOracle: IMMUTABLE",
-  INVALID_ARGUMENT: "ArtblocksTraitOracle: INVALID_ARGUMENT",
-  INVALID_STATE: "ArtblocksTraitOracle: INVALID_STATE",
-  UNAUTHORIZED: "ArtblocksTraitOracle: UNAUTHORIZED",
+  ALREADY_EXISTS: "ArtblocksOracle: ALREADY_EXISTS",
+  IMMUTABLE: "ArtblocksOracle: IMMUTABLE",
+  INVALID_ARGUMENT: "ArtblocksOracle: INVALID_ARGUMENT",
+  INVALID_STATE: "ArtblocksOracle: INVALID_STATE",
+  UNAUTHORIZED: "ArtblocksOracle: UNAUTHORIZED",
   UNAUTHORIZED_OWNERSHIP_TRANSFER: "Ownable: caller is not the owner",
 });
 
@@ -24,7 +24,7 @@ function utf8Hash(s) {
 
 function domainSeparator({ oracleAddress, chainId }) {
   return {
-    name: "ArtblocksTraitOracle",
+    name: "ArtblocksOracle",
     chainId,
     verifyingContract: oracleAddress,
   };

@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "./ArtblocksTraitOracleMessages.sol";
+import "./ArtblocksOracleMessages.sol";
 import "./ITraitOracle.sol";
 import "./Popcnt.sol";
 import "./SignatureChecker.sol";
@@ -56,10 +56,10 @@ struct FeatureMetadata {
     bytes24 log;
 }
 
-contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
-    using ArtblocksTraitOracleMessages for SetProjectInfoMessage;
-    using ArtblocksTraitOracleMessages for SetFeatureInfoMessage;
-    using ArtblocksTraitOracleMessages for AddTraitMembershipsMessage;
+contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
+    using ArtblocksOracleMessages for SetProjectInfoMessage;
+    using ArtblocksOracleMessages for SetFeatureInfoMessage;
+    using ArtblocksOracleMessages for AddTraitMembershipsMessage;
     using Popcnt for uint256;
 
     event OracleSignerChanged(address indexed oracleSigner);
@@ -84,19 +84,17 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
         bytes24 newLog
     );
 
-    string constant ERR_ALREADY_EXISTS = "ArtblocksTraitOracle: ALREADY_EXISTS";
-    string constant ERR_IMMUTABLE = "ArtblocksTraitOracle: IMMUTABLE";
-    string constant ERR_INVALID_ARGUMENT =
-        "ArtblocksTraitOracle: INVALID_ARGUMENT";
-    string constant ERR_INVALID_STATE = "ArtblocksTraitOracle: INVALID_STATE";
-    string constant ERR_UNAUTHORIZED = "ArtblocksTraitOracle: UNAUTHORIZED";
+    string constant ERR_ALREADY_EXISTS = "ArtblocksOracle: ALREADY_EXISTS";
+    string constant ERR_IMMUTABLE = "ArtblocksOracle: IMMUTABLE";
+    string constant ERR_INVALID_ARGUMENT = "ArtblocksOracle: INVALID_ARGUMENT";
+    string constant ERR_INVALID_STATE = "ArtblocksOracle: INVALID_STATE";
+    string constant ERR_UNAUTHORIZED = "ArtblocksOracle: UNAUTHORIZED";
 
     bytes32 constant TYPEHASH_DOMAIN_SEPARATOR =
         keccak256(
             "EIP712Domain(string name,uint256 chainId,address verifyingContract)"
         );
-    bytes32 constant DOMAIN_SEPARATOR_NAME_HASH =
-        keccak256("ArtblocksTraitOracle");
+    bytes32 constant DOMAIN_SEPARATOR_NAME_HASH = keccak256("ArtblocksOracle");
 
     /// Art Blocks gives each project a token space of 1 million IDs. Most IDs
     /// in this space are not actually used, but a token's ID floor-divided by

@@ -35,24 +35,22 @@ async function addTraitMemberships(oracle, signer, msg) {
   return oracle.addTraitMemberships(msg, sig, SignatureKind.EIP_712);
 }
 
-describe("ArtblocksTraitOracle", () => {
-  let ArtblocksTraitOracle, signers;
+describe("ArtblocksOracle", () => {
+  let ArtblocksOracle, signers;
   before(async () => {
-    ArtblocksTraitOracle = await ethers.getContractFactory(
-      "ArtblocksTraitOracle"
-    );
+    ArtblocksOracle = await ethers.getContractFactory("ArtblocksOracle");
     signers = await ethers.getSigners();
   });
 
   it("deploys", async () => {
-    const oracle = await ArtblocksTraitOracle.deploy();
+    const oracle = await ArtblocksOracle.deploy();
     await oracle.deployed();
   });
 
   describe("EIP-165 `supportsInterface`", async () => {
     let oracle;
     before(async () => {
-      oracle = await ArtblocksTraitOracle.deploy();
+      oracle = await ArtblocksOracle.deploy();
       await oracle.deployed();
     });
 
@@ -79,7 +77,7 @@ describe("ArtblocksTraitOracle", () => {
   });
 
   it("permits changing owner", async () => {
-    const oracle = await ArtblocksTraitOracle.deploy();
+    const oracle = await ArtblocksOracle.deploy();
     await oracle.deployed();
 
     expect(await oracle.owner()).to.equal(signers[0].address);
@@ -110,7 +108,7 @@ describe("ArtblocksTraitOracle", () => {
   describe("computes trait IDs", () => {
     let oracle;
     before(async () => {
-      oracle = await ArtblocksTraitOracle.deploy();
+      oracle = await ArtblocksOracle.deploy();
       await oracle.deployed();
     });
 
@@ -132,7 +130,7 @@ describe("ArtblocksTraitOracle", () => {
     // but we test multiple endpoints to cover the `sdk.artblocks.signLegacy` APIs.
     async function setUp() {
       const signer = signers[1];
-      const oracle = await ArtblocksTraitOracle.deploy();
+      const oracle = await ArtblocksOracle.deploy();
       await oracle.deployed();
       await oracle.setOracleSigner(signer.address);
       return { oracle, signer };
@@ -206,7 +204,7 @@ describe("ArtblocksTraitOracle", () => {
 
   describe("sets trait info exactly once", () => {
     it("for projects", async () => {
-      const oracle = await ArtblocksTraitOracle.deploy();
+      const oracle = await ArtblocksOracle.deploy();
       await oracle.deployed();
       await oracle.setOracleSigner(signers[1].address);
       const projectId = 23;
@@ -232,7 +230,7 @@ describe("ArtblocksTraitOracle", () => {
     });
 
     it("for features", async () => {
-      const oracle = await ArtblocksTraitOracle.deploy();
+      const oracle = await ArtblocksOracle.deploy();
       await oracle.deployed();
       await oracle.setOracleSigner(signers[1].address);
       const projectId = 23;
@@ -261,7 +259,7 @@ describe("ArtblocksTraitOracle", () => {
 
   describe("forbids setting empty trait info", () => {
     it("for zero-sized projects", async () => {
-      const oracle = await ArtblocksTraitOracle.deploy();
+      const oracle = await ArtblocksOracle.deploy();
       await oracle.deployed();
       await oracle.setOracleSigner(signers[1].address);
       const msg = {
@@ -276,7 +274,7 @@ describe("ArtblocksTraitOracle", () => {
     });
 
     it("for empty-named projects", async () => {
-      const oracle = await ArtblocksTraitOracle.deploy();
+      const oracle = await ArtblocksOracle.deploy();
       await oracle.deployed();
       await oracle.setOracleSigner(signers[1].address);
       const msg = {
@@ -291,7 +289,7 @@ describe("ArtblocksTraitOracle", () => {
     });
 
     it("for empty-named features", async () => {
-      const oracle = await ArtblocksTraitOracle.deploy();
+      const oracle = await ArtblocksOracle.deploy();
       await oracle.deployed();
       await oracle.setOracleSigner(signers[1].address);
       const msg = {
@@ -318,7 +316,7 @@ describe("ArtblocksTraitOracle", () => {
 
     async function setUp() {
       const [, admin, signer, nonSigner] = signers;
-      const oracle = await ArtblocksTraitOracle.connect(admin).deploy();
+      const oracle = await ArtblocksOracle.connect(admin).deploy();
       await oracle.deployed();
       await oracle.connect(admin).setOracleSigner(signer.address);
       return { oracle, admin, signer, nonSigner };
@@ -570,7 +568,7 @@ describe("ArtblocksTraitOracle", () => {
 
     async function setUp() {
       const [, admin, signer, nonSigner] = signers;
-      const oracle = await ArtblocksTraitOracle.connect(admin).deploy();
+      const oracle = await ArtblocksOracle.connect(admin).deploy();
       await oracle.deployed();
       await oracle.connect(admin).setOracleSigner(signer.address);
       await setFeatureInfo(oracle, signer, { projectId, featureName, version });
@@ -793,7 +791,7 @@ describe("ArtblocksTraitOracle", () => {
     const baseId = projectId * PROJECT_STRIDE;
 
     before(async () => {
-      oracle = await ArtblocksTraitOracle.deploy();
+      oracle = await ArtblocksOracle.deploy();
       await oracle.deployed();
       await oracle.setOracleSigner(signers[1].address);
 

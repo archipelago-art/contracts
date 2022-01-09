@@ -23,8 +23,8 @@ allows the trading the tokens of a particular ERC-721 contract, and is
 non-upgradable. At initialization time, each Market may be provided with a
 [Trait Oracle](./contracts/ITraitOracle.sol), which allows testing whether a
 particular tokenId possesses certain traits. We've also implemented a
-well-optimized [Art Blocks Trait Oracle](./contracts/ArtblocksTraitOracle.sol)
-for the specific case of Art Blocks projects.
+well-optimized [Art Blocks Trait Oracle](./contracts/ArtblocksOracle.sol) for
+the specific case of Art Blocks projects.
 
 ## Development
 

@@ -15,9 +15,9 @@ TEST_CASES.push(async function* marketDeploy(props) {
 });
 
 TEST_CASES.push(async function* oracleDeploy(props) {
-  const oracle = await props.factories.ArtblocksTraitOracle.deploy();
+  const oracle = await props.factories.ArtblocksOracle.deploy();
   await oracle.deployed();
-  yield ["ArtblocksTraitOracle deploy", await oracle.deployTransaction.wait()];
+  yield ["ArtblocksOracle deploy", await oracle.deployTransaction.wait()];
 });
 
 TEST_CASES.push(async function* circuitOracleDeploy(props) {
@@ -27,7 +27,7 @@ TEST_CASES.push(async function* circuitOracleDeploy(props) {
 });
 
 TEST_CASES.push(async function* oracleTraitMemberships(props) {
-  const oracle = await props.factories.ArtblocksTraitOracle.deploy();
+  const oracle = await props.factories.ArtblocksOracle.deploy();
   await oracle.deployed();
   const signer = props.signers[0];
   await oracle.setOracleSigner(signer.address);
@@ -124,7 +124,7 @@ TEST_CASES.push(async function* marketFills(props) {
 
   const weth = await props.factories.TestWeth.deploy();
   const token = await props.factories.TestERC721.deploy();
-  const oracle = await props.factories.ArtblocksTraitOracle.deploy();
+  const oracle = await props.factories.ArtblocksOracle.deploy();
   const circuitOracle = await props.factories.CircuitOracle.deploy();
   await Promise.all([
     oracle.deployed(),
@@ -454,14 +454,14 @@ async function main() {
     return patterns.some((p) => name.match(p));
   }
   const [
-    ArtblocksTraitOracle,
+    ArtblocksOracle,
     ArchipelagoMarket,
     CircuitOracle,
     TestTraitOracle,
     TestWeth,
     TestERC721,
   ] = await Promise.all([
-    ethers.getContractFactory("ArtblocksTraitOracle"),
+    ethers.getContractFactory("ArtblocksOracle"),
     ethers.getContractFactory("ArchipelagoMarket"),
     ethers.getContractFactory("CircuitOracle"),
     ethers.getContractFactory("TestTraitOracle"),
@@ -474,7 +474,7 @@ async function main() {
     try {
       const gen = testCase({
         factories: {
-          ArtblocksTraitOracle,
+          ArtblocksOracle,
           ArchipelagoMarket,
           CircuitOracle,
           TestTraitOracle,
