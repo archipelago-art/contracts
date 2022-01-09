@@ -179,6 +179,10 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         _requireOracleSignature(_msg.structHash(), _signature, _signatureKind);
 
         require(_msg.size > 0, ERR_INVALID_ARGUMENT);
+        require(
+            _msg.tokenContract != IERC721(address(0)),
+            ERR_INVALID_ARGUMENT
+        );
         require(!_stringEmpty(_msg.projectName), ERR_INVALID_ARGUMENT);
 
         bytes32 _traitId = projectTraitId(_msg.projectId, _msg.version);
@@ -207,6 +211,10 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
     ) external {
         _requireOracleSignature(_msg.structHash(), _signature, _signatureKind);
 
+        require(
+            _msg.tokenContract != IERC721(address(0)),
+            ERR_INVALID_ARGUMENT
+        );
         require(!_stringEmpty(_msg.featureName), ERR_INVALID_ARGUMENT);
 
         bytes32 _traitId = featureTraitId(
