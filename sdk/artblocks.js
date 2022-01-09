@@ -206,7 +206,11 @@ function projectTraitId(projectId, version) {
     ["uint256", "uint256", "uint256"],
     [TraitType.PROJECT, projectId, version]
   );
-  return ethers.utils.keccak256(blob);
+  const hash = ethers.utils.keccak256(blob);
+  return ethers.utils.hexConcat([
+    ethers.utils.hexDataSlice(hash, 0, 31),
+    "0x00",
+  ]);
 }
 
 function featureTraitId(projectId, featureName, version) {
@@ -214,7 +218,11 @@ function featureTraitId(projectId, featureName, version) {
     ["uint256", "uint256", "string", "uint256"],
     [TraitType.FEATURE, projectId, featureName, version]
   );
-  return ethers.utils.keccak256(blob);
+  const hash = ethers.utils.keccak256(blob);
+  return ethers.utils.hexConcat([
+    ethers.utils.hexDataSlice(hash, 0, 31),
+    "0x01",
+  ]);
 }
 
 const Bytes24Zero = "0x" + "00".repeat(24);

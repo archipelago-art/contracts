@@ -318,11 +318,14 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         bytes calldata _trait
     ) external view override returns (bool) {
         bytes32 _traitId = bytes32(_trait);
-        // Check project traits first, since this only requires a single
-        // storage lookup if `_traitId` represents a feature trait.
-        return
-            _hasProjectTrait(_tokenId, _traitId) ||
-            _hasFeatureTrait(_tokenId, _traitId);
+        uint8 _discriminant = uint8(uint256(_traitId));
+        if (_discriminant == uint8(TraitType.PROJECT)) {
+            return _hasProjectTrait(_tokenId, _traitId);
+        } else if (_discriminant == uint8(TraitType.FEATURE)) {
+            return _hasFeatureTrait(_tokenId, _traitId);
+        } else {
+            return false;
+        }
     }
 
     function _hasProjectTrait(uint256 _tokenId, bytes32 _traitId)
@@ -374,7 +377,8 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
             _projectId,
             _version
         );
-        return keccak256(_blob);
+        uint256 _hash = uint256(keccak256(_blob));
+        return bytes32((_hash & ~uint256(0xff)) | uint256(TraitType.PROJECT));
     }
 
     function featureTraitId(
@@ -388,7 +392,8 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
             _featureName,
             _version
         );
-        return keccak256(_blob);
+        uint256 _hash = uint256(keccak256(_blob));
+        return bytes32((_hash & ~uint256(0xff)) | uint256(TraitType.FEATURE));
     }
 
     /// Returns the number of tokens that are currently known to have the given
