@@ -223,7 +223,7 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
             _msg.version
         );
         require(
-            _stringEmpty(featureTraitInfo[_traitId].name),
+            featureTraitInfo[_traitId].tokenContract == IERC721(address(0)),
             ERR_ALREADY_EXISTS
         );
 
@@ -252,7 +252,7 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
 
         bytes32 _traitId = _msg.traitId;
         require(
-            !_stringEmpty(featureTraitInfo[_traitId].name),
+            featureTraitInfo[_traitId].tokenContract != IERC721(address(0)),
             ERR_INVALID_ARGUMENT
         );
         FeatureMetadata memory _oldMetadata = featureMetadata[_traitId];
