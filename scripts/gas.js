@@ -35,7 +35,7 @@ TEST_CASES.push(async function* oracleTraitMemberships(props) {
   const projectId = 23;
   const featureName = "Palette: Paddle";
   const version = 0;
-  const traitId = sdk.oracle.featureTraitId(projectId, featureName, version);
+  const traitId = sdk.artblocks.featureTraitId(projectId, featureName, version);
   const domain = {
     oracleAddress: oracle.address,
     chainId: await ethers.provider.send("eth_chainId"),
@@ -43,14 +43,17 @@ TEST_CASES.push(async function* oracleTraitMemberships(props) {
 
   {
     const msg = { projectId, featureName, version };
-    const sig = await sdk.oracle.sign712.setFeatureInfo(signer, domain, msg);
+    const sig = await sdk.artblocks.sign712.setFeatureInfo(signer, domain, msg);
     const tx = await oracle.setFeatureInfo(msg, sig, EIP_712);
     yield ["setFeatureInfo", await tx.wait()];
   }
 
   {
-    const msg = sdk.oracle.addTraitMembershipsMessage({ traitId, words: [] });
-    const sig = await sdk.oracle.sign712.addTraitMemberships(
+    const msg = sdk.artblocks.addTraitMembershipsMessage({
+      traitId,
+      words: [],
+    });
+    const sig = await sdk.artblocks.sign712.addTraitMemberships(
       signer,
       domain,
       msg
@@ -65,8 +68,8 @@ TEST_CASES.push(async function* oracleTraitMemberships(props) {
   );
 
   {
-    const msg = sdk.oracle.addTraitMembershipsMessage({ traitId, tokenIds });
-    const sig = await sdk.oracle.sign712.addTraitMemberships(
+    const msg = sdk.artblocks.addTraitMembershipsMessage({ traitId, tokenIds });
+    const sig = await sdk.artblocks.sign712.addTraitMemberships(
       signer,
       domain,
       msg
@@ -84,8 +87,8 @@ TEST_CASES.push(async function* oracleTraitMemberships(props) {
     .fill()
     .map((_, i) => baseTokenId + 0x0100 + i);
   {
-    const msg = sdk.oracle.addTraitMembershipsMessage({ traitId, tokenIds });
-    const sig = await sdk.oracle.sign712.addTraitMemberships(
+    const msg = sdk.artblocks.addTraitMembershipsMessage({ traitId, tokenIds });
+    const sig = await sdk.artblocks.sign712.addTraitMemberships(
       signer,
       domain,
       msg
@@ -98,8 +101,8 @@ TEST_CASES.push(async function* oracleTraitMemberships(props) {
     .fill()
     .map((_, i) => baseTokenId + 0x0200 + i * 8);
   {
-    const msg = sdk.oracle.addTraitMembershipsMessage({ traitId, tokenIds });
-    const sig = await sdk.oracle.sign712.addTraitMemberships(
+    const msg = sdk.artblocks.addTraitMembershipsMessage({ traitId, tokenIds });
+    const sig = await sdk.artblocks.sign712.addTraitMemberships(
       signer,
       domain,
       msg
@@ -159,7 +162,7 @@ TEST_CASES.push(async function* marketFills(props) {
     projectName: "Archetype",
     version,
   };
-  const projectSig = await sdk.oracle.sign712.setProjectInfo(
+  const projectSig = await sdk.artblocks.sign712.setProjectInfo(
     signer,
     domain,
     projectMsg
@@ -167,26 +170,30 @@ TEST_CASES.push(async function* marketFills(props) {
   await oracle.setProjectInfo(projectMsg, projectSig, EIP_712);
 
   const featureMsg = { projectId, featureName, version };
-  const featureSig = await sdk.oracle.sign712.setFeatureInfo(
+  const featureSig = await sdk.artblocks.sign712.setFeatureInfo(
     signer,
     domain,
     featureMsg
   );
   await oracle.setFeatureInfo(featureMsg, featureSig, EIP_712);
 
-  const projectTraitId = sdk.oracle.projectTraitId(projectId, version);
-  const traitId = sdk.oracle.featureTraitId(projectId, featureName, version);
-  const unsetTraitId = sdk.oracle.featureTraitId(
+  const projectTraitId = sdk.artblocks.projectTraitId(projectId, version);
+  const traitId = sdk.artblocks.featureTraitId(projectId, featureName, version);
+  const unsetTraitId = sdk.artblocks.featureTraitId(
     projectId,
     unsetFeatureName,
     version
   );
 
-  const msg = sdk.oracle.addTraitMembershipsMessage({
+  const msg = sdk.artblocks.addTraitMembershipsMessage({
     traitId,
     tokenIds: paddleIds,
   });
-  const sig = await sdk.oracle.sign712.addTraitMemberships(signer, domain, msg);
+  const sig = await sdk.artblocks.sign712.addTraitMemberships(
+    signer,
+    domain,
+    msg
+  );
   await oracle.addTraitMemberships(msg, sig, EIP_712);
 
   // Token and weth setup
