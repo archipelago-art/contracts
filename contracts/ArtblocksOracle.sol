@@ -172,39 +172,26 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         SignatureKind _signatureKind
     ) external {
         _requireOracleSignature(_msg.structHash(), _signature, _signatureKind);
-        _setProjectInfo(
-            _msg.projectId,
-            _msg.version,
-            _msg.projectName,
-            _msg.size,
-            _msg.tokenContract
-        );
-    }
 
-    function _setProjectInfo(
-        uint32 _projectId,
-        uint32 _version,
-        string memory _projectName,
-        uint32 _size,
-        IERC721 _tokenContract
-    ) internal {
-        require(_size > 0, ERR_INVALID_ARGUMENT);
-        require(!_stringEmpty(_projectName), ERR_INVALID_ARGUMENT);
-        bytes32 _traitId = projectTraitId(_projectId, _version);
+        require(_msg.size > 0, ERR_INVALID_ARGUMENT);
+        require(!_stringEmpty(_msg.projectName), ERR_INVALID_ARGUMENT);
+
+        bytes32 _traitId = projectTraitId(_msg.projectId, _msg.version);
         require(projectTraitInfo[_traitId].size == 0, ERR_ALREADY_EXISTS);
+
         projectTraitInfo[_traitId] = ProjectInfo({
-            projectId: _projectId,
-            name: _projectName,
-            size: _size,
-            tokenContract: _tokenContract
+            projectId: _msg.projectId,
+            name: _msg.projectName,
+            size: _msg.size,
+            tokenContract: _msg.tokenContract
         });
         emit ProjectInfoSet({
             traitId: _traitId,
-            projectId: _projectId,
-            name: _projectName,
-            version: _version,
-            size: _size,
-            tokenContract: _tokenContract
+            projectId: _msg.projectId,
+            name: _msg.projectName,
+            version: _msg.version,
+            size: _msg.size,
+            tokenContract: _msg.tokenContract
         });
     }
 
@@ -214,38 +201,31 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         SignatureKind _signatureKind
     ) external {
         _requireOracleSignature(_msg.structHash(), _signature, _signatureKind);
-        _setFeatureInfo(
+
+        require(!_stringEmpty(_msg.featureName), ERR_INVALID_ARGUMENT);
+
+        bytes32 _traitId = featureTraitId(
             _msg.projectId,
             _msg.featureName,
-            _msg.version,
-            _msg.tokenContract
+            _msg.version
         );
-    }
-
-    function _setFeatureInfo(
-        uint32 _projectId,
-        string memory _featureName,
-        uint32 _version,
-        IERC721 _tokenContract
-    ) internal {
-        require(!_stringEmpty(_featureName), ERR_INVALID_ARGUMENT);
-        bytes32 _traitId = featureTraitId(_projectId, _featureName, _version);
         require(
             _stringEmpty(featureTraitInfo[_traitId].name),
             ERR_ALREADY_EXISTS
         );
+
         featureTraitInfo[_traitId] = FeatureInfo({
-            projectId: _projectId,
-            name: _featureName,
-            tokenContract: _tokenContract
+            projectId: _msg.projectId,
+            name: _msg.featureName,
+            tokenContract: _msg.tokenContract
         });
         emit FeatureInfoSet({
             traitId: _traitId,
-            projectId: _projectId,
-            name: _featureName,
-            fullName: _featureName,
-            version: _version,
-            tokenContract: _tokenContract
+            projectId: _msg.projectId,
+            name: _msg.featureName,
+            fullName: _msg.featureName,
+            version: _msg.version,
+            tokenContract: _msg.tokenContract
         });
     }
 
@@ -257,22 +237,8 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
     ) external {
         bytes32 _structHash = _msg.structHash();
         _requireOracleSignature(_structHash, _signature, _signatureKind);
-        _updateTrait(
-            _structHash,
-            _msg.traitId,
-            _msg.words,
-            _msg.numTokensFinalized,
-            _msg.expectedLastLog
-        );
-    }
 
-    function _updateTrait(
-        bytes32 _structHash,
-        bytes32 _traitId,
-        TraitMembershipWord[] memory _words,
-        uint32 _numTokensFinalized,
-        bytes24 _expectedLastLog
-    ) internal {
+        bytes32 _traitId = _msg.traitId;
         require(
             !_stringEmpty(featureTraitInfo[_traitId].name),
             ERR_INVALID_ARGUMENT
@@ -281,13 +247,14 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
 
         uint32 _newSize = _oldMetadata.currentSize;
         uint32 _newNumFinalized = _oldMetadata.numFinalized;
-        if (_numTokensFinalized > _newNumFinalized) {
-            _newNumFinalized = _numTokensFinalized;
+        if (_msg.numTokensFinalized > _newNumFinalized) {
+            _newNumFinalized = _msg.numTokensFinalized;
+            bytes24 _expectedLastLog = _msg.expectedLastLog;
             require(_oldMetadata.log == _expectedLastLog, ERR_INVALID_STATE);
         }
 
-        for (uint256 _i = 0; _i < _words.length; _i++) {
-            TraitMembershipWord memory _word = _words[_i];
+        for (uint256 _i = 0; _i < _msg.words.length; _i++) {
+            TraitMembershipWord memory _word = _msg.words[_i];
             uint256 _oldWord = traitMembers[_traitId][_word.wordIndex];
             uint256 _updates = _word.mask & ~_oldWord;
 
