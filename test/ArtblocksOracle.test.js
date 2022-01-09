@@ -39,8 +39,12 @@ describe("ArtblocksOracle", () => {
   });
 
   // Arbitrary addresses to use as ERC-721 `tokenContract` fields.
-  const TOKEN_0 = "0x059edd72cd353df5106d2b9cc5ab83a52287ac3a";
-  const TOKEN_1 = "0xa7d8d9ef8d8ce8992df33d8b8cf4aebabd5bd270";
+  const TOKEN_0 = ethers.utils.getAddress(
+    "0x059edd72cd353df5106d2b9cc5ab83a52287ac3a"
+  );
+  const TOKEN_1 = ethers.utils.getAddress(
+    "0xa7d8d9ef8d8ce8992df33d8b8cf4aebabd5bd270"
+  );
 
   it("deploys", async () => {
     const oracle = await ArtblocksOracle.deploy();
@@ -220,11 +224,19 @@ describe("ArtblocksOracle", () => {
       const msg1 = { projectId, version, projectName, size, tokenContract };
       await expect(setProjectInfo(oracle, signers[1], msg1))
         .to.emit(oracle, "ProjectInfoSet")
-        .withArgs(traitId, projectId, projectName, version, size);
+        .withArgs(
+          traitId,
+          projectId,
+          projectName,
+          version,
+          size,
+          tokenContract
+        );
       expect(await oracle.projectTraitInfo(traitId)).to.deep.equal([
         ethers.BigNumber.from(projectId),
         projectName,
         ethers.BigNumber.from(size),
+        tokenContract,
       ]);
 
       const msg2 = { ...msg1, size: size + 1 };
@@ -245,14 +257,23 @@ describe("ArtblocksOracle", () => {
         featureName,
         version
       );
+      const tokenContract = TOKEN_1;
 
-      const msg = { projectId, featureName, version, tokenContract: TOKEN_1 };
+      const msg = { projectId, featureName, version, tokenContract };
       await expect(setFeatureInfo(oracle, signers[1], msg))
         .to.emit(oracle, "FeatureInfoSet")
-        .withArgs(traitId, projectId, featureName, featureName, version);
+        .withArgs(
+          traitId,
+          projectId,
+          featureName,
+          featureName,
+          version,
+          tokenContract
+        );
       expect(await oracle.featureTraitInfo(traitId)).to.deep.equal([
         ethers.BigNumber.from(projectId),
         featureName,
+        tokenContract,
       ]);
 
       await expect(setFeatureInfo(oracle, signers[1], msg)).to.be.revertedWith(

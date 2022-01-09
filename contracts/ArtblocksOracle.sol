@@ -30,6 +30,8 @@ struct ProjectInfo {
     string name;
     /// The number of tokens in this project, like `600`.
     uint256 size;
+    /// The ERC-721 contract for tokens belonging to this project.
+    IERC721 tokenContract;
 }
 
 struct FeatureInfo {
@@ -39,6 +41,8 @@ struct FeatureInfo {
     uint256 projectId;
     /// The human-readable name of this feature, like "Palette: Paddle".
     string name;
+    /// The ERC-721 contract for tokens belonging to this trait's project.
+    IERC721 tokenContract;
 }
 
 struct FeatureMetadata {
@@ -68,14 +72,16 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         uint256 indexed projectId,
         string name,
         uint256 version,
-        uint256 size
+        uint256 size,
+        IERC721 tokenContract
     );
     event FeatureInfoSet(
         bytes32 indexed traitId,
         uint256 indexed projectId,
         string indexed name,
         string fullName,
-        uint256 version
+        uint256 version,
+        IERC721 tokenContract
     );
     event TraitUpdated(
         bytes32 indexed traitId,
@@ -170,7 +176,8 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
             _msg.projectId,
             _msg.version,
             _msg.projectName,
-            _msg.size
+            _msg.size,
+            _msg.tokenContract
         );
     }
 
@@ -178,7 +185,8 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         uint256 _projectId,
         uint256 _version,
         string memory _projectName,
-        uint256 _size
+        uint256 _size,
+        IERC721 _tokenContract
     ) internal {
         require(_size > 0, ERR_INVALID_ARGUMENT);
         require(!_stringEmpty(_projectName), ERR_INVALID_ARGUMENT);
@@ -187,14 +195,16 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         projectTraitInfo[_traitId] = ProjectInfo({
             projectId: _projectId,
             name: _projectName,
-            size: _size
+            size: _size,
+            tokenContract: _tokenContract
         });
         emit ProjectInfoSet({
             traitId: _traitId,
             projectId: _projectId,
             name: _projectName,
             version: _version,
-            size: _size
+            size: _size,
+            tokenContract: _tokenContract
         });
     }
 
@@ -204,13 +214,19 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         SignatureKind _signatureKind
     ) external {
         _requireOracleSignature(_msg.structHash(), _signature, _signatureKind);
-        _setFeatureInfo(_msg.projectId, _msg.featureName, _msg.version);
+        _setFeatureInfo(
+            _msg.projectId,
+            _msg.featureName,
+            _msg.version,
+            _msg.tokenContract
+        );
     }
 
     function _setFeatureInfo(
         uint256 _projectId,
         string memory _featureName,
-        uint256 _version
+        uint256 _version,
+        IERC721 _tokenContract
     ) internal {
         require(!_stringEmpty(_featureName), ERR_INVALID_ARGUMENT);
         bytes32 _traitId = featureTraitId(_projectId, _featureName, _version);
@@ -220,14 +236,16 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         );
         featureTraitInfo[_traitId] = FeatureInfo({
             projectId: _projectId,
-            name: _featureName
+            name: _featureName,
+            tokenContract: _tokenContract
         });
         emit FeatureInfoSet({
             traitId: _traitId,
             projectId: _projectId,
             name: _featureName,
             fullName: _featureName,
-            version: _version
+            version: _version,
+            tokenContract: _tokenContract
         });
     }
 
