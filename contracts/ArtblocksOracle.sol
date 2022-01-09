@@ -312,37 +312,6 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         });
     }
 
-    /// Gets the location of the trait membership for the given token ID,
-    /// relative to the minimum token ID in its project. For instance, to look
-    /// up Archetype #250, call `_tokenBitmask(23000250, 23000000)`.
-    ///
-    /// The `_inRange` return value is true iff `_tokenId` is within the range
-    /// of valid tokens for its project: namely, if `_minTokenId <= _tokenId`
-    /// and `_tokenId < _minTokenId + PROJECT_STRIDE`. If `_inRange` is false,
-    /// the call is considered unsuccessful, and the other two return values
-    /// are to be ignored. The caller may wish to revert.
-    ///
-    /// For a successful call, the return values `_wordIndex` and `_mask` are
-    /// such that `traitMembers[_traitId][_wordIndex] & _mask` isolates the bit
-    /// that represents whether token `_tokenId` has trait `_traitId`
-    /// (uniformly for all traits).
-    function _tokenBitmask(uint256 _tokenId, uint256 _minTokenId)
-        internal
-        pure
-        returns (
-            bool _inRange,
-            uint256 _wordIndex,
-            uint256 _mask
-        )
-    {
-        if (_tokenId < _minTokenId) return (false, 0, 0);
-        uint256 _tokenIndex = _tokenId - _minTokenId;
-        if (_tokenIndex > PROJECT_STRIDE) return (false, 0, 0);
-        _inRange = true;
-        _wordIndex = _tokenIndex >> 8;
-        _mask = 1 << (_tokenIndex & 0xff);
-    }
-
     function hasTrait(
         IERC721, /*_tokenContract*/
         uint256 _tokenId,
@@ -384,11 +353,14 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         // from making bids on such traits.
         uint256 _projectId = featureTraitInfo[_traitId].projectId;
         uint256 _minTokenId = _projectId * PROJECT_STRIDE;
-        (bool _inRange, uint256 _wordIndex, uint256 _mask) = _tokenBitmask(
-            _tokenId,
-            _minTokenId
-        );
-        if (!_inRange) return false;
+
+        // Make sure that the token is in the right range for the project.
+        if (_tokenId < _minTokenId) return false;
+        uint256 _tokenIndex = _tokenId - _minTokenId;
+        if (_tokenIndex > PROJECT_STRIDE) return false;
+
+        uint256 _wordIndex = _tokenIndex >> 8;
+        uint256 _mask = 1 << (_tokenIndex & 0xff);
         return traitMembers[_traitId][_wordIndex] & _mask != 0;
     }
 
