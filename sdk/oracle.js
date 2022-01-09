@@ -2,8 +2,6 @@ const ethers = require("ethers");
 
 const { hashLegacyMessage } = require("./signatureChecker");
 
-const Bytes24Zero = "0x" + "00".repeat(24);
-
 const TraitType = Object.freeze({
   PROJECT: 0,
   FEATURE: 1,
@@ -13,6 +11,7 @@ const Errors = Object.freeze({
   ALREADY_EXISTS: "ArtblocksTraitOracle: ALREADY_EXISTS",
   IMMUTABLE: "ArtblocksTraitOracle: IMMUTABLE",
   INVALID_ARGUMENT: "ArtblocksTraitOracle: INVALID_ARGUMENT",
+  INVALID_STATE: "ArtblocksTraitOracle: INVALID_STATE",
   UNAUTHORIZED: "ArtblocksTraitOracle: UNAUTHORIZED",
   UNAUTHORIZED_OWNERSHIP_TRANSFER: "Ownable: caller is not the owner",
 });
@@ -229,8 +228,11 @@ function featureTraitId(projectId, featureName, version) {
   return ethers.utils.keccak256(blob);
 }
 
+const Bytes24Zero = "0x" + "00".repeat(24);
+const INITIAL_TRAIT_LOG = Bytes24Zero;
+
 function updateTraitLog(oldLog = null, msgs) {
-  let log = oldLog != null ? oldLog : Bytes24Zero;
+  let log = oldLog != null ? oldLog : INITIAL_TRAIT_LOG;
   for (const msg of msgs) {
     const structHash = addTraitMembershipsStructHash(msg);
     const hash = ethers.utils.keccak256(
@@ -260,7 +262,6 @@ function addTraitMembershipsMessage(baseMsg) {
 }
 
 module.exports = {
-  Bytes24Zero,
   TraitType,
   Errors,
   PROJECT_STRIDE,
@@ -271,5 +272,6 @@ module.exports = {
   projectTraitId,
   featureTraitId,
   updateTraitLog,
+  INITIAL_TRAIT_LOG,
   addTraitMembershipsMessage,
 };

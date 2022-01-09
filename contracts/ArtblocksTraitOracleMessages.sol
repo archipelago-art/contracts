@@ -17,8 +17,6 @@ struct SetFeatureInfoMessage {
 struct AddTraitMembershipsMessage {
     uint256 traitId;
     TraitMembershipWord[] words;
-    /// NOT YET USED.
-    ///
     /// If `numTokensFinalized` is greater than the current number of tokens
     /// finalized for this trait, then `expectedLastLog` must equal the
     /// previous value of the hash-update log for this trait (not including the

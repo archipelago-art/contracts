@@ -196,7 +196,7 @@ describe("ArtblocksTraitOracle", () => {
           sig,
           SignatureKind.ETHEREUM_SIGNED_MESSAGE
         )
-      ).to.emit(oracle, "TraitMembershipExpanded");
+      ).to.emit(oracle, "TraitUpdated");
     });
   });
 
@@ -338,8 +338,8 @@ describe("ArtblocksTraitOracle", () => {
       });
       traitLog = sdk.oracle.updateTraitLog(traitLog, [msg1]);
       await expect(addTraitMemberships(oracle, signer, msg1))
-        .to.emit(oracle, "TraitMembershipExpanded")
-        .withArgs(traitId, batch1.length, traitLog);
+        .to.emit(oracle, "TraitUpdated")
+        .withArgs(traitId, batch1.length, 0, traitLog);
       expect(
         await oracle.hasTrait(ethers.constants.AddressZero, batch1[0], traitId)
       ).to.equal(true);
@@ -361,8 +361,8 @@ describe("ArtblocksTraitOracle", () => {
       });
       traitLog = sdk.oracle.updateTraitLog(traitLog, [msg2]);
       await expect(await addTraitMemberships(oracle, signer, msg2))
-        .to.emit(oracle, "TraitMembershipExpanded")
-        .withArgs(traitId, tokenIds.length, traitLog);
+        .to.emit(oracle, "TraitUpdated")
+        .withArgs(traitId, tokenIds.length, 0, traitLog);
       expect(
         await oracle.hasTrait(ethers.constants.AddressZero, batch1[0], traitId)
       ).to.equal(true);
@@ -417,8 +417,8 @@ describe("ArtblocksTraitOracle", () => {
       });
       traitLog = sdk.oracle.updateTraitLog(traitLog, [msg1]);
       await expect(addTraitMemberships(oracle, signer, msg1))
-        .to.emit(oracle, "TraitMembershipExpanded")
-        .withArgs(traitId, 2, traitLog);
+        .to.emit(oracle, "TraitUpdated")
+        .withArgs(traitId, 2, 0, traitLog);
       expect(
         await oracle.hasTrait(
           ethers.constants.AddressZero,
@@ -448,8 +448,8 @@ describe("ArtblocksTraitOracle", () => {
       });
       traitLog = sdk.oracle.updateTraitLog(traitLog, [msg2]);
       await expect(addTraitMemberships(oracle, signer, msg2))
-        .to.emit(oracle, "TraitMembershipExpanded")
-        .withArgs(traitId, 3, traitLog);
+        .to.emit(oracle, "TraitUpdated")
+        .withArgs(traitId, 3, 0, traitLog);
       expect(
         await oracle.hasTrait(
           ethers.constants.AddressZero,
@@ -507,8 +507,8 @@ describe("ArtblocksTraitOracle", () => {
       const msg1 = sdk.oracle.addTraitMembershipsMessage({ traitId, tokenIds });
       const traitLog = sdk.oracle.updateTraitLog(null, [msg1]);
       await expect(addTraitMemberships(oracle, signer, msg1))
-        .to.emit(oracle, "TraitMembershipExpanded")
-        .withArgs(traitId, 2, traitLog);
+        .to.emit(oracle, "TraitUpdated")
+        .withArgs(traitId, 2, 0, traitLog);
     });
 
     it("rejects signatures from unauthorized accounts", async () => {
@@ -564,18 +564,23 @@ describe("ArtblocksTraitOracle", () => {
 
     it("allows basic finalization and reverts on later modifications", async () => {
       const { oracle, signer } = await setUp();
-      expect(await oracle.traitMembershipFinalizations(traitId, 0)).to.equal(0);
-      await expect(
-        addTraitMemberships(oracle, signer, {
-          traitId,
-          words: [{ wordIndex: 0, mask: 0b101, finalized: true }],
-        })
-      )
-        .to.emit(oracle, "TraitMembershipFinalized")
-        .withArgs(traitId, 0);
-      expect(await oracle.traitMembershipFinalizations(traitId, 0)).to.equal(
-        0x01
-      );
+      expect(await oracle.traitMetadata(traitId)).to.deep.equal([
+        0,
+        0,
+        sdk.oracle.INITIAL_TRAIT_LOG,
+      ]);
+      const msg1 = sdk.oracle.addTraitMembershipsMessage({
+        traitId,
+        words: [{ wordIndex: 0, mask: 0b101, finalized: false }],
+        numTokensFinalized: 256,
+        expectedLastLog: sdk.oracle.INITIAL_TRAIT_LOG,
+      });
+      const log1 = sdk.oracle.updateTraitLog(null, [msg1]);
+      await expect(addTraitMemberships(oracle, signer, msg1))
+        .to.emit(oracle, "TraitUpdated")
+        .withArgs(traitId, 2, 256, log1);
+      expect(await oracle.traitMetadata(traitId)).to.deep.equal([2, 256, log1]);
+
       await expect(
         addTraitMemberships(oracle, signer, {
           traitId,
@@ -584,182 +589,175 @@ describe("ArtblocksTraitOracle", () => {
       ).to.be.revertedWith(Errors.IMMUTABLE);
     });
 
-    it("allows additions after finalization of an unrelated word", async () => {
+    it("allows additions after finalization of tokens in lower words", async () => {
       const { oracle, signer } = await setUp();
+      const log0 = sdk.oracle.INITIAL_TRAIT_LOG;
       const msg1 = sdk.oracle.addTraitMembershipsMessage({
         traitId,
-        words: [{ wordIndex: 0, mask: 0b101, finalized: true }],
+        words: [{ wordIndex: 0, mask: 0b101, finalized: false }],
+        numTokensFinalized: 256,
+        expectedLastLog: log0,
       });
+      const log1 = sdk.oracle.updateTraitLog(log0, [msg1]);
       await addTraitMemberships(oracle, signer, msg1);
-      expect(await oracle.traitMembershipFinalizations(traitId, 0)).to.equal(
-        0x01
-      );
+      expect(await oracle.traitMetadata(traitId)).to.deep.equal([2, 256, log1]);
       const msg2 = sdk.oracle.addTraitMembershipsMessage({
         traitId,
         words: [{ wordIndex: 1, mask: 0b111, finalized: false }],
       });
-      const traitLog = sdk.oracle.updateTraitLog(null, [msg1, msg2]);
+      const log2 = sdk.oracle.updateTraitLog(log1, [msg2]);
       await expect(addTraitMemberships(oracle, signer, msg2))
-        .to.emit(oracle, "TraitMembershipExpanded")
-        .withArgs(traitId, 5, traitLog);
+        .to.emit(oracle, "TraitUpdated")
+        .withArgs(traitId, 5, 256, log2);
+      expect(await oracle.traitMetadata(traitId)).to.deep.equal([5, 256, log2]);
     });
 
-    it("requires the finalizing word to include all known members", async () => {
+    it("permits non-finalizing no-op additions after finalization", async () => {
       const { oracle, signer } = await setUp();
       await addTraitMemberships(oracle, signer, {
         traitId,
-        words: [{ wordIndex: 0, mask: 0b111, finalized: true }],
+        words: [{ wordIndex: 0, mask: 0b111, finalized: false }],
+        numTokensFinalized: 256,
+        expectedLastLog: sdk.oracle.INITIAL_TRAIT_LOG,
       });
+      expect(
+        await addTraitMemberships(oracle, signer, {
+          traitId,
+          words: [{ wordIndex: 0, mask: 0b101, finalized: false }],
+        })
+      ).not.to.emit(oracle, "TraitUpdated");
+    });
+
+    it("permits finalizing no-op additions after finalization", async () => {
+      const { oracle, signer } = await setUp();
+      await addTraitMemberships(oracle, signer, {
+        traitId,
+        words: [{ wordIndex: 0, mask: 0b111, finalized: false }],
+        numTokensFinalized: 256,
+        expectedLastLog: sdk.oracle.INITIAL_TRAIT_LOG,
+      });
+      expect(
+        await addTraitMemberships(oracle, signer, {
+          traitId,
+          words: [{ wordIndex: 0, mask: 0b111, finalized: false }],
+          numTokensFinalized: 256,
+          // Not the current trait log, but ignored because this is a no-op.
+          expectedLastLog: sdk.oracle.INITIAL_TRAIT_LOG,
+        })
+      ).not.to.emit(oracle, "TraitUpdated");
+    });
+
+    it("may finalize part of a word", async () => {
+      const { oracle, signer } = await setUp();
+      const log0 = sdk.oracle.INITIAL_TRAIT_LOG;
+      const msg1 = sdk.oracle.addTraitMembershipsMessage({
+        traitId,
+        words: [
+          { wordIndex: 0, mask: 0b101, finalized: false },
+          { wordIndex: 1, mask: 0b010, finalized: false },
+        ],
+        numTokensFinalized: 259,
+        expectedLastLog: log0,
+      });
+      const log1 = sdk.oracle.updateTraitLog(log0, [msg1]);
+      await expect(addTraitMemberships(oracle, signer, msg1))
+        .to.emit(oracle, "TraitUpdated")
+        .withArgs(traitId, 3, 259, log1);
+      expect(await oracle.traitMetadata(traitId)).to.deep.equal([3, 259, log1]);
+
+      // Not okay to add memberships in a completely finalized word.
       await expect(
         addTraitMemberships(oracle, signer, {
           traitId,
-          words: [{ wordIndex: 0, mask: 0b101, finalized: true }],
+          words: [{ wordIndex: 0, mask: 0b1000, finalized: false }],
         })
-      ).to.be.revertedWith(Errors.INVALID_ARGUMENT);
+      ).to.be.revertedWith(Errors.IMMUTABLE);
+
+      // Not okay to add memberships in the finalized portion of a partially
+      // finalized word.
+      await expect(
+        addTraitMemberships(oracle, signer, {
+          traitId,
+          words: [{ wordIndex: 1, mask: 0b0100, finalized: false }],
+        })
+      ).to.be.revertedWith(Errors.IMMUTABLE);
+
+      // Okay to add memberships in the unfinalized portion of a partially
+      // finalized word.
+      const msg2 = sdk.oracle.addTraitMembershipsMessage({
+        traitId,
+        words: [{ wordIndex: 1, mask: 0b1000, finalized: false }],
+      });
+      const log2 = sdk.oracle.updateTraitLog(log1, [msg2]);
+      expect(await addTraitMemberships(oracle, signer, msg2))
+        .to.emit(oracle, "TraitUpdated")
+        .withArgs(traitId, 4, 259, log2);
+
+      // Okay to add memberships in a completely unfinalized word.
+      const msg3 = sdk.oracle.addTraitMembershipsMessage({
+        traitId,
+        words: [{ wordIndex: 2, mask: 0b0001, finalized: false }],
+      });
+      const log3 = sdk.oracle.updateTraitLog(log2, [msg3]);
+      expect(await addTraitMemberships(oracle, signer, msg3))
+        .to.emit(oracle, "TraitUpdated")
+        .withArgs(traitId, 5, 259, log3);
     });
 
-    it("permits non-final no-op additions after finalization", async () => {
+    it("properly finalizes more than 65536 tokens", async () => {
       const { oracle, signer } = await setUp();
       await addTraitMemberships(oracle, signer, {
         traitId,
-        words: [{ wordIndex: 0, mask: 0b111, finalized: true }],
+        words: [
+          { wordIndex: 0, mask: 0b101, finalized: false },
+          { wordIndex: 257, mask: 0b010, finalized: false },
+        ],
+        numTokensFinalized: 256 * 258 + 2,
       });
-      await addTraitMemberships(oracle, signer, {
+
+      const tests = [
+        { wordIndex: 1, mask: 0b1, okay: false },
+        { wordIndex: 256, mask: 0b1, okay: false },
+        { wordIndex: 257, mask: 0b1, okay: false },
+        { wordIndex: 258, mask: 0b1, okay: false },
+        { wordIndex: 258, mask: 0b10, okay: false },
+        { wordIndex: 258, mask: 0b100, okay: true },
+        { wordIndex: 259, mask: 0b1, okay: true },
+      ];
+
+      for (const { wordIndex, mask, okay } of tests) {
+        const result = addTraitMemberships(oracle, signer, {
+          traitId,
+          words: [{ wordIndex, mask, finalized: false }],
+        });
+        if (okay) {
+          await expect(result).to.emit(oracle, "TraitUpdated");
+        } else {
+          await expect(result).to.be.revertedWith(Errors.IMMUTABLE);
+        }
+      }
+    });
+
+    it("rejects finalizations with incorrect trait logs", async () => {
+      const { oracle, signer } = await setUp();
+      const log0 = sdk.oracle.INITIAL_TRAIT_LOG;
+      const msg1 = sdk.oracle.addTraitMembershipsMessage({
         traitId,
         words: [{ wordIndex: 0, mask: 0b101, finalized: false }],
+        numTokensFinalized: 5,
+        expectedLastLog: log0,
       });
-    });
+      const log1 = sdk.oracle.updateTraitLog(log0, [msg1]);
+      await addTraitMemberships(oracle, signer, msg1);
 
-    it("permits final no-op additions after finalization", async () => {
-      const { oracle, signer } = await setUp();
-      await addTraitMemberships(oracle, signer, {
-        traitId,
-        words: [{ wordIndex: 0, mask: 0b111, finalized: true }],
-      });
-      await addTraitMemberships(oracle, signer, {
-        traitId,
-        words: [{ wordIndex: 0, mask: 0b111, finalized: true }],
-      });
-    });
-
-    it("may finalize multiple words at once, leaving other words alone", async () => {
-      const { oracle, signer } = await setUp();
       await expect(
         addTraitMemberships(oracle, signer, {
           traitId,
-          words: [
-            { wordIndex: 0, mask: 0b101, finalized: true },
-            { wordIndex: 2, mask: 0b010, finalized: true },
-          ],
+          words: [],
+          numTokensFinalized: 6,
+          expectLastLog: log0, // wrong
         })
-      )
-        .to.emit(oracle, "TraitMembershipFinalized")
-        .withArgs(traitId, 0)
-        .to.emit(oracle, "TraitMembershipFinalized")
-        .withArgs(traitId, 2);
-      expect(await oracle.traitMembershipFinalizations(traitId, 0)).to.equal(
-        0x05
-      );
-      await expect(
-        addTraitMemberships(oracle, signer, {
-          traitId,
-          words: [{ wordIndex: 0, mask: 0b1000, finalized: false }],
-        })
-      ).to.be.revertedWith(Errors.IMMUTABLE);
-      await expect(
-        addTraitMemberships(oracle, signer, {
-          traitId,
-          words: [{ wordIndex: 2, mask: 0b1000, finalized: false }],
-        })
-      ).to.be.revertedWith(Errors.IMMUTABLE);
-      await addTraitMemberships(oracle, signer, {
-        traitId,
-        words: [{ wordIndex: 1, mask: 0b1000, finalized: false }],
-      });
-    });
-
-    it("finalizes words with indices greater than 255", async () => {
-      const { oracle, signer } = await setUp();
-      await addTraitMemberships(oracle, signer, {
-        traitId,
-        words: [
-          { wordIndex: 0, mask: 0b101, finalized: true },
-          { wordIndex: 257, mask: 0b010, finalized: true },
-        ],
-      });
-      expect(await oracle.traitMembershipFinalizations(traitId, 0)).to.equal(
-        0x01
-      );
-      expect(await oracle.traitMembershipFinalizations(traitId, 1)).to.equal(
-        0x02
-      );
-      await expect(
-        addTraitMemberships(oracle, signer, {
-          traitId,
-          words: [{ wordIndex: 0, mask: 0b1000, finalized: false }],
-        })
-      ).to.be.revertedWith(Errors.IMMUTABLE);
-      await expect(
-        addTraitMemberships(oracle, signer, {
-          traitId,
-          words: [{ wordIndex: 257, mask: 0b1000, finalized: false }],
-        })
-      ).to.be.revertedWith(Errors.IMMUTABLE);
-      await addTraitMemberships(oracle, signer, {
-        traitId,
-        words: [{ wordIndex: 1, mask: 0b1000, finalized: false }],
-      });
-      await addTraitMemberships(oracle, signer, {
-        traitId,
-        words: [{ wordIndex: 256, mask: 0b1000, finalized: false }],
-      });
-    });
-
-    it("computes finalized-up-to incrementally", async () => {
-      const { oracle, signer } = await setUp();
-      await addTraitMemberships(oracle, signer, {
-        traitId,
-        words: [
-          { wordIndex: 0, mask: 0, finalized: true },
-          { wordIndex: 2, mask: 0, finalized: true },
-        ],
-      });
-      expect(await oracle.traitMembershipFinalizedUpTo(traitId, 600)).to.equal(
-        256
-      );
-      await addTraitMemberships(oracle, signer, {
-        traitId,
-        words: [{ wordIndex: 1, mask: 0, finalized: true }],
-      });
-      expect(await oracle.traitMembershipFinalizedUpTo(traitId, 600)).to.equal(
-        600
-      );
-      expect(
-        await oracle.traitMembershipFinalizedUpTo(traitId, 256 * 3)
-      ).to.equal(256 * 3);
-      expect(
-        await oracle.traitMembershipFinalizedUpTo(traitId, 256 * 3 + 1)
-      ).to.equal(256 * 3);
-    });
-
-    it("computes finalized-up-to when more than 256 word indices are final", async () => {
-      const { oracle, signer } = await setUp();
-      await addTraitMemberships(oracle, signer, {
-        traitId,
-        words: Array(258)
-          .fill()
-          .map((_, i) => ({ wordIndex: i, mask: 0, finalized: true })),
-      });
-      expect(await oracle.traitMembershipFinalizedUpTo(traitId, 1e6)).to.equal(
-        256 * 258
-      );
-    });
-
-    it("computes finalized-up-to when no word indices are final", async () => {
-      const { oracle, signer } = await setUp();
-      expect(await oracle.traitMembershipFinalizedUpTo(traitId, 1e6)).to.equal(
-        0
-      );
+      ).to.be.revertedWith(Errors.INVALID_STATE);
     });
   });
 

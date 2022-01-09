@@ -46,8 +46,10 @@ struct FeatureMetadata {
     /// the sum of the population counts of `traitMembers[_t][_i]` for each
     /// `_i`.
     uint32 currentSize;
-    /// Reserved; not yet used.
-    uint32 finalized;
+    /// Token indices `0` (inclusive) through `numFinalized` (exclusive),
+    /// relative to the start of the project, have their memberships in this
+    /// trait finalized.
+    uint32 numFinalized;
     /// A hash accumulator of updates to this trait. Initially `0`; updated for
     /// each new message `_msg` by ABI-encoding `(log, _msg.structHash())`,
     /// applying `keccak256`, and truncating the result back to `bytes24`.
@@ -75,17 +77,18 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
         string fullName,
         uint256 version
     );
-    event TraitMembershipExpanded(
+    event TraitUpdated(
         uint256 indexed traitId,
-        uint256 newSize,
+        uint32 newSize,
+        uint32 newNumFinalized,
         bytes24 newLog
     );
-    event TraitMembershipFinalized(uint256 indexed traitId, uint256 wordIndex);
 
     string constant ERR_ALREADY_EXISTS = "ArtblocksTraitOracle: ALREADY_EXISTS";
     string constant ERR_IMMUTABLE = "ArtblocksTraitOracle: IMMUTABLE";
     string constant ERR_INVALID_ARGUMENT =
         "ArtblocksTraitOracle: INVALID_ARGUMENT";
+    string constant ERR_INVALID_STATE = "ArtblocksTraitOracle: INVALID_STATE";
     string constant ERR_UNAUTHORIZED = "ArtblocksTraitOracle: UNAUTHORIZED";
 
     bytes32 constant TYPEHASH_DOMAIN_SEPARATOR =
@@ -115,17 +118,7 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
     mapping(uint256 => mapping(uint256 => uint256)) traitMembers;
     /// Metadata for each feature trait; see struct definition. Not defined for
     /// project traits.
-    mapping(uint256 => FeatureMetadata) traitMetadata;
-    /// For each trait ID, a set of words in `traitMembers[_]` that are
-    /// finalized. Encoded by packing 256 word indices into each word: the
-    /// `_wordIndex % 256`th bit (counting form the LSB) of
-    /// `traitMembers[_traitId][_wordIndex / 256]` represents whether
-    /// `traitMembers[_traitId][_wordIndex]` is finalized. For instance, if
-    /// `traitFinalizations[_t][0] == 0x05`, then `traitMembers[_t][0]` and
-    /// `traitMembers[_t][2]` are finalized, meaning that the `_t`-membership
-    /// statuses of tokens with IDs between 0 and 255 or between 512 and 767
-    /// (relative to start of project) are finalized.
-    mapping(uint256 => mapping(uint256 => uint256)) traitFinalizations;
+    mapping(uint256 => FeatureMetadata) traitMetadataMap;
 
     function supportsInterface(bytes4 _interfaceId)
         external
@@ -248,60 +241,75 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
     ) external {
         bytes32 _structHash = _msg.structHash();
         _requireOracleSignature(_structHash, _signature, _signatureKind);
-        _addTraitMemberships(_structHash, _msg.traitId, _msg.words);
+        _addTraitMemberships(
+            _structHash,
+            _msg.traitId,
+            _msg.words,
+            _msg.numTokensFinalized,
+            _msg.expectedLastLog
+        );
     }
 
     function _addTraitMemberships(
         bytes32 _structHash,
         uint256 _traitId,
-        TraitMembershipWord[] memory _words
+        TraitMembershipWord[] memory _words,
+        uint32 _numTokensFinalized,
+        bytes24 _expectedLastLog
     ) internal {
         require(
             !_stringEmpty(featureTraitInfo[_traitId].name),
             ERR_INVALID_ARGUMENT
         );
-        FeatureMetadata memory _oldMetadata = traitMetadata[_traitId];
-        uint32 _originalSize = _oldMetadata.currentSize;
-        uint32 _newSize = _originalSize;
+        FeatureMetadata memory _oldMetadata = traitMetadataMap[_traitId];
+
+        uint32 _newSize = _oldMetadata.currentSize;
+        uint32 _newNumFinalized = _oldMetadata.numFinalized;
+        if (_numTokensFinalized > _newNumFinalized) {
+            _newNumFinalized = _numTokensFinalized;
+            require(_oldMetadata.log == _expectedLastLog, ERR_INVALID_STATE);
+        }
 
         for (uint256 _i = 0; _i < _words.length; _i++) {
             TraitMembershipWord memory _word = _words[_i];
             uint256 _oldWord = traitMembers[_traitId][_word.wordIndex];
-            uint256 _newWord = _oldWord | _word.mask;
-            bool _wasAlreadyFinal = _isFinal(_traitId, _word.wordIndex);
-            if (_wasAlreadyFinal) {
-                require(_oldWord == _newWord, ERR_IMMUTABLE);
-            }
-            if (_word.finalized) {
-                // If this is the final set, then the given `_word.mask` must
-                // cover all the bits set in existing storage.
-                require(_newWord == _word.mask, ERR_INVALID_ARGUMENT);
-                if (!_wasAlreadyFinal) {
-                    emit TraitMembershipFinalized({
-                        traitId: _traitId,
-                        wordIndex: _word.wordIndex
-                    });
-                }
-                _finalize(_traitId, _word.wordIndex);
-            }
-            _newSize += uint32((_newWord ^ _oldWord).popcnt());
+            uint256 _updates = _word.mask & ~_oldWord;
+
+            // It's an error to update any tokens in this word that are already
+            // finalized.
+            uint256 _errantUpdates = _updates &
+                finalizedTokensMask(_oldMetadata.numFinalized, _word.wordIndex);
+            require(_errantUpdates == 0, ERR_IMMUTABLE);
+
+            uint256 _newWord = _oldWord | _updates;
+
+            _newSize += uint32(_updates.popcnt());
             traitMembers[_traitId][_word.wordIndex] = _newWord;
         }
-        if (_newSize == _originalSize) return;
+
+        // If this message didn't add or finalize any new memberships, we don't
+        // want to update the hash log *or* emit an event.
+        if (
+            _newSize == _oldMetadata.currentSize &&
+            _newNumFinalized == _oldMetadata.numFinalized
+        ) {
+            return;
+        }
 
         bytes24 _oldLog = _oldMetadata.log;
         bytes24 _newLog = bytes24(keccak256(abi.encode(_oldLog, _structHash)));
 
         FeatureMetadata memory _newMetadata = FeatureMetadata({
             currentSize: _newSize,
-            finalized: _oldMetadata.finalized,
+            numFinalized: _newNumFinalized,
             log: _newLog
         });
-        traitMetadata[_traitId] = _newMetadata;
+        traitMetadataMap[_traitId] = _newMetadata;
 
-        emit TraitMembershipExpanded({
+        emit TraitUpdated({
             traitId: _traitId,
             newSize: _newSize,
+            newNumFinalized: _newNumFinalized,
             newLog: _newLog
         });
     }
@@ -335,75 +343,6 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
         _inRange = true;
         _wordIndex = _tokenIndex >> 8;
         _mask = 1 << (_tokenIndex & 0xff);
-    }
-
-    /// Marks tokens `_wordIndex * 256` to `_wordIndex * 256 + 255` (relative
-    /// to start of project) as finalized for `_traitId`.
-    function _finalize(uint256 _traitId, uint256 _wordIndex) internal {
-        uint256 _mask = 1 << (_wordIndex & 0xff);
-        traitFinalizations[_traitId][_wordIndex >> 8] |= _mask;
-    }
-
-    /// Tests whether tokens `_wordIndex * 256` to `_wordIndex * 256 + 255`
-    /// (relative to start of project) have been finalized for `_traitId`.
-    function _isFinal(uint256 _traitId, uint256 _wordIndex)
-        internal
-        view
-        returns (bool)
-    {
-        uint256 _mask = 1 << (_wordIndex & 0xff);
-        return (traitFinalizations[_traitId][_wordIndex >> 8] & _mask) != 0;
-    }
-
-    /// Returns a 256-bit mask whose `_i`th (from LSB) bit is set if tokens
-    /// `_start` through `_start + 255` are finalized for feature trait
-    /// `_traitId`, where `_start == 256 * (_page * 256 + _i)`, with token IDs
-    /// relative to start of project.
-    ///
-    /// For instance, if `traitMembershipFinalizations(_t, 0) == 0x05`, then
-    /// among those tokens with IDs 0 through 65535 (relative to start of
-    /// project), the `_t`-membership statuses are finalized for those with IDs
-    /// 0 through 255 and 512 through 767.
-    function traitMembershipFinalizations(uint256 _traitId, uint256 _page)
-        external
-        view
-        returns (uint256)
-    {
-        return traitFinalizations[_traitId][_page];
-    }
-
-    /// Computes the largest number `_i <= _limit` such that the membership
-    /// statuses of tokens `0` (inclusive) through `_i` (exclusive) in feature
-    /// trait `_traitId` are finalized. (Token IDs relative to start of
-    /// project.)
-    ///
-    /// If `_traitId` is a feature trait for a project with `_size` total
-    /// tokens, then `traitMembershipFinalizedUpTo(_traitId, _size) == _size`
-    /// if and only if the relevant memberships are finalized for *all* tokens.
-    function traitMembershipFinalizedUpTo(uint256 _traitId, uint256 _limit)
-        external
-        view
-        returns (uint256)
-    {
-        uint256 _result = 0;
-        uint256 _wordIndex = 0;
-        uint256 _finalization;
-        while (_result < _limit) {
-            if (_wordIndex & 0xff == 0) {
-                _finalization = traitFinalizations[_traitId][_wordIndex >> 8];
-            }
-            // Lazy one-bit-at-a-time implementation here instead of using a
-            // count-trailing-ones function, just for clarity of correctness
-            // and because the gas wastage shouldn't be too high.
-            if ((_finalization & (1 << (_wordIndex & 0xff))) != 0) {
-                _result += 256;
-            } else {
-                break;
-            }
-            _wordIndex++;
-        }
-        if (_result > _limit) _result = _limit;
-        return _result;
     }
 
     function hasTrait(
@@ -489,12 +428,66 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
         view
         returns (uint256)
     {
-        return traitMetadata[_featureTraitId].currentSize;
+        return traitMetadataMap[_featureTraitId].currentSize;
+    }
+
+    function traitMetadata(uint256 _featureTraitId)
+        external
+        view
+        returns (
+            uint32 _currentSize,
+            uint32 _numFinalized,
+            bytes24 _log
+        )
+    {
+        FeatureMetadata memory _meta = traitMetadataMap[_featureTraitId];
+        _currentSize = _meta.currentSize;
+        _numFinalized = _meta.numFinalized;
+        _log = _meta.log;
     }
 
     /// Dumb helper to test whether a string is empty, because Solidity doesn't
     /// expose `_s.length` for a string `_s`.
     function _stringEmpty(string memory _s) internal pure returns (bool) {
         return bytes(_s).length == 0;
+    }
+
+    /// Given that the first `_numFinalized` tokens for trait `_t` have been
+    /// finalized, returns a mask into `traitMembers[_t][_wordIndex]` of
+    /// memberships that are finalized and thus not permitted to be updated.
+    ///
+    /// For instance, if `_numFinalized == 259`, then token indices 0 through 258
+    /// (inclusive) have been finalized, so:
+    ///
+    ///     `_finalizedTokensMask(259, 0) == ~0`
+    ///         because all tokens in word 0 have been finalized
+    ///         be updated
+    ///     `_finalizedTokensMask(259, 1) == (1 << 3) - 1`
+    ///         because the first three tokens (256, 257, 258) within this word
+    ///         have been finalized, so the result has the low 3 bits set
+    ///     `_finalizedTokensMask(259, 2) == 0`
+    ///         because no tokens in word 2 (or higher) have been finalized
+    function finalizedTokensMask(uint32 _numFinalized, uint256 _wordIndex)
+        internal
+        pure
+        returns (uint256)
+    {
+        uint256 _firstTokenInWord = _wordIndex << 8;
+        if (_numFinalized < _firstTokenInWord) {
+            // Nothing in this word is finalized.
+            return 0;
+        }
+        uint256 _numFinalizedSinceStartOfWord = uint256(_numFinalized) -
+            _firstTokenInWord;
+        if (_numFinalizedSinceStartOfWord > 0xff) {
+            // Everything in this word is finalized.
+            return ~uint256(0);
+        }
+        // Otherwise, between 0 and 255 tokens in this word are finalized; form
+        // a mask of their indices.
+        //
+        // (This subtraction doesn't underflow because the shift produces a
+        // nonzero value, given the bounds on `_numFinalizedSinceStartOfWord`.)
+        return (1 << _numFinalizedSinceStartOfWord) - 1;
     }
 }
