@@ -17,12 +17,12 @@ describe("sdk/circuit", () => {
 
   describe("encodeTrait", () => {
     it("encodes an empty circuit", () => {
-      const input = {
-        underlyingOracle: ethers.constants.AddressZero,
+      const underlyingOracle = ethers.constants.AddressZero;
+      const circuit = {
         baseTraits: [],
         ops: [],
       };
-      const trait = sdk.circuit.encodeTrait(input);
+      const trait = sdk.circuit.encodeTrait(underlyingOracle, circuit);
       expect(formatWords(trait)).to.deep.equal([
         // underlying oracle address
         "0000000000000000000000000000000000000000000000000000000000000000",
@@ -54,8 +54,8 @@ describe("sdk/circuit", () => {
         // (never strictly necessary, but valid, so let's test it)
         { type: "STOP" },
       ];
-      const input = { underlyingOracle, baseTraits, ops };
-      const trait = sdk.circuit.encodeTrait(input);
+      const circuit = { baseTraits, ops };
+      const trait = sdk.circuit.encodeTrait(underlyingOracle, circuit);
       expect(formatWords(trait)).to.deep.equal([
         // underlying oracle address
         "000000000000000000000000fefefefefefefefefefefefefefefefefefefefe",
@@ -76,8 +76,8 @@ describe("sdk/circuit", () => {
       expect(ethers.utils.hexDataLength(long)).to.equal(0xfffe);
       const baseTraits = [short, long];
       const ops = [{ type: "OR", arg0: 0, arg1: 1 }];
-      const input = { underlyingOracle, baseTraits, ops };
-      const trait = sdk.circuit.encodeTrait(input);
+      const circuit = { baseTraits, ops };
+      const trait = sdk.circuit.encodeTrait(underlyingOracle, circuit);
 
       const expected =
         "0x" +
@@ -102,8 +102,8 @@ describe("sdk/circuit", () => {
       expect(ethers.utils.hexDataLength(tooLong)).to.equal(0xffff);
       const baseTraits = [tooLong];
       const ops = [];
-      const input = { underlyingOracle, baseTraits, ops };
-      expect(() => sdk.circuit.encodeTrait(input)).to.throw(
+      const circuit = { baseTraits, ops };
+      expect(() => sdk.circuit.encodeTrait(underlyingOracle, circuit)).to.throw(
         "base trait 0 too long: 65535 > 65534"
       );
     });
@@ -113,8 +113,8 @@ describe("sdk/circuit", () => {
         .fill()
         .map((_, i) => "0x0" + i.toString(16));
       const ops = [{ type: "OR", arg0: 0, arg1: 15 }];
-      const input = { underlyingOracle, baseTraits, ops };
-      const trait = sdk.circuit.encodeTrait(input);
+      const circuit = { baseTraits, ops };
+      const trait = sdk.circuit.encodeTrait(underlyingOracle, circuit);
       expect(formatWords(trait)).to.deep.equal([
         // underlying oracle address
         "000000000000000000000000fefefefefefefefefefefefefefefefefefefefe",
@@ -130,8 +130,8 @@ describe("sdk/circuit", () => {
     it("rejects a circuit with too many base traits", () => {
       const baseTraits = Array(17).fill("0x");
       const ops = [];
-      const input = { underlyingOracle, baseTraits, ops };
-      expect(() => sdk.circuit.encodeTrait(input)).to.throw(
+      const circuit = { baseTraits, ops };
+      expect(() => sdk.circuit.encodeTrait(underlyingOracle, circuit)).to.throw(
         "too many base traits: 17 > 16"
       );
     });
@@ -141,8 +141,8 @@ describe("sdk/circuit", () => {
       const ops = Array(128)
         .fill()
         .map((_, i) => ({ type: "NOT", arg: i }));
-      const input = { underlyingOracle, baseTraits, ops };
-      const trait = sdk.circuit.encodeTrait(input);
+      const circuit = { baseTraits, ops };
+      const trait = sdk.circuit.encodeTrait(underlyingOracle, circuit);
       const expected =
         "0x" +
         [
@@ -165,8 +165,8 @@ describe("sdk/circuit", () => {
     it("rejects a circuit with too many ops", () => {
       const baseTraits = [];
       const ops = Array(129).fill({ type: "NOT", arg: 0 });
-      const input = { underlyingOracle, baseTraits, ops };
-      expect(() => sdk.circuit.encodeTrait(input)).to.throw(
+      const circuit = { baseTraits, ops };
+      expect(() => sdk.circuit.encodeTrait(underlyingOracle, circuit)).to.throw(
         "too many ops: 129 > 128"
       );
     });
@@ -174,8 +174,8 @@ describe("sdk/circuit", () => {
     it("rejects a circuit with an unknown op type", () => {
       const baseTraits = [];
       const ops = [{ type: "WAT", arg: 0 }];
-      const input = { underlyingOracle, baseTraits, ops };
-      expect(() => sdk.circuit.encodeTrait(input)).to.throw(
+      const circuit = { baseTraits, ops };
+      expect(() => sdk.circuit.encodeTrait(underlyingOracle, circuit)).to.throw(
         "unknown op type: WAT"
       );
     });
@@ -183,8 +183,8 @@ describe("sdk/circuit", () => {
     it("rejects a circuit with a negative op argument", () => {
       const baseTraits = [];
       const ops = [{ type: "NOT", arg: -1 }];
-      const input = { underlyingOracle, baseTraits, ops };
-      expect(() => sdk.circuit.encodeTrait(input)).to.throw(
+      const circuit = { baseTraits, ops };
+      expect(() => sdk.circuit.encodeTrait(underlyingOracle, circuit)).to.throw(
         "bad op argument: -1"
       );
     });
@@ -192,8 +192,8 @@ describe("sdk/circuit", () => {
     it("rejects a circuit with an op argument over 0xff", () => {
       const baseTraits = [];
       const ops = [{ type: "NOT", arg: 256 }];
-      const input = { underlyingOracle, baseTraits, ops };
-      expect(() => sdk.circuit.encodeTrait(input)).to.throw(
+      const circuit = { baseTraits, ops };
+      expect(() => sdk.circuit.encodeTrait(underlyingOracle, circuit)).to.throw(
         "bad op argument: 256"
       );
     });
@@ -201,8 +201,8 @@ describe("sdk/circuit", () => {
     it("rejects a circuit with a missing op argument", () => {
       const baseTraits = [];
       const ops = [{ type: "OR", arg0: 0 }];
-      const input = { underlyingOracle, baseTraits, ops };
-      expect(() => sdk.circuit.encodeTrait(input)).to.throw(
+      const circuit = { baseTraits, ops };
+      expect(() => sdk.circuit.encodeTrait(underlyingOracle, circuit)).to.throw(
         "bad op argument: undefined"
       );
     });

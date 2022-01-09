@@ -12,6 +12,11 @@ type OpNot = { type: "NOT", arg: int };
 type OpOr = { type: "OR", arg0: int, arg1: int };
 type OpAnd = { type: "AND", arg0: int, arg1: int };
 type Op = OpStop | OpNot | OpOr | OpAnd;
+
+type Circuit = {
+  baseTraits: bytes[],
+  ops: Op[],
+};
 */
 
 const OP_STOP = 0;
@@ -19,11 +24,8 @@ const OP_NOT = 1;
 const OP_OR = 2;
 const OP_AND = 3;
 
-function encodeTrait({
-  underlyingOracle /*: address */,
-  baseTraits /*: bytes[] */,
-  ops /*: Op[] */,
-}) {
+function encodeTrait(underlyingOracle /*: address */, circuit /*: Circuit */) {
+  const { baseTraits, ops } = circuit;
   if (baseTraits.length > 16)
     throw new Error(`too many base traits: ${baseTraits.length} > 16`);
   if (ops.length > 128) throw new Error(`too many ops: ${ops.length} > 128`);

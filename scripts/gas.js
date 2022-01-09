@@ -302,8 +302,7 @@ TEST_CASES.push(async function* marketFills(props) {
   }
 
   {
-    const disjunctionTraitId = sdk.circuit.encodeTrait({
-      underlyingOracle: oracle.address,
+    const disjunctionTraitId = sdk.circuit.encodeTrait(oracle.address, {
       baseTraits: [traitId, unsetTraitId],
       ops: [{ type: "OR", arg0: 0, arg1: 1 }],
     });
@@ -328,8 +327,7 @@ TEST_CASES.push(async function* marketFills(props) {
   }
 
   {
-    const conjunctionTraitId = sdk.circuit.encodeTrait({
-      underlyingOracle: oracle.address,
+    const conjunctionTraitId = sdk.circuit.encodeTrait(oracle.address, {
       baseTraits: [projectTraitId, traitId],
       ops: [{ type: "AND", arg0: 0, arg1: 1 }],
     });

@@ -35,8 +35,7 @@ describe("CircuitOracle", () => {
         tokenId,
         ...overrides,
       };
-      const trait = sdk.circuit.encodeTrait({
-        underlyingOracle: inputs.underlyingOracle,
+      const trait = sdk.circuit.encodeTrait(inputs.underlyingOracle, {
         baseTraits: [],
         ops: [],
         ...circuit,
@@ -280,18 +279,15 @@ describe("CircuitOracle", () => {
       await testOracle.deployed();
       await testOracle.setTrait(tokenContract, tokenId, trueTrait);
 
-      const trueAndFalse = sdk.circuit.encodeTrait({
-        underlyingOracle: testOracle.address,
+      const trueAndFalse = sdk.circuit.encodeTrait(testOracle.address, {
         baseTraits: [trueTrait, falseTrait],
         ops: [{ type: "AND", arg0: 0, arg1: 1 }],
       });
-      const trueOrFalse = sdk.circuit.encodeTrait({
-        underlyingOracle: testOracle.address,
+      const trueOrFalse = sdk.circuit.encodeTrait(testOracle.address, {
         baseTraits: [trueTrait, falseTrait],
         ops: [{ type: "OR", arg0: 0, arg1: 1 }],
       });
-      const orAndNotAnd = sdk.circuit.encodeTrait({
-        underlyingOracle: circuitOracle.address,
+      const orAndNotAnd = sdk.circuit.encodeTrait(circuitOracle.address, {
         baseTraits: [trueOrFalse, trueAndFalse],
         ops: [
           { type: "NOT", arg: 1 },
@@ -313,8 +309,7 @@ describe("CircuitOracle", () => {
       await testOracle.deployed();
       await testOracle.setRevert(tokenContract, tokenId, baseTrait);
 
-      const trait = sdk.circuit.encodeTrait({
-        underlyingOracle: testOracle.address,
+      const trait = sdk.circuit.encodeTrait(testOracle.address, {
         baseTraits: [baseTrait],
         ops: [],
       });
@@ -344,8 +339,7 @@ describe("CircuitOracle", () => {
           baseTrait,
           testCase.oracleOutput
         );
-        const trait = sdk.circuit.encodeTrait({
-          underlyingOracle: misbehavingOracle.address,
+        const trait = sdk.circuit.encodeTrait(misbehavingOracle.address, {
           baseTraits: [baseTrait],
           ops: [],
         });
@@ -367,8 +361,7 @@ describe("CircuitOracle", () => {
     });
 
     it("with address with high bits set (ABI decoding error)", async () => {
-      const goodTrait = sdk.circuit.encodeTrait({
-        underlyingOracle: ethers.constants.AddressZero,
+      const goodTrait = sdk.circuit.encodeTrait(ethers.constants.AddressZero, {
         baseTraits: [],
         ops: [],
       });
@@ -388,8 +381,7 @@ describe("CircuitOracle", () => {
     });
 
     it("with not enough dynamic data while reading constants", async () => {
-      const goodTrait = sdk.circuit.encodeTrait({
-        underlyingOracle: ethers.constants.AddressZero,
+      const goodTrait = sdk.circuit.encodeTrait(ethers.constants.AddressZero, {
         baseTraits: ["0xabcdef12"],
         ops: [],
       });
@@ -402,8 +394,7 @@ describe("CircuitOracle", () => {
     it("with not enough dynamic data while reading unary operator args", async () => {
       const testOracle = await TestTraitOracle.deploy();
       await testOracle.deployed();
-      const goodTrait = sdk.circuit.encodeTrait({
-        underlyingOracle: testOracle.address,
+      const goodTrait = sdk.circuit.encodeTrait(testOracle.address, {
         baseTraits: ["0xabcdef12"],
         ops: [
           { type: "NOT", arg: 0 },
@@ -419,8 +410,7 @@ describe("CircuitOracle", () => {
     it("with not enough dynamic data while reading binary operator args", async () => {
       const testOracle = await TestTraitOracle.deploy();
       await testOracle.deployed();
-      const goodTrait = sdk.circuit.encodeTrait({
-        underlyingOracle: testOracle.address,
+      const goodTrait = sdk.circuit.encodeTrait(testOracle.address, {
         baseTraits: ["0xabcdef12"],
         ops: [
           { type: "AND", arg0: 0, arg1: 0 },
