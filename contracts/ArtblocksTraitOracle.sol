@@ -64,21 +64,21 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
 
     event OracleSignerChanged(address indexed oracleSigner);
     event ProjectInfoSet(
-        uint256 indexed traitId,
+        bytes32 indexed traitId,
         uint256 indexed projectId,
         string name,
         uint256 version,
         uint256 size
     );
     event FeatureInfoSet(
-        uint256 indexed traitId,
+        bytes32 indexed traitId,
         uint256 indexed projectId,
         string indexed name,
         string fullName,
         uint256 version
     );
     event TraitUpdated(
-        uint256 indexed traitId,
+        bytes32 indexed traitId,
         uint32 newSize,
         uint32 newNumFinalized,
         bytes24 newLog
@@ -106,8 +106,8 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
 
     address public oracleSigner;
 
-    mapping(uint256 => ProjectInfo) public projectTraitInfo;
-    mapping(uint256 => FeatureInfo) public featureTraitInfo;
+    mapping(bytes32 => ProjectInfo) public projectTraitInfo;
+    mapping(bytes32 => FeatureInfo) public featureTraitInfo;
 
     /// Append-only relation on `TraitId * TokenId`, for feature traits only.
     /// (Project trait membership is tracked implicitly through Art Blocks
@@ -115,10 +115,10 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
     /// `_tokenId % 256`th bit (counting from the LSB) of
     /// `traitMembers[_traitId][_tokenId / 256]` represents whether `_tokenId`
     /// has trait `_traitId`.
-    mapping(uint256 => mapping(uint256 => uint256)) traitMembers;
+    mapping(bytes32 => mapping(uint256 => uint256)) traitMembers;
     /// Metadata for each feature trait; see struct definition. Not defined for
     /// project traits.
-    mapping(uint256 => FeatureMetadata) traitMetadataMap;
+    mapping(bytes32 => FeatureMetadata) traitMetadataMap;
 
     function supportsInterface(bytes4 _interfaceId)
         external
@@ -184,7 +184,7 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
     ) internal {
         require(_size > 0, ERR_INVALID_ARGUMENT);
         require(!_stringEmpty(_projectName), ERR_INVALID_ARGUMENT);
-        uint256 _traitId = projectTraitId(_projectId, _version);
+        bytes32 _traitId = projectTraitId(_projectId, _version);
         require(projectTraitInfo[_traitId].size == 0, ERR_ALREADY_EXISTS);
         projectTraitInfo[_traitId] = ProjectInfo({
             projectId: _projectId,
@@ -215,7 +215,7 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
         uint256 _version
     ) internal {
         require(!_stringEmpty(_featureName), ERR_INVALID_ARGUMENT);
-        uint256 _traitId = featureTraitId(_projectId, _featureName, _version);
+        bytes32 _traitId = featureTraitId(_projectId, _featureName, _version);
         require(
             _stringEmpty(featureTraitInfo[_traitId].name),
             ERR_ALREADY_EXISTS
@@ -252,7 +252,7 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
 
     function _addTraitMemberships(
         bytes32 _structHash,
-        uint256 _traitId,
+        bytes32 _traitId,
         TraitMembershipWord[] memory _words,
         uint32 _numTokensFinalized,
         bytes24 _expectedLastLog
@@ -350,7 +350,7 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
         uint256 _tokenId,
         bytes calldata _trait
     ) external view override returns (bool) {
-        uint256 _traitId = uint256(bytes32(_trait));
+        bytes32 _traitId = bytes32(_trait);
         // Check project traits first, since this only requires a single
         // storage lookup if `_traitId` represents a feature trait.
         return
@@ -358,7 +358,7 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
             _hasFeatureTrait(_tokenId, _traitId);
     }
 
-    function _hasProjectTrait(uint256 _tokenId, uint256 _traitId)
+    function _hasProjectTrait(uint256 _tokenId, bytes32 _traitId)
         internal
         view
         returns (bool)
@@ -376,7 +376,7 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
         return true;
     }
 
-    function _hasFeatureTrait(uint256 _tokenId, uint256 _traitId)
+    function _hasFeatureTrait(uint256 _tokenId, bytes32 _traitId)
         internal
         view
         returns (bool)
@@ -397,33 +397,33 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
     function projectTraitId(uint256 _projectId, uint256 _version)
         public
         pure
-        returns (uint256)
+        returns (bytes32)
     {
         bytes memory _blob = abi.encode(
             TraitType.PROJECT,
             _projectId,
             _version
         );
-        return uint256(keccak256(_blob));
+        return keccak256(_blob);
     }
 
     function featureTraitId(
         uint256 _projectId,
         string memory _featureName,
         uint256 _version
-    ) public pure returns (uint256) {
+    ) public pure returns (bytes32) {
         bytes memory _blob = abi.encode(
             TraitType.FEATURE,
             _projectId,
             _featureName,
             _version
         );
-        return uint256(keccak256(_blob));
+        return keccak256(_blob);
     }
 
     /// Returns the number of tokens that are currently known to have the given
     /// feature trait.
-    function featureMembers(uint256 _featureTraitId)
+    function featureMembers(bytes32 _featureTraitId)
         external
         view
         returns (uint256)
@@ -431,7 +431,7 @@ contract ArtblocksTraitOracle is IERC165, ITraitOracle, Ownable {
         return traitMetadataMap[_featureTraitId].currentSize;
     }
 
-    function traitMetadata(uint256 _featureTraitId)
+    function traitMetadata(bytes32 _featureTraitId)
         external
         view
         returns (

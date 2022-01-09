@@ -54,7 +54,7 @@ const SetFeatureInfoMessage = [
   { type: "uint256", name: "version" },
 ];
 const AddTraitMembershipsMessage = [
-  { type: "uint256", name: "traitId" },
+  { type: "bytes32", name: "traitId" },
   { type: "TraitMembershipWord[]", name: "words" },
   { type: "uint32", name: "numTokensFinalized" },
   { type: "bytes24", name: "expectedLastLog" },
@@ -95,7 +95,7 @@ const TYPENAME_SET_PROJECT_INFO =
 const TYPENAME_SET_FEATURE_INFO =
   "SetFeatureInfoMessage(uint256 projectId,string featureName,uint256 version)";
 const TYPENAME_ADD_TRAIT_MEMBERSHIPS =
-  "AddTraitMembershipsMessage(uint256 traitId,TraitMembershipWord[] words,uint32 numTokensFinalized,bytes24 expectedLastLog)";
+  "AddTraitMembershipsMessage(bytes32 traitId,TraitMembershipWord[] words,uint32 numTokensFinalized,bytes24 expectedLastLog)";
 
 const TYPEHASH_TRAIT_MEMBERSHIP_WORD = utf8Hash(TYPENAME_TRAIT_MEMBERSHIP_WORD);
 const TYPEHASH_SET_PROJECT_INFO = utf8Hash(TYPENAME_SET_PROJECT_INFO);
@@ -145,7 +145,7 @@ function setFeatureInfoStructHash(msg) {
 function addTraitMembershipsStructHash(msg) {
   return ethers.utils.keccak256(
     ethers.utils.defaultAbiCoder.encode(
-      ["bytes32", "uint256", "bytes32", "uint32", "bytes24"],
+      ["bytes32", "bytes32", "bytes32", "uint32", "bytes24"],
       [
         TYPEHASH_ADD_TRAIT_MEMBERSHIPS,
         msg.traitId,

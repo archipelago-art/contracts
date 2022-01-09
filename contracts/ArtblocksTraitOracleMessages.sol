@@ -15,7 +15,7 @@ struct SetFeatureInfoMessage {
 }
 
 struct AddTraitMembershipsMessage {
-    uint256 traitId;
+    bytes32 traitId;
     TraitMembershipWord[] words;
     /// If `numTokensFinalized` is greater than the current number of tokens
     /// finalized for this trait, then `expectedLastLog` must equal the
@@ -57,12 +57,10 @@ library ArtblocksTraitOracleMessages {
         );
     bytes32 internal constant TYPEHASH_ADD_TRAIT_MEMBERSHIPS =
         keccak256(
-            "AddTraitMembershipsMessage(uint256 traitId,TraitMembershipWord[] words,uint32 numTokensFinalized,bytes24 expectedLastLog)TraitMembershipWord(uint256 wordIndex,uint256 mask)"
+            "AddTraitMembershipsMessage(bytes32 traitId,TraitMembershipWord[] words,uint32 numTokensFinalized,bytes24 expectedLastLog)TraitMembershipWord(uint256 wordIndex,uint256 mask)"
         );
     bytes32 internal constant TYPEHASH_TRAIT_MEMBERSHIP_WORD =
-        keccak256(
-            "TraitMembershipWord(uint256 wordIndex,uint256 mask)"
-        );
+        keccak256("TraitMembershipWord(uint256 wordIndex,uint256 mask)");
 
     function structHash(SetProjectInfoMessage memory _self)
         internal
