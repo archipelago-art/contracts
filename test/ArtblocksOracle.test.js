@@ -51,6 +51,11 @@ describe("ArtblocksOracle", () => {
     await oracle.deployed();
   });
 
+  async function featureSize(oracle, traitId) {
+    const [size] = await oracle.traitMetadata(traitId);
+    return size;
+  }
+
   describe("EIP-165 `supportsInterface`", async () => {
     let oracle;
     before(async () => {
@@ -353,9 +358,9 @@ describe("ArtblocksOracle", () => {
     it("updates internal state incrementally", async () => {
       const { oracle, signer } = await setUp();
       const msg = { projectId, featureName, version, tokenContract: TOKEN_1 };
-      expect(await oracle.featureMembers(traitId)).to.equal(0);
+      expect(await featureSize(oracle, traitId)).to.equal(0);
       await setFeatureInfo(oracle, signer, msg);
-      expect(await oracle.featureMembers(traitId)).to.equal(0);
+      expect(await featureSize(oracle, traitId)).to.equal(0);
 
       const tokenIds = [
         467, 36, 45, 3, 70, 237, 449, 491, 135, 54, 250, 314,
@@ -381,7 +386,7 @@ describe("ArtblocksOracle", () => {
       expect(await oracle.hasTrait(TOKEN_1, otherTokenId, traitId)).to.equal(
         false
       );
-      expect(await oracle.featureMembers(traitId)).to.equal(batch1.length);
+      expect(await featureSize(oracle, traitId)).to.equal(batch1.length);
 
       const msg2 = sdk.artblocks.updateTraitMessage({
         traitId,
@@ -396,7 +401,7 @@ describe("ArtblocksOracle", () => {
       expect(await oracle.hasTrait(TOKEN_1, otherTokenId, traitId)).to.equal(
         false
       );
-      expect(await oracle.featureMembers(traitId)).to.equal(tokenIds.length);
+      expect(await featureSize(oracle, traitId)).to.equal(tokenIds.length);
     });
 
     it("reports non-membership for token IDs out of range", async () => {
@@ -450,7 +455,7 @@ describe("ArtblocksOracle", () => {
         .true;
       expect(await oracle.hasTrait(TOKEN_1, baseTokenId + 3, traitId)).to.be
         .false;
-      expect(await oracle.featureMembers(traitId)).to.equal(2);
+      expect(await featureSize(oracle, traitId)).to.equal(2);
 
       const msg2 = sdk.artblocks.updateTraitMessage({
         traitId,
@@ -466,7 +471,7 @@ describe("ArtblocksOracle", () => {
         .true;
       expect(await oracle.hasTrait(TOKEN_1, baseTokenId + 3, traitId)).to.be
         .true;
-      expect(await oracle.featureMembers(traitId)).to.equal(3);
+      expect(await featureSize(oracle, traitId)).to.equal(3);
     });
 
     it("rejects assignments to traits that do not exist", async () => {

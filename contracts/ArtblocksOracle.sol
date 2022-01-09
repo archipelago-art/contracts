@@ -379,16 +379,6 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         return bytes32((_hash & ~uint256(0xff)) | uint256(TraitType.FEATURE));
     }
 
-    /// Returns the number of tokens that are currently known to have the given
-    /// feature trait.
-    function featureMembers(bytes32 _featureTraitId)
-        external
-        view
-        returns (uint256)
-    {
-        return traitMetadataMap[_featureTraitId].currentSize;
-    }
-
     function traitMetadata(bytes32 _featureTraitId)
         external
         view
