@@ -38,6 +38,10 @@ describe("ArtblocksOracle", () => {
     signers = await ethers.getSigners();
   });
 
+  // Arbitrary addresses to use as ERC-721 `tokenContract` fields.
+  const TOKEN_0 = "0x059edd72cd353df5106d2b9cc5ab83a52287ac3a";
+  const TOKEN_1 = "0xa7d8d9ef8d8ce8992df33d8b8cf4aebabd5bd270";
+
   it("deploys", async () => {
     const oracle = await ArtblocksOracle.deploy();
     await oracle.deployed();
@@ -139,6 +143,7 @@ describe("ArtblocksOracle", () => {
         version: 0,
         projectName: "Archetype",
         size: 600,
+        tokenContract: TOKEN_1,
       };
       const sig = await sdk.artblocks.signLegacy.setProjectInfo(
         signer,
@@ -156,6 +161,7 @@ describe("ArtblocksOracle", () => {
         projectId: 23,
         featureName: "Palette: Paddle",
         version: 0,
+        tokenContract: TOKEN_1,
       };
       const sig = await sdk.artblocks.signLegacy.setFeatureInfo(
         signer,
@@ -178,7 +184,12 @@ describe("ArtblocksOracle", () => {
         featureName,
         version
       );
-      await setFeatureInfo(oracle, signer, { projectId, featureName, version });
+      await setFeatureInfo(oracle, signer, {
+        projectId,
+        featureName,
+        version,
+        tokenContract: TOKEN_1,
+      });
       const msg = sdk.artblocks.updateTraitMessage({
         traitId,
         tokenIds: [baseTokenId, baseTokenId + 1],
@@ -204,8 +215,9 @@ describe("ArtblocksOracle", () => {
       const size = 600;
       const projectName = "Archetype";
       const traitId = sdk.artblocks.projectTraitId(projectId, version);
+      const tokenContract = TOKEN_1;
 
-      const msg1 = { projectId, version, projectName, size };
+      const msg1 = { projectId, version, projectName, size, tokenContract };
       await expect(setProjectInfo(oracle, signers[1], msg1))
         .to.emit(oracle, "ProjectInfoSet")
         .withArgs(traitId, projectId, projectName, version, size);
@@ -215,7 +227,7 @@ describe("ArtblocksOracle", () => {
         ethers.BigNumber.from(size),
       ]);
 
-      const msg2 = { projectId, version, projectName, size: size + 1 };
+      const msg2 = { ...msg1, size: size + 1 };
       await expect(setProjectInfo(oracle, signers[1], msg2)).to.be.revertedWith(
         Errors.ALREADY_EXISTS
       );
@@ -234,7 +246,7 @@ describe("ArtblocksOracle", () => {
         version
       );
 
-      const msg = { projectId, featureName, version };
+      const msg = { projectId, featureName, version, tokenContract: TOKEN_1 };
       await expect(setFeatureInfo(oracle, signers[1], msg))
         .to.emit(oracle, "FeatureInfoSet")
         .withArgs(traitId, projectId, featureName, featureName, version);
@@ -259,6 +271,7 @@ describe("ArtblocksOracle", () => {
         version: 0,
         projectName: "Archetype",
         size: 0,
+        tokenContract: TOKEN_1,
       };
       await expect(setProjectInfo(oracle, signers[1], msg)).to.be.revertedWith(
         Errors.INVALID_ARGUMENT
@@ -274,6 +287,7 @@ describe("ArtblocksOracle", () => {
         version: 0,
         projectName: "",
         size: 600,
+        tokenContract: TOKEN_1,
       };
       await expect(setProjectInfo(oracle, signers[1], msg)).to.be.revertedWith(
         Errors.INVALID_ARGUMENT
@@ -288,6 +302,7 @@ describe("ArtblocksOracle", () => {
         projectId: 23,
         featureName: "",
         version: 0,
+        tokenContract: TOKEN_1,
       };
       await expect(setFeatureInfo(oracle, signers[1], msg)).to.be.revertedWith(
         Errors.INVALID_ARGUMENT
@@ -316,7 +331,7 @@ describe("ArtblocksOracle", () => {
 
     it("updates internal state incrementally", async () => {
       const { oracle, signer } = await setUp();
-      const msg = { projectId, featureName, version };
+      const msg = { projectId, featureName, version, tokenContract: TOKEN_1 };
       expect(await oracle.featureMembers(traitId)).to.equal(0);
       await setFeatureInfo(oracle, signer, msg);
       expect(await oracle.featureMembers(traitId)).to.equal(0);
@@ -338,19 +353,13 @@ describe("ArtblocksOracle", () => {
       await expect(updateTrait(oracle, signer, msg1))
         .to.emit(oracle, "TraitUpdated")
         .withArgs(traitId, batch1.length, 0, traitLog);
-      expect(
-        await oracle.hasTrait(ethers.constants.AddressZero, batch1[0], traitId)
-      ).to.equal(true);
-      expect(
-        await oracle.hasTrait(ethers.constants.AddressZero, batch2[0], traitId)
-      ).to.equal(false);
-      expect(
-        await oracle.hasTrait(
-          ethers.constants.AddressZero,
-          otherTokenId,
-          traitId
-        )
-      ).to.equal(false);
+      expect(await oracle.hasTrait(TOKEN_1, batch1[0], traitId)).to.equal(true);
+      expect(await oracle.hasTrait(TOKEN_1, batch2[0], traitId)).to.equal(
+        false
+      );
+      expect(await oracle.hasTrait(TOKEN_1, otherTokenId, traitId)).to.equal(
+        false
+      );
       expect(await oracle.featureMembers(traitId)).to.equal(batch1.length);
 
       const msg2 = sdk.artblocks.updateTraitMessage({
@@ -361,51 +370,33 @@ describe("ArtblocksOracle", () => {
       await expect(await updateTrait(oracle, signer, msg2))
         .to.emit(oracle, "TraitUpdated")
         .withArgs(traitId, tokenIds.length, 0, traitLog);
-      expect(
-        await oracle.hasTrait(ethers.constants.AddressZero, batch1[0], traitId)
-      ).to.equal(true);
-      expect(
-        await oracle.hasTrait(ethers.constants.AddressZero, batch2[0], traitId)
-      ).to.equal(true);
-      expect(
-        await oracle.hasTrait(
-          ethers.constants.AddressZero,
-          otherTokenId,
-          traitId
-        )
-      ).to.equal(false);
+      expect(await oracle.hasTrait(TOKEN_1, batch1[0], traitId)).to.equal(true);
+      expect(await oracle.hasTrait(TOKEN_1, batch2[0], traitId)).to.equal(true);
+      expect(await oracle.hasTrait(TOKEN_1, otherTokenId, traitId)).to.equal(
+        false
+      );
       expect(await oracle.featureMembers(traitId)).to.equal(tokenIds.length);
     });
 
     it("reports non-membership for token IDs out of range", async () => {
       const { oracle, signer } = await setUp();
-      const msg1 = { projectId, featureName, version };
+      const msg1 = { projectId, featureName, version, tokenContract: TOKEN_1 };
       await setFeatureInfo(oracle, signer, msg1);
       const msg2 = { traitId, tokenIds: [baseTokenId + 250] };
       await updateTrait(oracle, signer, msg2);
 
       expect(
-        await oracle.hasTrait(
-          ethers.constants.AddressZero,
-          baseTokenId + 250,
-          traitId
-        )
+        await oracle.hasTrait(TOKEN_1, baseTokenId + 250, traitId)
       ).to.equal(true);
+      expect(await oracle.hasTrait(TOKEN_1, 250, traitId)).to.equal(false);
       expect(
-        await oracle.hasTrait(ethers.constants.AddressZero, 250, traitId)
-      ).to.equal(false);
-      expect(
-        await oracle.hasTrait(
-          ethers.constants.AddressZero,
-          2 * baseTokenId + 250,
-          traitId
-        )
+        await oracle.hasTrait(TOKEN_1, 2 * baseTokenId + 250, traitId)
       ).to.equal(false);
     });
 
     it("keeps track of members that were added multiple times", async () => {
       const { oracle, signer } = await setUp();
-      const msg = { projectId, featureName, version };
+      const msg = { projectId, featureName, version, tokenContract: TOKEN_1 };
       await setFeatureInfo(oracle, signer, msg);
 
       let traitLog = null;
@@ -417,27 +408,12 @@ describe("ArtblocksOracle", () => {
       await expect(updateTrait(oracle, signer, msg1))
         .to.emit(oracle, "TraitUpdated")
         .withArgs(traitId, 2, 0, traitLog);
-      expect(
-        await oracle.hasTrait(
-          ethers.constants.AddressZero,
-          baseTokenId + 1,
-          traitId
-        )
-      ).to.be.true;
-      expect(
-        await oracle.hasTrait(
-          ethers.constants.AddressZero,
-          baseTokenId + 2,
-          traitId
-        )
-      ).to.be.true;
-      expect(
-        await oracle.hasTrait(
-          ethers.constants.AddressZero,
-          baseTokenId + 3,
-          traitId
-        )
-      ).to.be.false;
+      expect(await oracle.hasTrait(TOKEN_1, baseTokenId + 1, traitId)).to.be
+        .true;
+      expect(await oracle.hasTrait(TOKEN_1, baseTokenId + 2, traitId)).to.be
+        .true;
+      expect(await oracle.hasTrait(TOKEN_1, baseTokenId + 3, traitId)).to.be
+        .false;
       expect(await oracle.featureMembers(traitId)).to.equal(2);
 
       const msg2 = sdk.artblocks.updateTraitMessage({
@@ -448,27 +424,12 @@ describe("ArtblocksOracle", () => {
       await expect(updateTrait(oracle, signer, msg2))
         .to.emit(oracle, "TraitUpdated")
         .withArgs(traitId, 3, 0, traitLog);
-      expect(
-        await oracle.hasTrait(
-          ethers.constants.AddressZero,
-          baseTokenId + 1,
-          traitId
-        )
-      ).to.be.true;
-      expect(
-        await oracle.hasTrait(
-          ethers.constants.AddressZero,
-          baseTokenId + 2,
-          traitId
-        )
-      ).to.be.true;
-      expect(
-        await oracle.hasTrait(
-          ethers.constants.AddressZero,
-          baseTokenId + 3,
-          traitId
-        )
-      ).to.be.true;
+      expect(await oracle.hasTrait(TOKEN_1, baseTokenId + 1, traitId)).to.be
+        .true;
+      expect(await oracle.hasTrait(TOKEN_1, baseTokenId + 2, traitId)).to.be
+        .true;
+      expect(await oracle.hasTrait(TOKEN_1, baseTokenId + 3, traitId)).to.be
+        .true;
       expect(await oracle.featureMembers(traitId)).to.equal(3);
     });
 
@@ -498,7 +459,7 @@ describe("ArtblocksOracle", () => {
         featureName,
         version
       );
-      const msg = { projectId, featureName, version };
+      const msg = { projectId, featureName, version, tokenContract: TOKEN_1 };
       await setFeatureInfo(oracle, signer, msg);
 
       const tokenIds = [0, 1];
@@ -514,7 +475,7 @@ describe("ArtblocksOracle", () => {
 
     it("rejects signatures from unauthorized accounts", async () => {
       const { oracle, signer, nonSigner } = await setUp();
-      const msg = { projectId, featureName, version };
+      const msg = { projectId, featureName, version, tokenContract: TOKEN_1 };
       await setFeatureInfo(oracle, signer, msg);
 
       const msg1 = { traitId, tokenIds: [1, 2, 1] };
@@ -525,7 +486,7 @@ describe("ArtblocksOracle", () => {
 
     it("rejects signatures for other valid messages", async () => {
       const { oracle, signer } = await setUp();
-      const msg = { projectId, featureName, version };
+      const msg = { projectId, featureName, version, tokenContract: TOKEN_1 };
       await setFeatureInfo(oracle, signer, msg);
 
       const msg1 = sdk.artblocks.updateTraitMessage({
@@ -563,7 +524,12 @@ describe("ArtblocksOracle", () => {
       const oracle = await ArtblocksOracle.connect(admin).deploy();
       await oracle.deployed();
       await oracle.connect(admin).setOracleSigner(signer.address);
-      await setFeatureInfo(oracle, signer, { projectId, featureName, version });
+      await setFeatureInfo(oracle, signer, {
+        projectId,
+        featureName,
+        version,
+        tokenContract: TOKEN_1,
+      });
       return { oracle, admin, signer, nonSigner };
     }
 
@@ -779,6 +745,7 @@ describe("ArtblocksOracle", () => {
     const traitIdV0 = sdk.artblocks.projectTraitId(projectId, v0);
     const traitIdV1 = sdk.artblocks.projectTraitId(projectId, v1);
     const traitIdV2 = sdk.artblocks.projectTraitId(projectId, v2);
+    const tokenContract = TOKEN_1;
 
     const baseId = projectId * PROJECT_STRIDE;
 
@@ -787,91 +754,49 @@ describe("ArtblocksOracle", () => {
       await oracle.deployed();
       await oracle.setOracleSigner(signers[1].address);
 
-      const msg0 = { projectId, version: v0, projectName, size: size0 };
-      const msg1 = { projectId, version: v1, projectName, size: size1 };
+      const msg0 = {
+        projectId,
+        version: v0,
+        projectName,
+        size: size0,
+        tokenContract,
+      };
+      const msg1 = { ...msg0, version: v1, size: size1 };
 
       await setProjectInfo(oracle, signers[1], msg0);
       await setProjectInfo(oracle, signers[1], msg1);
     });
 
     it("includes actual members", async () => {
-      expect(
-        await oracle.hasTrait(ethers.constants.AddressZero, baseId, traitIdV0)
-      ).to.be.true;
-      expect(
-        await oracle.hasTrait(ethers.constants.AddressZero, baseId, traitIdV1)
-      ).to.be.true;
-      expect(
-        await oracle.hasTrait(
-          ethers.constants.AddressZero,
-          baseId + 1,
-          traitIdV0
-        )
-      ).to.be.true;
-      expect(
-        await oracle.hasTrait(
-          ethers.constants.AddressZero,
-          baseId + 1,
-          traitIdV1
-        )
-      ).to.be.true;
+      expect(await oracle.hasTrait(TOKEN_1, baseId, traitIdV0)).to.be.true;
+      expect(await oracle.hasTrait(TOKEN_1, baseId, traitIdV1)).to.be.true;
+      expect(await oracle.hasTrait(TOKEN_1, baseId + 1, traitIdV0)).to.be.true;
+      expect(await oracle.hasTrait(TOKEN_1, baseId + 1, traitIdV1)).to.be.true;
     });
 
     it("excludes members that are out of range", async () => {
-      expect(
-        await oracle.hasTrait(
-          ethers.constants.AddressZero,
-          baseId + 777,
-          traitIdV0
-        )
-      ).to.be.false;
-      expect(
-        await oracle.hasTrait(
-          ethers.constants.AddressZero,
-          baseId + 777,
-          traitIdV1
-        )
-      ).to.be.false;
+      expect(await oracle.hasTrait(TOKEN_1, baseId + 777, traitIdV0)).to.be
+        .false;
+      expect(await oracle.hasTrait(TOKEN_1, baseId + 777, traitIdV1)).to.be
+        .false;
     });
 
     it("excludes members from other projects", async () => {
-      expect(
-        await oracle.hasTrait(
-          ethers.constants.AddressZero,
-          baseId + PROJECT_STRIDE,
-          traitIdV0
-        )
-      ).to.be.false;
+      expect(await oracle.hasTrait(TOKEN_1, baseId + PROJECT_STRIDE, traitIdV0))
+        .to.be.false;
     });
 
     it("determines project size from the correct version", async () => {
-      expect(
-        await oracle.hasTrait(
-          ethers.constants.AddressZero,
-          baseId + 250,
-          traitIdV0
-        )
-      ).to.be.false;
-      expect(
-        await oracle.hasTrait(
-          ethers.constants.AddressZero,
-          baseId + 250,
-          traitIdV1
-        )
-      ).to.be.true;
+      expect(await oracle.hasTrait(TOKEN_1, baseId + 250, traitIdV0)).to.be
+        .false;
+      expect(await oracle.hasTrait(TOKEN_1, baseId + 250, traitIdV1)).to.be
+        .true;
     });
 
     it("excludes all members from a nonexistent version", async () => {
-      expect(
-        await oracle.hasTrait(
-          ethers.constants.AddressZero,
-          baseId + 250,
-          traitIdV2
-        )
-      ).to.be.false;
-      expect(
-        await oracle.hasTrait(ethers.constants.AddressZero, baseId, traitIdV2)
-      ).to.be.false;
+      expect(await oracle.hasTrait(TOKEN_1, baseId + 250, traitIdV2)).to.be
+        .false;
+      expect(await oracle.hasTrait(TOKEN_1, baseId, traitIdV2)).to.be.false;
     });
   });
 

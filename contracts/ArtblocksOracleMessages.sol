@@ -1,17 +1,21 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+
 struct SetProjectInfoMessage {
     uint256 projectId;
     uint256 version;
     string projectName;
     uint256 size;
+    IERC721 tokenContract;
 }
 
 struct SetFeatureInfoMessage {
     uint256 projectId;
     string featureName;
     uint256 version;
+    IERC721 tokenContract;
 }
 
 struct UpdateTraitMessage {
@@ -49,11 +53,11 @@ library ArtblocksOracleMessages {
 
     bytes32 internal constant TYPEHASH_SET_PROJECT_INFO =
         keccak256(
-            "SetProjectInfoMessage(uint256 projectId,uint256 version,string projectName,uint256 size)"
+            "SetProjectInfoMessage(uint256 projectId,uint256 version,string projectName,uint256 size,address tokenContract)"
         );
     bytes32 internal constant TYPEHASH_SET_FEATURE_INFO =
         keccak256(
-            "SetFeatureInfoMessage(uint256 projectId,string featureName,uint256 version)"
+            "SetFeatureInfoMessage(uint256 projectId,string featureName,uint256 version,address tokenContract)"
         );
     bytes32 internal constant TYPEHASH_UPDATE_TRAIT =
         keccak256(
@@ -74,7 +78,8 @@ library ArtblocksOracleMessages {
                     _self.projectId,
                     _self.version,
                     keccak256(abi.encodePacked(_self.projectName)),
-                    _self.size
+                    _self.size,
+                    _self.tokenContract
                 )
             );
     }
@@ -90,7 +95,8 @@ library ArtblocksOracleMessages {
                     TYPEHASH_SET_FEATURE_INFO,
                     _self.projectId,
                     keccak256(abi.encodePacked(_self.featureName)),
-                    _self.version
+                    _self.version,
+                    _self.tokenContract
                 )
             );
     }

@@ -40,9 +40,10 @@ TEST_CASES.push(async function* oracleTraitMemberships(props) {
     oracleAddress: oracle.address,
     chainId: await ethers.provider.send("eth_chainId"),
   };
+  const tokenContract = "0xa7d8d9ef8d8ce8992df33d8b8cf4aebabd5bd270";
 
   {
-    const msg = { projectId, featureName, version };
+    const msg = { projectId, featureName, version, tokenContract };
     const sig = await sdk.artblocks.sign712.setFeatureInfo(signer, domain, msg);
     const tx = await oracle.setFeatureInfo(msg, sig, EIP_712);
     yield ["setFeatureInfo", await tx.wait()];
@@ -142,6 +143,7 @@ TEST_CASES.push(async function* marketFills(props) {
     size: 600,
     projectName: "Archetype",
     version,
+    tokenContract: token.address,
   };
   const projectSig = await sdk.artblocks.sign712.setProjectInfo(
     signer,
@@ -150,7 +152,12 @@ TEST_CASES.push(async function* marketFills(props) {
   );
   await oracle.setProjectInfo(projectMsg, projectSig, EIP_712);
 
-  const featureMsg = { projectId, featureName, version };
+  const featureMsg = {
+    projectId,
+    featureName,
+    version,
+    tokenContract: token.address,
+  };
   const featureSig = await sdk.artblocks.sign712.setFeatureInfo(
     signer,
     domain,
