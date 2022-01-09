@@ -331,26 +331,30 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
     }
 
     function hasTrait(
-        IERC721, /*_tokenContract*/
+        IERC721 _tokenContract,
         uint256 _tokenId,
         bytes calldata _trait
     ) external view override returns (bool) {
         bytes32 _traitId = bytes32(_trait);
         uint8 _discriminant = uint8(uint256(_traitId));
         if (_discriminant == uint8(TraitType.PROJECT)) {
-            return _hasProjectTrait(_tokenId, _traitId);
+            return _hasProjectTrait(_tokenContract, _tokenId, _traitId);
         } else if (_discriminant == uint8(TraitType.FEATURE)) {
-            return _hasFeatureTrait(_tokenId, _traitId);
+            return _hasFeatureTrait(_tokenContract, _tokenId, _traitId);
         } else {
             return false;
         }
     }
 
-    function _hasProjectTrait(uint256 _tokenId, bytes32 _traitId)
-        internal
-        view
-        returns (bool)
-    {
+    function _hasProjectTrait(
+        IERC721 _tokenContract,
+        uint256 _tokenId,
+        bytes32 _traitId
+    ) internal view returns (bool) {
+        if (projectTraitInfo[_traitId].tokenContract != _tokenContract) {
+            return false;
+        }
+
         uint256 _projectSize = projectTraitInfo[_traitId].size;
         if (_projectSize == 0) return false; // gas
 
@@ -364,11 +368,15 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         return true;
     }
 
-    function _hasFeatureTrait(uint256 _tokenId, bytes32 _traitId)
-        internal
-        view
-        returns (bool)
-    {
+    function _hasFeatureTrait(
+        IERC721 _tokenContract,
+        uint256 _tokenId,
+        bytes32 _traitId
+    ) internal view returns (bool) {
+        if (featureTraitInfo[_traitId].tokenContract != _tokenContract) {
+            return false;
+        }
+
         // This affirms memberships even for traits that aren't finalized; it's
         // the responsibility of a conscientious frontend to discourage users
         // from making bids on such traits.

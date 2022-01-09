@@ -415,6 +415,21 @@ describe("ArtblocksOracle", () => {
       ).to.equal(false);
     });
 
+    it("reports non-membership for tokens from the wrong token contract", async () => {
+      const { oracle, signer } = await setUp();
+      const msg1 = { projectId, featureName, version, tokenContract: TOKEN_1 };
+      await setFeatureInfo(oracle, signer, msg1);
+      const msg2 = { traitId, tokenIds: [baseTokenId + 250] };
+      await updateTrait(oracle, signer, msg2);
+
+      expect(
+        await oracle.hasTrait(TOKEN_1, baseTokenId + 250, traitId)
+      ).to.equal(true);
+      expect(
+        await oracle.hasTrait(TOKEN_0, baseTokenId + 250, traitId)
+      ).to.equal(false);
+    });
+
     it("keeps track of members that were added multiple times", async () => {
       const { oracle, signer } = await setUp();
       const msg = { projectId, featureName, version, tokenContract: TOKEN_1 };
@@ -805,6 +820,10 @@ describe("ArtblocksOracle", () => {
     it("excludes members from other projects", async () => {
       expect(await oracle.hasTrait(TOKEN_1, baseId + PROJECT_STRIDE, traitIdV0))
         .to.be.false;
+    });
+
+    it("excludes members from the wrong token contract", async () => {
+      expect(await oracle.hasTrait(TOKEN_0, baseId, traitIdV0)).to.be.false;
     });
 
     it("determines project size from the correct version", async () => {
