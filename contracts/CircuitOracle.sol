@@ -64,9 +64,9 @@ contract CircuitOracle is ITraitOracle {
         unsafeSetLength(_buf, 96);
         (ITraitOracle _delegate, uint256 _remainingLengths, uint256 _ops) = abi
             .decode(_buf, (ITraitOracle, uint256, uint256));
-        // SAFETY: Before truncation, `_buf` had length at least 96, and
-        // `_dynamicLength` is the remaining length, so this consumes a
-        // prefix of length 96.
+        // SAFETY: `_dynamicLength + 96` equals the value of `_buf.length`
+        // before `_buf` was truncated, so this region is still entirely owned
+        // by `_buf`.
         _buf = unsafeConsume(_buf, 96, _dynamicLength);
 
         uint256 _mem = 0; // `_mem & (1 << _i)` stores variable `_i`
@@ -101,9 +101,9 @@ contract CircuitOracle is ITraitOracle {
             bool _hasTrait = _delegate.hasTrait(_tokenContract, _tokenId, _buf);
             // Then, un-truncate `_buf` and advance it past this trait.
             //
-            // SAFETY: Before truncation, `_buf` had length at least
-            // `_traitLength`, and `_newBufLength` is the remaining length, so
-            // this consumes a prefix of length `_traitLength`.
+            // SAFETY: `_newBufLength + _traitLength` equals the value of
+            // `_buf.length` before `_buf` was truncated, so this region is still
+            // entirely owned by `_buf`.
             _buf = unsafeConsume(_buf, _traitLength, _newBufLength);
 
             // SAFETY: `_v` is small (see declaration comment), so incrementing
