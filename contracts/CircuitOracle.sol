@@ -136,30 +136,25 @@ contract CircuitOracle is ITraitOracle {
             if (_op == OP_STOP) break;
             bool _output;
             if (_op == OP_NOT) {
+                uint256 _arg0 = _nextArg;
                 // SAFETY: `_nextArg` is small (see declaration comment), so
-                // adding 1 to it can't overflow.
-                if (_buf.length < uncheckedAdd(_nextArg, 1))
-                    revert(ERR_OVERRUN_ARG);
-                bool _a = (_mem & (1 << uint256(uint8(_buf[_nextArg])))) != 0;
-                // SAFETY: `_nextArg` is small (see declaration comment), so
-                // adding 1 to it can't overflow.
+                // this addition can't overflow.
                 _nextArg = uncheckedAdd(_nextArg, 1);
-                _output = !_a;
+
+                if (_buf.length < _nextArg) revert(ERR_OVERRUN_ARG);
+                bool _v0 = (_mem & (1 << uint256(uint8(_buf[_arg0])))) != 0;
+                _output = !_v0;
             } else {
-                // SAFETY: `_nextArg` is small (see declaration comment),
-                // so this addition can't overflow.
-                if (_buf.length < uncheckedAdd(_nextArg, 2))
-                    revert(ERR_OVERRUN_ARG);
-                bool _a = (_mem & (1 << uint256(uint8(_buf[_nextArg])))) != 0;
+                uint256 _arg0 = _nextArg;
                 // SAFETY: `_nextArg` is small (see declaration comment), so
-                // adding 1 to it can't overflow.
-                bool _b = (_mem &
-                    (1 << uint256(uint8(_buf[uncheckedAdd(_nextArg, 1)])))) !=
-                    0;
-                // SAFETY: `_nextArg` is small (see declaration comment),
-                // so this can't overflow.
-                _nextArg = uncheckedAdd(_nextArg, 2);
-                _output = _op == OP_OR ? _a || _b : _a && _b;
+                // these additions can't overflow.
+                uint256 _arg1 = uncheckedAdd(_arg0, 1);
+                _nextArg = uncheckedAdd(_arg0, 2);
+
+                if (_buf.length < _nextArg) revert(ERR_OVERRUN_ARG);
+                bool _v0 = (_mem & (1 << uint256(uint8(_buf[_arg0])))) != 0;
+                bool _v1 = (_mem & (1 << uint256(uint8(_buf[_arg1])))) != 0;
+                _output = _op == OP_OR ? _v0 || _v1 : _v0 && _v1;
             }
             uint256 _outputInt;
             assembly {
