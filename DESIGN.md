@@ -199,7 +199,8 @@ that range are Meridians. In fact, there will only ever be 1000 Meridians, so
 only token IDs `163000000` through `163000999` (inclusive) can exist for this
 project.
 
-The Art Blocks oracle responds to trait queries by simply checking the token ID.
+The Art Blocks oracle responds to project trait queries by simply checking the
+token ID.
 
 _Features_ are project-specific properties that may apply to some tokens. For
 instance, some Meridians have the "Chromaticity: Monochrome" feature, while
@@ -222,11 +223,12 @@ the on-chain feature dataset is compromised to incorrectly indicate that a less
 valuable piece has this feature, then the high-value bid could be filled against
 the low-value token. This would be a failure of the system.
 
-We'll handle this as follows. The Art Blocks trait oracle contract has an owner,
+We handle this as follows. The Art Blocks trait oracle contract has an owner,
 and the owner can set an "oracle signer" address that is authorized to update
 the feature data. This address will be controlled by a server that has access to
 a known-accurate database of features. The server responds to requests to sign
-messages indicating that certain tokens have certain features.
+messages indicating that certain tokens have certain features. Updates are
+monotonic: memberships can be added but cannot be removed.
 
 The contract will support freezing data on a per-feature basis for all tokens
 below a certain token ID. For instance, the Chromie Squiggle project currently
@@ -234,8 +236,8 @@ has 9247 tokens out of a possible 10000, of which only 20 have the "Perfect
 Spectrum" feature. It's possible that some of the 753 tokens that have not yet
 been minted will also be perfect spectra, so we can't freeze this trait
 entirely. But, once we have written data for the first 9247 tokens, we can
-prevent the "Perfect Spectrum" feature from being added to or removed from
-_those_ tokens specifically.
+prevent the "Perfect Spectrum" feature from being added to _those_ tokens
+specifically.
 
 Once the data for a trait membership is finalized, it cannot be changed, even by
 the oracle signer or the admin.
@@ -244,30 +246,29 @@ the oracle signer or the admin.
 
 At an implementation level, feature trait membership is sharded by feature ID
 and then packed by project-relative token index into 256-bit words. For example,
-token `163000801` is token index 801 in the Meridian project. Its page is given
-by `801 / 256 = 3`, and its offset is given by `801 % 256 = 33`. So, to check
-whether Meridian #801 has the "Palette: Cave" feature, we test whether
-`traitMembers[_traitId][801 / 256] & (1 << (801 % 256))` is nonzero (where
-`_traitId` is essentially a hash of "Palette: Cave").
+token `163000801` is token index 801 in project 163 (Meridian). Its word index
+is given by `801 / 256 = 3`, and its bit offset is given by `801 % 256 = 33`.
+So, to check whether Meridian #801 has the "Palette: Cave" feature, we test
+whether `featureMembers[_traitId][801 / 256] & (1 << (801 % 256))` is nonzero
+(where `_traitId` is essentially a hash of "Palette: Cave").
 
-The implementation details of finalization aren't yet... finalized. It's easy to
-write a solution with a message type that means, "finalize membership in feature
-trait `t` for the first `n` tokens in this project, using whatever state is
-currently on chain"---but this means that the validity of the message depends on
-the current chain state, and if (e.g.) the chain forks to a block before one of
-the memberships is written, the finalization message will still apply but will
-finalize the wrong data. A family of approaches that avoids this problem
-involves instead signing messages like "of the first `n` tokens in this project,
-exactly `k` of them have trait `t`", which is a fact that does not depend on
-chain state, and the contract can ignore the message if it does not yet have
-membership tuples for `k` of the first `n` tokens. But tracking this state
-efficiently is a bit harder. We're not yet sure what the right tradeoff is here.
+Associated with each feature trait, we also store the current size of that trait
+and the length of the prefix for which token memberships have been finalized.
+For example, if we know that exactly 20 of the first 9247 Squiggles have the
+"Perfect Spectrum" feature, then this feature trait will have
+`currentSize == 20` and `numFinalized == 9247`.
 
-(At the time of writing, the current implementation only allows finalizing full
-256-long blocks of tokens for each trait. This works, but has weaker security
-than we would like. For instance, while there are currently 9247 Squiggles, we
-can only finalize traits for the first 9216 of them. The currently
-implementation also never permits unsetting trait membership for a token.)
+Each feature trait also stores an _update log_. This is a hash accumulator of
+all messages that have changed the state of the feature trait. It starts as 0,
+and is updated as (essentially):
+
+    _log = keccak256(abi.encode(_oldLog, _msg.structHash()));
+
+for each new message `_msg`. Any message that updates the finalization state
+must include the correct value of the update log prior to that message. This
+ensures that if the chain is rolled back to before an update, a valid, signed
+finalization message can't be prematurely replayed before all the token updates
+are in place.
 
 ### Authorized signatures can be submitted by anyone
 
@@ -284,10 +285,11 @@ data to chain.
 This means that we're manually processing ECDSA signatures instead of checking
 `msg.sender` and using Ethereum's native authentication, and so we don't have
 any built-in protection for replay attacks. We don't expect this to be a
-problem. Once a message is signed, the facts that it represent should be valid
-forever, and processing of the messages is idempotent. If the oracle signer key
-is compromised, then the first action needs to be to use the admin key to rotate
-to a new oracle, which prevents replay of any messages on the old signing key,
+problem. Once a message is signed, the facts that it represents should be valid
+forever, and processing of the messages is idempotent. So, replaying a valid
+message is always fine and does nothing. If the oracle signer key is
+compromised, then the first action needs to be to use the admin key to rotate to
+a new oracle, which prevents replay of any messages on the old signing key,
 anyway.
 
 The signing domain does include the chain ID and oracle address, so that we can
@@ -322,15 +324,17 @@ The `CircuitOracle` contract implementation uses inline assembly to
 destructively consume from the front of bytestrings in EVM memory. During
 operation, `bytes memory` values may not always be aligned to 32-byte addresses,
 but we are not aware of anything that would make this problematic. It works fine
-at the EVM level, and [Solidity's assembly conventions][solc-asm] does not
-indicate that Solidity assumes that `bytes memory` values have any particular
-alignment.
+at the EVM level, and [Solidity's assembly conventions document][solc-asm] does
+not indicate that Solidity assumes that `bytes memory` values have any
+particular alignment.
 
 The `CircuitOracle` contract implementation also uses unchecked arithmetic and
-some inline assembly for performance optimizations. This saves about 1000 gas on
-some typical invocations. Most of the unchecked blocks are trivially, locally
-safe (e.g., `require(_x > 0); unchecked { _x--; }`). All have `// SAFETY:`
-justifications in comments.
+some inline assembly for performance optimizations. This saves about 1350 gas on
+a circuit with only 2 base traits and 1 op (the minimal useful circuit), and
+about 2900 gas on a circuit with 4 base traits and 3 ops. Most of the unchecked
+blocks are trivially, locally safe: e.g., `require(_x > 0);` followed by
+`uncheckedSub(_x, 1)`. All call sites have `// SAFETY:` justifications in
+comments.
 
 [circuit]: https://hackmd.io/@wchargin/composite-oracles
 [solc-asm]:
