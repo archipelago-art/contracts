@@ -74,16 +74,18 @@ contract CircuitOracle is ITraitOracle {
         _buf = unsafeConsume(_buf, 96, uncheckedSub(_buf.length, 96));
 
         uint256 _mem = 0; // `_mem & (1 << _i)` stores variable `_i`
-        // INVARIANT: `_v` is always less than `type(uint256).max`, because
-        // it's only changed by incrementing it by 1 at a time once per loop
-        // iteration (in each `while` loop). Each loop is bounded: the first
-        // runs at most 16 times, as it consumes 16 bits of `_remainingLengths`
-        // _remainingLengths` at a time and stops once it becomes zero; and the
-        // second runs at most 128 times, as it consumes 2 bits of `_ops` at a
-        // time and stops once it becomes zero.
         uint256 _v = 0; // next variable to assign
+        //
+        // INVARIANT: `_v` is always at most 144, because it's only ever
+        // changed by incrementing it by 1 once per loop iteration, and the two
+        // loops run at most 16 and 128 times, respectively. In particular,
+        // it's always safe to increment `_v`.
 
         // Read and initialize base trait variables.
+        //
+        // NOTE: This loop runs at most 16 times, because it shifts
+        // `_remainingLengths` right by 16 bits each iteration and stops once
+        // that reaches zero.
         while (true) {
             // `_traitLength` is zero if we're out of traits, else it's one
             // more than the length of the next trait.
@@ -112,8 +114,7 @@ contract CircuitOracle is ITraitOracle {
             // entirely owned by `_buf`.
             _buf = unsafeConsume(_buf, _traitLength, _newBufLength);
 
-            // SAFETY: `_v` is small (see declaration comment), so incrementing
-            // it can't overflow.
+            // SAFETY: `_v` is at most 144, so incrementing it can't overflow.
             _mem |= boolToUint256(_hasTrait) << _v;
             _v = uncheckedAdd(_v, 1);
         }
@@ -122,10 +123,12 @@ contract CircuitOracle is ITraitOracle {
         // arguments. (It's no longer strictly necessary to destructively
         // consume from `_buf`, so we return to normal array accesses.)
         //
-        // INVARIANT: `_nextArg` is always less than `type(uint256).max - 1`.
-        // It's only changed by incrementing it by 1 or 2 per loop iteration,
-        // and the loop runs at most 128 times (it terminates if `_ops == 0`,
-        // and it shifts `_ops` right by 2 bits each iteration).
+        // NOTE: This loop runs at most 128 times, because it shifts `_ops`
+        // right by 2 bits each iteration and stops once that reaches zero.
+        //
+        // INVARIANT: `_nextArg` is always at most 256, because it's only
+        // changed by incrementing it by either 1 or 2 per loop iteration.
+        // In particular, it's always safe to increment `_nextArg`.
         uint256 _nextArg = 0;
         while (true) {
             uint256 _op = _ops & 0x03;
@@ -134,8 +137,7 @@ contract CircuitOracle is ITraitOracle {
             bool _output;
             if (_op == OP_NOT) {
                 uint256 _arg0 = _nextArg;
-                // SAFETY: `_nextArg` is small (see declaration comment), so
-                // this addition can't overflow.
+                // SAFETY: `_nextArg` is at most 256, so this can't overflow.
                 _nextArg = uncheckedAdd(_nextArg, 1);
 
                 if (_buf.length < _nextArg) revert(ERR_OVERRUN_ARG);
@@ -143,10 +145,9 @@ contract CircuitOracle is ITraitOracle {
                 _output = !_v0;
             } else {
                 uint256 _arg0 = _nextArg;
-                // SAFETY: `_nextArg` is small (see declaration comment), so
-                // these additions can't overflow.
-                uint256 _arg1 = uncheckedAdd(_arg0, 1);
-                _nextArg = uncheckedAdd(_arg0, 2);
+                // SAFETY: `_nextArg` is at most 256, so these can't overflow.
+                uint256 _arg1 = uncheckedAdd(_nextArg, 1);
+                _nextArg = uncheckedAdd(_nextArg, 2);
 
                 if (_buf.length < _nextArg) revert(ERR_OVERRUN_ARG);
                 bool _v0 = (_mem & (1 << uint256(uint8(_buf[_arg0])))) != 0;
@@ -154,8 +155,7 @@ contract CircuitOracle is ITraitOracle {
                 _output = _op == OP_OR ? _v0 || _v1 : _v0 && _v1;
             }
             _mem |= boolToUint256(_output) << _v;
-            // SAFETY: `_v` is small (see declaration comment), so incrementing
-            // it can't overflow.
+            // SAFETY: `_v` is at most 144, so incrementing it can't overflow.
             _v = uncheckedAdd(_v, 1);
         }
 
