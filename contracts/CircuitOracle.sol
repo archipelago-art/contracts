@@ -44,31 +44,30 @@ contract CircuitOracle is ITraitOracle {
         //      `_buf`. This leaves the rest of the data dangling off the end
         //      of `_buf`, which is fine.
         //
+        //      This operation is performed by `unsafeSetLength`.
+        //
         //    - To remove the first `_k` bytes of `_buf`, so that it becomes a
         //      suffix of its old value, first add `_k` to `_buf`, and then
         //      store the 32-byte word `_n - _k` into the new value of `_buf`.
         //      This is *destructive* in that it overwrites up to 32 bytes of
         //      memory that were previously part of `_buf`'s data. This is fine
         //      as long as there are no other references to that data.
+        //
+        //      This operation is performed by `unsafeConsume`.
 
         if (_buf.length < 96) revert(ERR_OVERRUN_STATIC);
         // SAFETY: We've just checked that `_buf.length` is at least 96, so
         // this can't underflow.
         uint256 _dynamicLength = uncheckedSub(_buf.length, 96);
-        assembly {
-            // SAFETY: We've just checked that `_buf.length` is at least 96, so
-            // this is only truncating it.
-            mstore(_buf, 96)
-        }
+        // SAFETY: We've just checked that `_buf.length` is at least 96, so
+        // this is only truncating it.
+        unsafeSetLength(_buf, 96);
         (ITraitOracle _delegate, uint256 _remainingLengths, uint256 _ops) = abi
             .decode(_buf, (ITraitOracle, uint256, uint256));
-        assembly {
-            // SAFETY: Before truncation, `_buf` had length at least 96, and
-            // `_dynamicLength` is the remaining length, so this consumes a
-            // prefix of length 96.
-            _buf := add(_buf, 96)
-            mstore(_buf, _dynamicLength)
-        }
+        // SAFETY: Before truncation, `_buf` had length at least 96, and
+        // `_dynamicLength` is the remaining length, so this consumes a
+        // prefix of length 96.
+        _buf = unsafeConsume(_buf, 96, _dynamicLength);
 
         uint256 _mem = 0; // `_mem & (1 << _i)` stores variable `_i`
         // INVARIANT: `_v` is always less than `type(uint256).max`, because
@@ -95,11 +94,10 @@ contract CircuitOracle is ITraitOracle {
             uint256 _newBufLength = uncheckedSub(_buf.length, _traitLength);
 
             // Temporarily truncate `_buf` to `_traitLength` for external call.
-            assembly {
-                // SAFETY: We've just checked that `_buf.length` is at least
-                // `_traitLength`, so this is only truncating it.
-                mstore(_buf, _traitLength)
-            }
+            //
+            // SAFETY: We've just checked that `_buf.length` is at least
+            // `_traitLength`, so this is only truncating it.
+            unsafeSetLength(_buf, _traitLength);
             bool _hasTrait = _delegate.hasTrait(_tokenContract, _tokenId, _buf);
             // SAFETY: `_v` is small (see declaration comment), so incrementing
             // it can't overflow.
@@ -107,13 +105,11 @@ contract CircuitOracle is ITraitOracle {
             _v = uncheckedAdd(_v, 1);
 
             // Then, un-truncate `_buf` and advance it past this trait.
-            assembly {
-                // SAFETY: Before truncation, `_buf` had length at least
-                // `_traitLength`, and `_newBufLength` is the remaining length,
-                // so this consumes a prefix of length `_traitLength`.
-                _buf := add(_buf, _traitLength)
-                mstore(_buf, _newBufLength)
-            }
+            //
+            // SAFETY: Before truncation, `_buf` had length at least
+            // `_traitLength`, and `_newBufLength` is the remaining length, so
+            // this consumes a prefix of length `_traitLength`.
+            _buf = unsafeConsume(_buf, _traitLength, _newBufLength);
         }
 
         // Evaluate operations. Henceforth, `_buf` represents the full array of
@@ -201,5 +197,44 @@ contract CircuitOracle is ITraitOracle {
         assembly {
             _x := _b
         }
+    }
+
+    /// Forces the length of `_b` to `_length` without any checks.
+    ///
+    /// # Safety
+    ///
+    /// Caller must ensure that bytes `0` to `_length` (exclusive) of `_b` are
+    /// exclusively owned by `_b`.
+    function unsafeSetLength(bytes memory _b, uint256 _length) internal pure {
+        assembly {
+            mstore(_b, _length)
+        }
+    }
+
+    /// Destructively advance `_b` by `_offset`, setting its length to
+    /// `_newLength` and returning the new base pointer. The caller should
+    /// store the result of this function back into `_b`:
+    ///
+    ///     _b = unsafeConsume(_b, _offset, _newLength);
+    ///
+    /// This overwrites (up to) 32 bytes of memory previously pointed to by
+    /// `_b` to store the new length value, so `_b` should be exclusively owned
+    /// by the caller.
+    ///
+    /// # Safety
+    ///
+    /// Caller must ensure that bytes `_offset` to `_offset + _newLength`
+    /// (exclusive, where the "+" is not modulo 2^256) of `_b` are exclusively
+    /// owned by `_b`.
+    function unsafeConsume(
+        bytes memory _b,
+        uint256 _offset,
+        uint256 _newLength
+    ) internal pure returns (bytes memory) {
+        assembly {
+            _b := add(_b, _offset)
+            mstore(_b, _newLength)
+        }
+        return _b;
     }
 }
