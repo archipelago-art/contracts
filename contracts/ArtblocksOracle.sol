@@ -129,6 +129,7 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
     /// project traits.
     mapping(bytes32 => FeatureMetadata) public featureMetadata;
 
+    // EIP-165 interface discovery boilerplate.
     function supportsInterface(bytes4 _interfaceId)
         external
         pure
@@ -178,6 +179,7 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
     ) external {
         _requireOracleSignature(_msg.structHash(), _signature, _signatureKind);
 
+        // Input fields must be non-empty (but project ID may be 0).
         require(_msg.size > 0, ERR_INVALID_ARGUMENT);
         require(
             _msg.tokenContract != IERC721(address(0)),
@@ -185,6 +187,7 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         );
         require(!_stringEmpty(_msg.projectName), ERR_INVALID_ARGUMENT);
 
+        // Project must not already exist.
         bytes32 _traitId = projectTraitId(_msg.projectId, _msg.version);
         require(projectTraitInfo[_traitId].size == 0, ERR_ALREADY_EXISTS);
 
@@ -211,12 +214,14 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
     ) external {
         _requireOracleSignature(_msg.structHash(), _signature, _signatureKind);
 
+        // Input fields must be non-empty (but project ID may be 0).
         require(
             _msg.tokenContract != IERC721(address(0)),
             ERR_INVALID_ARGUMENT
         );
         require(!_stringEmpty(_msg.featureName), ERR_INVALID_ARGUMENT);
 
+        // Feature must not already exist.
         bytes32 _traitId = featureTraitId(
             _msg.projectId,
             _msg.featureName,
@@ -251,6 +256,7 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         _requireOracleSignature(_structHash, _signature, _signatureKind);
 
         bytes32 _traitId = _msg.traitId;
+        // Feature must exist.
         require(
             featureTraitInfo[_traitId].tokenContract != IERC721(address(0)),
             ERR_INVALID_ARGUMENT
@@ -267,6 +273,7 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
             require(_oldMetadata.log == _expectedLastLog, ERR_INVALID_STATE);
         }
 
+        // Add any new token memberships.
         uint32 _newSize = _oldMetadata.currentSize;
         for (uint256 _i = 0; _i < _msg.words.length; _i++) {
             TraitMembershipWord memory _word = _msg.words[_i];
@@ -291,6 +298,7 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
             (_newNumFinalized == _oldMetadata.numFinalized);
         if (_wasNoop) return;
 
+        // If we either added or finalized memberships, update the hash log.
         bytes24 _oldLog = _oldMetadata.log;
         bytes24 _newLog = bytes24(keccak256(abi.encode(_oldLog, _structHash)));
 
@@ -354,9 +362,6 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         if (_tokenContract != _traitContract) return false;
         if (_tokenId / PROJECT_STRIDE != _projectId) return false;
 
-        // This affirms memberships even for traits that aren't finalized; it's
-        // the responsibility of a conscientious frontend to discourage users
-        // from making bids on such traits.
         uint256 _tokenIndex = _tokenId - (uint256(_projectId) * PROJECT_STRIDE);
         uint256 _wordIndex = _tokenIndex >> 8;
         uint256 _mask = 1 << (_tokenIndex & 0xff);
