@@ -134,6 +134,8 @@ contract CircuitOracle is ITraitOracle {
             uint256 _op = _ops & 0x03;
             _ops >>= 2;
             if (_op == OP_STOP) break;
+
+            // This is a unary or binary operation; compute its output.
             bool _output;
             if (_op == OP_NOT) {
                 uint256 _arg0 = _nextArg;
@@ -144,6 +146,7 @@ contract CircuitOracle is ITraitOracle {
                 bool _v0 = (_mem & (1 << uint256(uint8(_buf[_arg0])))) != 0;
                 _output = !_v0;
             } else {
+                // It's a binary operation, either `OP_OR` or `OP_AND`.
                 uint256 _arg0 = _nextArg;
                 // SAFETY: `_nextArg` is at most 256, so these can't overflow.
                 uint256 _arg1 = uncheckedAdd(_nextArg, 1);
@@ -154,6 +157,8 @@ contract CircuitOracle is ITraitOracle {
                 bool _v1 = (_mem & (1 << uint256(uint8(_buf[_arg1])))) != 0;
                 _output = _op == OP_OR ? _v0 || _v1 : _v0 && _v1;
             }
+
+            // Store its output into the next free variable.
             _mem |= boolToUint256(_output) << _v;
             // SAFETY: `_v` is at most 144, so incrementing it can't overflow.
             _v = uncheckedAdd(_v, 1);
