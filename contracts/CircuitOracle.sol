@@ -99,17 +99,17 @@ contract CircuitOracle is ITraitOracle {
             // `_traitLength`, so this is only truncating it.
             unsafeSetLength(_buf, _traitLength);
             bool _hasTrait = _delegate.hasTrait(_tokenContract, _tokenId, _buf);
-            // SAFETY: `_v` is small (see declaration comment), so incrementing
-            // it can't overflow.
-            _mem |= boolToUint256(_hasTrait) << _v;
-            _v = uncheckedAdd(_v, 1);
-
             // Then, un-truncate `_buf` and advance it past this trait.
             //
             // SAFETY: Before truncation, `_buf` had length at least
             // `_traitLength`, and `_newBufLength` is the remaining length, so
             // this consumes a prefix of length `_traitLength`.
             _buf = unsafeConsume(_buf, _traitLength, _newBufLength);
+
+            // SAFETY: `_v` is small (see declaration comment), so incrementing
+            // it can't overflow.
+            _mem |= boolToUint256(_hasTrait) << _v;
+            _v = uncheckedAdd(_v, 1);
         }
 
         // Evaluate operations. Henceforth, `_buf` represents the full array of
