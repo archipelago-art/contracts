@@ -101,14 +101,9 @@ contract CircuitOracle is ITraitOracle {
                 mstore(_buf, _traitLength)
             }
             bool _hasTrait = _delegate.hasTrait(_tokenContract, _tokenId, _buf);
-            uint256 _hasTraitInt;
-            assembly {
-                // SAFETY: Simple bool-to-int cast.
-                _hasTraitInt := _hasTrait
-            }
             // SAFETY: `_v` is small (see declaration comment), so incrementing
             // it can't overflow.
-            _mem |= _hasTraitInt << _v;
+            _mem |= boolToUint256(_hasTrait) << _v;
             _v = uncheckedAdd(_v, 1);
 
             // Then, un-truncate `_buf` and advance it past this trait.
@@ -156,12 +151,7 @@ contract CircuitOracle is ITraitOracle {
                 bool _v1 = (_mem & (1 << uint256(uint8(_buf[_arg1])))) != 0;
                 _output = _op == OP_OR ? _v0 || _v1 : _v0 && _v1;
             }
-            uint256 _outputInt;
-            assembly {
-                // SAFETY: Simple bool-to-int cast.
-                _outputInt := _output
-            }
-            _mem |= _outputInt << _v;
+            _mem |= boolToUint256(_output) << _v;
             // SAFETY: `_v` is small (see declaration comment), so incrementing
             // it can't overflow.
             _v = uncheckedAdd(_v, 1);
@@ -202,6 +192,14 @@ contract CircuitOracle is ITraitOracle {
     {
         unchecked {
             return _a - _b;
+        }
+    }
+
+    /// Equivalent to `uint256(_b ? 1 : 0)`, but without the `jump`/`jumpi`
+    /// sequence that solc generates for that input.
+    function boolToUint256(bool _b) internal pure returns (uint256 _x) {
+        assembly {
+            _x := _b
         }
     }
 }
