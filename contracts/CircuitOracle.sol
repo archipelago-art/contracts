@@ -14,6 +14,47 @@ contract CircuitOracle is ITraitOracle {
     string internal constant ERR_OVERRUN_ARG =
         "CircuitOracle: arg buffer overrun";
 
+    /// Checks if the given token satisfies the circuit specified by `_buf`.
+    ///
+    /// `_buf` should be at least 96 bytes long, with the following format:
+    ///
+    ///   - Bytes 0 through 31 specify the address of an underlying trait
+    ///     oracle (zero-padded per Solidity ABI conventions).
+    ///   - Bytes 32 through 63 specify a `uint256` that encodes the lengths of
+    ///     between 0 and 16 (inclusive) base traits, each 16 bits long.
+    ///   - Bytes 64 through 95 specify between 0 and 128 (inclusive) circuit
+    ///     opcodes, each 2 bits long.
+    ///   - The remaining bytes are the concatenated contents of the base
+    ///     traits followed by the concatenated arguments to the circuit ops.
+    ///
+    /// Details of base trait lengths: The length of each base trait is
+    /// incremented by one to form a `uint16`, and the `_i`th such value is
+    /// stored in  `(_encodedLengths >> (16 * _i)) & 0xffff`. There are no more
+    /// base traits once this evaluates to `0` (because `0` is not `_len + 1`
+    /// for any `_len`).
+    ///
+    /// Details of opcodes: Each opcode is a 2-bit value: STOP is 0, NOT is 1,
+    /// OR is 2, AND is 3. Opcode `_i` is stored in `(_ops >> (2 * _i)) & 0x03`.
+    /// Once this evaluates to 0, circuit evaluation stops and returns the most
+    /// recently computed value, or `false` if there were no base traits and no
+    /// ops other than STOP.
+    ///
+    /// Details of evaluation: There is a bank of up to 256 boolean variables,
+    /// all initially false. First, the base traits (if any) are read from
+    /// `_buf`. The underlying trait oracle is invoked for each, and the result
+    /// for the `_i`th trait is stored into variable `_i`. Next, the ops are
+    /// processed sequentially. A STOP op immediately stops evaluation. A NOT,
+    /// OR, or AND op consumes either 1 or 2 argument indices, reads the
+    /// argument variable(s), applies the operation. Each argument index is
+    /// a single byte from `_buf` and corresponds to one of the 256 boolean
+    /// variables. Once the op is evaluated, it is written into the next free
+    /// variable. Thus, if there were `_n` base traits, the `_i`th op's result
+    /// is stored into variable `_n + _i`.
+    ///
+    /// When evaluation stops, the result is the most recently written
+    /// variable, or `false` if no variables were written. That is: the result
+    /// is the result of the last op, or the last base trait if there were no
+    /// ops, or `false` if there were no ops and no base traits.
     function hasTrait(
         IERC721 _tokenContract,
         uint256 _tokenId,
@@ -75,6 +116,8 @@ contract CircuitOracle is ITraitOracle {
 
         // Read and initialize base trait variables.
         while (true) {
+            // `_traitLength` is zero if we're out of traits, else it's one
+            // more than the length of the next trait.
             uint256 _traitLength = _remainingLengths & 0xffff;
             _remainingLengths >>= 16;
             if (_traitLength == 0) break;
