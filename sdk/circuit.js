@@ -1,7 +1,6 @@
 const ethers = require("ethers");
 
 const Errors = Object.freeze({
-  OVERRUN_STATIC: "CircuitOracle: static buffer overrun",
   OVERRUN_BASE_TRAIT: "CircuitOracle: base trait buffer overrun",
   OVERRUN_ARG: "CircuitOracle: arg buffer overrun",
 });

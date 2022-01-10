@@ -9,8 +9,6 @@ contract CircuitOracle is ITraitOracle {
     uint256 internal constant OP_OR = 0x02;
     uint256 internal constant OP_AND = 0x03;
 
-    string internal constant ERR_OVERRUN_STATIC =
-        "CircuitOracle: static buffer overrun";
     string internal constant ERR_OVERRUN_BASE_TRAIT =
         "CircuitOracle: base trait buffer overrun";
     string internal constant ERR_OVERRUN_ARG =
@@ -55,19 +53,15 @@ contract CircuitOracle is ITraitOracle {
         //
         //      This operation is performed by `unsafeConsume`.
 
-        if (_buf.length < 96) revert(ERR_OVERRUN_STATIC);
-        // SAFETY: We've just checked that `_buf.length` is at least 96, so
-        // this can't underflow.
-        uint256 _dynamicLength = uncheckedSub(_buf.length, 96);
-        // SAFETY: We've just checked that `_buf.length` is at least 96, so
-        // this is only truncating it.
-        unsafeSetLength(_buf, 96);
+        // Decode the static part of the header (the first 96 bytes), then
+        // advance to the dynamic part.
         (ITraitOracle _delegate, uint256 _remainingLengths, uint256 _ops) = abi
             .decode(_buf, (ITraitOracle, uint256, uint256));
-        // SAFETY: `_dynamicLength + 96` equals the value of `_buf.length`
-        // before `_buf` was truncated, so this region is still entirely owned
-        // by `_buf`.
-        _buf = unsafeConsume(_buf, 96, _dynamicLength);
+        // SAFETY: The ABI decoding operation would have reverted if
+        // `_buf.length < 96`, so the subtraction can't underflow. Then,
+        // `_buf[96 : 96 + (_buf.length - 96)]` represents a proper suffix of
+        // `_buf`, so the region is still entirely owned by `_buf`.
+        _buf = unsafeConsume(_buf, 96, uncheckedSub(_buf.length, 96));
 
         uint256 _mem = 0; // `_mem & (1 << _i)` stores variable `_i`
         // INVARIANT: `_v` is always less than `type(uint256).max`, because

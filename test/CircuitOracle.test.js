@@ -354,10 +354,9 @@ describe("CircuitOracle", () => {
   });
 
   describe("error cases on hand-crafted invalid inputs", () => {
-    it("with empty trait", async () => {
-      await expect(
-        circuitOracle.hasTrait(tokenContract, tokenId, "0x")
-      ).to.be.revertedWith(sdk.circuit.Errors.OVERRUN_STATIC);
+    it("with empty trait (ABI decoding error)", async () => {
+      await expect(circuitOracle.hasTrait(tokenContract, tokenId, "0x")).to.be
+        .reverted;
     });
 
     it("with address with high bits set (ABI decoding error)", async () => {
@@ -374,10 +373,16 @@ describe("CircuitOracle", () => {
         .be.reverted;
     });
 
-    it("with non-empty but truncated static header", async () => {
+    it("with non-empty but truncated static header (ABI decoding error)", async () => {
       await expect(
         circuitOracle.hasTrait(tokenContract, tokenId, "0x" + "00".repeat(32))
-      ).to.be.revertedWith(sdk.circuit.Errors.OVERRUN_STATIC);
+      ).to.be.reverted;
+      await expect(
+        circuitOracle.hasTrait(tokenContract, tokenId, "0x" + "00".repeat(95))
+      ).to.be.reverted;
+      await expect(
+        circuitOracle.hasTrait(tokenContract, tokenId, "0x" + "00".repeat(96))
+      ).not.to.be.reverted;
     });
 
     it("with not enough dynamic data while reading constants", async () => {
