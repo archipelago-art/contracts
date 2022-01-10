@@ -65,7 +65,7 @@ contract CircuitOracle is ITraitOracle {
 
         // Decode the static part of the header (the first 96 bytes), then
         // advance to the dynamic part.
-        (ITraitOracle _delegate, uint256 _remainingLengths, uint256 _ops) = abi
+        (ITraitOracle _delegate, uint256 _traitLengths, uint256 _ops) = abi
             .decode(_buf, (ITraitOracle, uint256, uint256));
         // SAFETY: The ABI decoding operation would have reverted if
         // `_buf.length < 96`, so the subtraction can't underflow. Then,
@@ -84,13 +84,13 @@ contract CircuitOracle is ITraitOracle {
         // Read and initialize base trait variables.
         //
         // NOTE: This loop runs at most 16 times, because it shifts
-        // `_remainingLengths` right by 16 bits each iteration and stops once
+        // `_traitLengths` right by 16 bits each iteration and stops once
         // that reaches zero.
         while (true) {
             // `_traitLength` is zero if we're out of traits, else it's one
             // more than the length of the next trait.
-            uint256 _traitLength = _remainingLengths & 0xffff;
-            _remainingLengths >>= 16;
+            uint256 _traitLength = _traitLengths & 0xffff;
+            _traitLengths >>= 16;
             if (_traitLength == 0) break;
             // SAFETY: We've just checked that `_traitLength != 0`, so this
             // can't underflow.
