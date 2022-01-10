@@ -52,12 +52,9 @@ contract CircuitOracle is ITraitOracle {
         //      as long as there are no other references to that data.
 
         if (_buf.length < 96) revert(ERR_OVERRUN_STATIC);
-        uint256 _dynamicLength;
-        unchecked {
-            // SAFETY: We've just checked that `_buf.length` is at least 96, so
-            // this can't underflow.
-            _dynamicLength = _buf.length - 96;
-        }
+        // SAFETY: We've just checked that `_buf.length` is at least 96, so
+        // this can't underflow.
+        uint256 _dynamicLength = uncheckedSub(_buf.length, 96);
         assembly {
             // SAFETY: We've just checked that `_buf.length` is at least 96, so
             // this is only truncating it.
@@ -88,19 +85,14 @@ contract CircuitOracle is ITraitOracle {
             uint256 _traitLength = _remainingLengths & 0xffff;
             _remainingLengths >>= 16;
             if (_traitLength == 0) break;
-            unchecked {
-                // SAFETY: We've just checked that `_traitLength != 0`, so this
-                // can't underflow.
-                _traitLength--;
-            }
+            // SAFETY: We've just checked that `_traitLength != 0`, so this
+            // can't underflow.
+            _traitLength = uncheckedSub(_traitLength, 1);
 
             if (_buf.length < _traitLength) revert(ERR_OVERRUN_BASE_TRAIT);
-            uint256 _newBufLength;
-            unchecked {
-                // SAFETY: We've just checked that `_buf.length` is at least
-                // `_traitLength`, so this can't underflow.
-                _newBufLength = _buf.length - _traitLength;
-            }
+            // SAFETY: We've just checked that `_buf.length` is at least
+            // `_traitLength`, so this can't underflow.
+            uint256 _newBufLength = uncheckedSub(_buf.length, _traitLength);
 
             // Temporarily truncate `_buf` to `_traitLength` for external call.
             assembly {
@@ -114,11 +106,10 @@ contract CircuitOracle is ITraitOracle {
                 // SAFETY: Simple bool-to-int cast.
                 _hasTraitInt := _hasTrait
             }
-            unchecked {
-                // SAFETY: `_v` is small (see declaration comment), so
-                // incrementing it can't overflow.
-                _mem |= _hasTraitInt << _v++;
-            }
+            // SAFETY: `_v` is small (see declaration comment), so incrementing
+            // it can't overflow.
+            _mem |= _hasTraitInt << _v;
+            _v = uncheckedAdd(_v, 1);
 
             // Then, un-truncate `_buf` and advance it past this trait.
             assembly {
@@ -145,37 +136,29 @@ contract CircuitOracle is ITraitOracle {
             if (_op == OP_STOP) break;
             bool _output;
             if (_op == OP_NOT) {
-                unchecked {
-                    // SAFETY: `_nextArg` is small (see declaration comment),
-                    // so adding 1 to it can't overflow.
-                    if (_buf.length < _nextArg + 1) revert(ERR_OVERRUN_ARG);
-                }
+                // SAFETY: `_nextArg` is small (see declaration comment), so
+                // adding 1 to it can't overflow.
+                if (_buf.length < uncheckedAdd(_nextArg, 1))
+                    revert(ERR_OVERRUN_ARG);
                 bool _a = (_mem & (1 << uint256(uint8(_buf[_nextArg])))) != 0;
-                unchecked {
-                    // SAFETY: `_nextArg` is small (see declaration comment),
-                    // so this can't overflow.
-                    _nextArg++;
-                }
+                // SAFETY: `_nextArg` is small (see declaration comment), so
+                // adding 1 to it can't overflow.
+                _nextArg = uncheckedAdd(_nextArg, 1);
                 _output = !_a;
             } else {
-                unchecked {
-                    // SAFETY: `_nextArg` is small (see declaration comment),
-                    // so this addition can't overflow.
-                    if (_buf.length < _nextArg + 2) revert(ERR_OVERRUN_ARG);
-                }
+                // SAFETY: `_nextArg` is small (see declaration comment),
+                // so this addition can't overflow.
+                if (_buf.length < uncheckedAdd(_nextArg, 2))
+                    revert(ERR_OVERRUN_ARG);
                 bool _a = (_mem & (1 << uint256(uint8(_buf[_nextArg])))) != 0;
-                bool _b;
-                unchecked {
-                    // SAFETY: `_nextArg` is small (see declaration comment),
-                    // so adding 1 to it can't overflow.
-                    _b =
-                        (_mem & (1 << uint256(uint8(_buf[_nextArg + 1])))) != 0;
-                }
-                unchecked {
-                    // SAFETY: `_nextArg` is small (see declaration comment),
-                    // so this can't overflow.
-                    _nextArg += 2;
-                }
+                // SAFETY: `_nextArg` is small (see declaration comment), so
+                // adding 1 to it can't overflow.
+                bool _b = (_mem &
+                    (1 << uint256(uint8(_buf[uncheckedAdd(_nextArg, 1)])))) !=
+                    0;
+                // SAFETY: `_nextArg` is small (see declaration comment),
+                // so this can't overflow.
+                _nextArg = uncheckedAdd(_nextArg, 2);
                 _output = _op == OP_OR ? _a || _b : _a && _b;
             }
             uint256 _outputInt;
@@ -183,18 +166,47 @@ contract CircuitOracle is ITraitOracle {
                 // SAFETY: Simple bool-to-int cast.
                 _outputInt := _output
             }
-            unchecked {
-                // SAFETY: `_v` is small (see declaration comment), so
-                // incrementing it can't overflow.
-                _mem |= _outputInt << _v++;
-            }
+            _mem |= _outputInt << _v;
+            // SAFETY: `_v` is small (see declaration comment), so incrementing
+            // it can't overflow.
+            _v = uncheckedAdd(_v, 1);
         }
 
         if (_v == 0) return false; // no base traits or ops
+        // SAFETY: We've just checked that `_v != 0`, so this subtraction
+        // can't underflow.
+        return (_mem & (1 << uncheckedSub(_v, 1))) != 0;
+    }
+
+    /// Returns `_a + _b` without checking for or signalling overflow.
+    ///
+    /// # Safety
+    ///
+    /// Caller must ensure that `_a + _b` would not overflow or be prepared to
+    /// handle an overflowed result.
+    function uncheckedAdd(uint256 _a, uint256 _b)
+        internal
+        pure
+        returns (uint256)
+    {
         unchecked {
-            // SAFETY: We've just checked that `_v != 0`, so this subtraction
-            // can't underflow.
-            return (_mem & (1 << (_v - 1))) != 0;
+            return _a + _b;
+        }
+    }
+
+    /// Returns `_a - _b` without checking for or signalling underflow.
+    ///
+    /// # Safety
+    ///
+    /// Caller must ensure that `_a - _b` would not underflow or be prepared to
+    /// handle an underflowed result.
+    function uncheckedSub(uint256 _a, uint256 _b)
+        internal
+        pure
+        returns (uint256)
+    {
+        unchecked {
+            return _a - _b;
         }
     }
 }
