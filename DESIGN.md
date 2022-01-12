@@ -6,6 +6,16 @@ potential vulnerabilities, and mitigations that we've taken to address those.
 This document is written for developers who are interested in understanding the
 internals of Archipelago. End users do not need to read this document.
 
+<!-- prettier-ignore-start -->
+[`ArchipelagoMarket.sol`]: ./contracts/ArchipelagoMarket.sol
+[`ArtblocksOracle.sol`]: ./contracts/ArtblocksOracle.sol
+[`ArtblocksOracleMessages.sol`]: ./contracts/ArtblocksOracleMessages.sol
+[`CircuitOracle.sol`]: ./contracts/CircuitOracle.sol
+[`ITraitOracle.sol`]: ./contracts/ITraitOracle.sol
+[`MarketMessages.sol`]: ./contracts/MarketMessages.sol
+[`SignatureChecker.sol`]: ./contracts/SignatureChecker.sol
+<!-- prettier-ignore-end -->
+
 ## Overview
 
 The Archipelago contract system has three main pieces:
@@ -26,6 +36,8 @@ transferred against their owners' intent. The oracle contracts are relevant to
 this concern because they directly influence which orders the market will fill.
 
 ## Messages
+
+_Solidity code:_ [`ArchipelagoMarket.sol`], [`MarketMessages.sol`].
 
 Users authorize orders with a market by signing messages off-chain (for
 externally owned accounts) or writing explicit message approvals into the
@@ -84,6 +96,9 @@ it to the buyer before filling the order as normal.
 
 ## Signatures
 
+_Solidity code:_ [`SignatureChecker.sol`], [`MarketMessages.sol`],
+[`ITraitOracle.sol`].
+
 The market and the Art Blocks trait oracle use a common framework for signature
 validation, defined in `SignatureChecker.sol`. Messages are natively expressed
 as EIP-712 typed data structs defined in `MarketMessages.sol` and
@@ -121,6 +136,9 @@ value of every field of the corresponding struct.
 
 ## Traits and oracles
 
+_Solidity code:_ [`ITraitOracle.sol`], [`ArtblocksOracle.sol`],
+[`CircuitOracle.sol`], [`ArchipelagoMarket.sol`].
+
 A _trait oracle_ is a contract that implements the following `hasTrait` method:
 
 ```solidity
@@ -150,6 +168,8 @@ palette or the Blue Spider palette?".
 More details about our specific trait oracles appear below.
 
 ## Market
+
+_Solidity code:_ [`ArchipelagoMarket.sol`].
 
 There will be a single instance of the `ArchipelagoMarket` contract deployed.
 Users are expected to approve this contract to manage their WETH and NFTs, so
@@ -189,6 +209,8 @@ not `transferFrom`, to mitigate risk of locking tokens in contracts that can't
 recover them.
 
 ## Art Blocks trait oracle
+
+_Solidity code:_ [`ArtblocksOracle.sol`], [`ArtblocksOracleMessages.sol`].
 
 The Art Blocks trait oracle defines two kinds of traits: project traits and
 feature traits. An Art Blocks _project_ is keyed by a small, sequential integer
@@ -317,6 +339,8 @@ direction of halting orders. Should the Art Blocks oracle have its own emergency
 shutdown mechanism, like the market does?)
 
 ## Circuit oracle
+
+_Solidity code:_ [`CircuitOracle.sol`].
 
 A separate document describes the [design of the circuit oracle][circuit].
 
