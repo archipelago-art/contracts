@@ -24,32 +24,37 @@ contract CircuitOracle is ITraitOracle {
     ///     between 0 and 16 (inclusive) base traits, each 16 bits long.
     ///   - Bytes 64 through 95 specify between 0 and 128 (inclusive) circuit
     ///     opcodes, each 2 bits long.
-    ///   - The remaining bytes are the concatenated contents of the base
-    ///     traits followed by the concatenated arguments to the circuit ops.
+    ///   - The remaining bytes consist of two parts: first, all the base
+    ///     traits, concatenated together without delimeters; second, one byte
+    ///     per operand to the ops in the circuit up to and excluding the first
+    ///     STOP op, totaling one byte per NOT op plus two bytes per OR or AND
+    ///     op.
     ///
-    /// Details of base trait lengths: The length of each base trait is
-    /// incremented by one to form a `uint16`, and the `_i`th such value is
-    /// stored in  `(_encodedLengths >> (16 * _i)) & 0xffff`. There are no more
-    /// base traits once this evaluates to `0` (because `0` is not `_len + 1`
-    /// for any `_len`).
+    /// Details of base trait lengths: There are at most 16 base traits, and
+    /// each must be at most 65534 (0xfffe) bytes long. The length of each base
+    /// trait is incremented by one to form a `uint16`, and the `_i`th such
+    /// value is stored in  `(_encodedLengths >> (16 * _i)) & 0xffff`. There
+    /// are no more base traits once this evaluates to `0` (because `0` is not
+    /// `_len + 1` for any `_len`).
     ///
-    /// Details of opcodes: Each opcode is a 2-bit value: STOP is 0, NOT is 1,
-    /// OR is 2, AND is 3. Opcode `_i` is stored in `(_ops >> (2 * _i)) & 0x03`.
-    /// Once this evaluates to 0, circuit evaluation stops and returns the most
-    /// recently computed value, or `false` if there were no base traits and no
-    /// ops other than STOP.
+    /// Details of opcodes: There are at most 128 ops in the circuit. Each
+    /// opcode is encoded as a 2-bit value: STOP is 0, NOT is 1, OR is 2, AND
+    /// is 3. Opcode `_i` is stored in `(_ops >> (2 * _i)) & 0x03`. Once this
+    /// evaluates to 0, circuit evaluation stops and returns the most recently
+    /// computed value, or `false` if there were no base traits and no ops
+    /// other than STOP.
     ///
-    /// Details of evaluation: There is a bank of up to 256 boolean variables,
-    /// all initially false. First, the base traits (if any) are read from
-    /// `_buf`. The underlying trait oracle is invoked for each, and the result
-    /// for the `_i`th trait is stored into variable `_i`. Next, the ops are
-    /// processed sequentially. A STOP op immediately stops evaluation. A NOT,
-    /// OR, or AND op consumes either 1 or 2 argument indices, reads the
-    /// argument variable(s), applies the operation. Each argument index is
-    /// a single byte from `_buf` and corresponds to one of the 256 boolean
-    /// variables. Once the op is evaluated, it is written into the next free
-    /// variable. Thus, if there were `_n` base traits, the `_i`th op's result
-    /// is stored into variable `_n + _i`.
+    /// Details of evaluation: There is a bank of 256 boolean variables, all
+    /// initially false. First, the base traits (if any) are read from `_buf`.
+    /// The underlying trait oracle is invoked for each, and the result for the
+    /// `_i`th trait is stored into variable `_i`. Next, the ops are processed
+    /// sequentially. A STOP op immediately stops evaluation. A NOT, OR, or AND
+    /// op consumes either 1 or 2 argument indices from `_buf`, reads the
+    /// argument variable(s) from the 256-cell bank, and applies the operation.
+    /// Each argument index is a single byte from `_buf` and corresponds to one
+    /// of the 256 boolean variables. Once the op is evaluated, it is written
+    /// into the next free variable. Thus, if there were `_n` base traits, the
+    /// `_i`th op's result is stored into variable `_n + _i`.
     ///
     /// When evaluation stops, the result is the most recently written
     /// variable, or `false` if no variables were written. That is: the result
