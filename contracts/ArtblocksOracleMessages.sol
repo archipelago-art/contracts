@@ -29,7 +29,8 @@ struct UpdateTraitMessage {
     /// finalized for this trait, then `expectedLastLog` must equal the
     /// previous value of the hash-update log for this trait (not including the
     /// update from this message), and the number of tokens finalized will be
-    /// increased to `numTokensFinalized`. If the last log does not match, this
+    /// increased to `numTokensFinalized`. If the last log does not match, the
+    /// transaction will be reverted.
     ///
     /// If `numTokensFinalized` is *not* greater than the current number of
     /// finalized tokens, then this field and `expectedLastLog` are ignored
