@@ -152,23 +152,23 @@ contract CircuitOracle is ITraitOracle {
             // This is a unary or binary operation; compute its output.
             bool _output;
             if (_op == OP_NOT) {
-                uint256 _arg0 = _nextArg;
+                uint256 _idx0 = _nextArg;
                 // SAFETY: `_nextArg` is at most 256, so this can't overflow.
                 _nextArg = uncheckedAdd(_nextArg, 1);
 
                 if (_buf.length < _nextArg) revert(ERR_OVERRUN_ARG);
-                bool _v0 = (_mem & (1 << uint256(uint8(_buf[_arg0])))) != 0;
+                bool _v0 = (_mem & (1 << uint256(uint8(_buf[_idx0])))) != 0;
                 _output = !_v0;
             } else {
                 // It's a binary operation, either `OP_OR` or `OP_AND`.
-                uint256 _arg0 = _nextArg;
+                uint256 _idx0 = _nextArg;
                 // SAFETY: `_nextArg` is at most 256, so these can't overflow.
-                uint256 _arg1 = uncheckedAdd(_nextArg, 1);
+                uint256 _idx1 = uncheckedAdd(_nextArg, 1);
                 _nextArg = uncheckedAdd(_nextArg, 2);
 
                 if (_buf.length < _nextArg) revert(ERR_OVERRUN_ARG);
-                bool _v0 = (_mem & (1 << uint256(uint8(_buf[_arg0])))) != 0;
-                bool _v1 = (_mem & (1 << uint256(uint8(_buf[_arg1])))) != 0;
+                bool _v0 = (_mem & (1 << uint256(uint8(_buf[_idx0])))) != 0;
+                bool _v1 = (_mem & (1 << uint256(uint8(_buf[_idx1])))) != 0;
                 _output = _op == OP_OR ? _v0 || _v1 : _v0 && _v1;
             }
 
