@@ -330,7 +330,7 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         } else if (_discriminant == uint8(TraitType.FEATURE)) {
             return _hasFeatureTrait(_tokenContract, _tokenId, _traitId);
         } else {
-            return false;
+            revert(ERR_INVALID_ARGUMENT);
         }
     }
 

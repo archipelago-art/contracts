@@ -893,17 +893,17 @@ describe("ArtblocksOracle", () => {
   });
 
   describe("unknown membership testing", () => {
-    it("returns false for a trait with unknown discriminant", async () => {
+    it("reverts on a trait with unknown discriminant", async () => {
       const oracle = await ArtblocksOracle.deploy();
       await oracle.deployed();
       const traitId = ethers.utils.defaultAbiCoder.encode(["uint8"], [255]);
-      expect(
-        await oracle.hasTrait(
+      await expect(
+        oracle.hasTrait(
           ethers.constants.AddressZero,
           ethers.constants.Zero,
           traitId
         )
-      ).to.be.false;
+      ).to.be.revertedWith(Errors.INVALID_ARGUMENT);
     });
   });
 });
