@@ -169,7 +169,11 @@ contract CircuitOracle is ITraitOracle {
                 if (_buf.length < _nextArg) revert(ERR_OVERRUN_ARG);
                 bool _v0 = (_mem & (1 << uint256(uint8(_buf[_idx0])))) != 0;
                 bool _v1 = (_mem & (1 << uint256(uint8(_buf[_idx1])))) != 0;
-                _output = _op == OP_OR ? _v0 || _v1 : _v0 && _v1;
+                if (_op == OP_OR) {
+                    _output = _v0 || _v1;
+                } else {
+                    _output = _v0 && _v1;
+                }
             }
 
             // Store its output into the next free variable.
