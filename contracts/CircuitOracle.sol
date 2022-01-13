@@ -61,7 +61,16 @@ contract CircuitOracle is ITraitOracle {
         bytes memory _buf
     ) external view override returns (bool) {
         // Note: `_buf` is *uniquely owned* and will be destructively consumed
-        // as it is read.
+        // as it is read. `buf` will not always remain word-aligned. Start by
+        // permanently reserving two words of zeroed memory at the initial free
+        // pointer, as defense in depth in case some undocumented `solc`
+        // assumptions cause miscompilations on word-unaligned bytestrings.
+        assembly {
+            let _freePtr := mload(0x40)
+            mstore(_freePtr, 0)
+            mstore(add(_freePtr, 0x20), 0)
+            mstore(0x40, add(_freePtr, 0x40))
+        }
 
         // Decode the static part of the header (the first 96 bytes), then
         // advance to the dynamic part.
