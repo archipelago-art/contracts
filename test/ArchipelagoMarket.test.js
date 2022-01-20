@@ -120,7 +120,7 @@ describe("Market", () => {
         agreement = newAgreement();
       }
       return {
-        agreementHash: sd.market.hash.orderAgreement(agreement),
+        agreementHash: sdk.market.hash.orderAgreement(agreement),
         nonce,
         deadline,
         extraRoyalties,

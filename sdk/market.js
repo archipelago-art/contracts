@@ -102,20 +102,16 @@ const TYPENAME_ROYALTY = "Royalty(address recipient,uint256 micros)";
 const TYPENAME_ORDER_AGREEMENT =
   "OrderAgreement(address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties)";
 const TYPENAME_BID =
-  "Bid(uint256 nonce,uint40 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties,Royalty[] extraRoyalties,bytes trait,address traitOracle)";
+  "Bid(bytes32 agreementHash,uint256 nonce,uint40 deadline,Royalty[] extraRoyalties,bytes trait,address traitOracle)";
 const TYPENAME_ASK =
-  "Ask(uint256 nonce,uint40 deadline,address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties,Royalty[] extraRoyalties,uint256 tokenId,bool unwrapWeth,address authorizedBidder)";
+  "Ask(bytes32 agreementHash,uint256 nonce,uint40 deadline,Royalty[] extraRoyalties,uint256 tokenId,bool unwrapWeth,address authorizedBidder)";
 
 const TYPEHASH_ROYALTY = utf8Hash(TYPENAME_ROYALTY);
 const TYPEHASH_ORDER_AGREEMENT = utf8Hash(
   TYPENAME_ORDER_AGREEMENT + TYPENAME_ROYALTY
 );
-const TYPEHASH_BID = utf8Hash(
-  TYPENAME_BID + TYPENAME_ORDER_AGREEMENT + TYPENAME_ROYALTY
-);
-const TYPEHASH_ASK = utf8Hash(
-  TYPENAME_ASK + TYPENAME_ORDER_AGREEMENT + TYPENAME_ROYALTY
-);
+const TYPEHASH_BID = utf8Hash(TYPENAME_BID + TYPENAME_ROYALTY);
+const TYPEHASH_ASK = utf8Hash(TYPENAME_ASK + TYPENAME_ROYALTY);
 
 function royaltyStructHash(royalty) {
   return ethers.utils.keccak256(
