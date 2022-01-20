@@ -207,4 +207,55 @@ describe("sdk/circuit", () => {
       );
     });
   });
+
+  describe("compile", () => {
+    it("encodes a representative test case", () => {
+      const input = sdk.circuit.allOf([
+        sdk.circuit.allOf([
+          sdk.circuit.allOf([]),
+          sdk.circuit.allOf([sdk.circuit.baseTrait("0x10")]),
+          sdk.circuit.anyOf([
+            sdk.circuit.baseTrait("0x20"),
+            sdk.circuit.baseTrait("0x21"),
+            sdk.circuit.baseTrait("0x22"),
+          ]),
+          sdk.circuit.anyOf([]),
+          sdk.circuit.anyOf([sdk.circuit.baseTrait("0x30")]),
+          sdk.circuit.allOf([
+            sdk.circuit.baseTrait("0x40"),
+            sdk.circuit.baseTrait("0x41"),
+            sdk.circuit.baseTrait("0x42"),
+          ]),
+        ]),
+      ]);
+      const circuit = {
+        baseTraits: [
+          /*  0 */ "0x10",
+          /*  1 */ "0x20",
+          /*  2 */ "0x21",
+          /*  3 */ "0x22",
+          /*  4 */ "0x30",
+          /*  5 */ "0x40",
+          /*  6 */ "0x41",
+          /*  7 */ "0x42",
+        ],
+        ops: [
+          /*  8 */ { type: "NOT", arg: 255 },
+          /*  9 */ { type: "AND", arg0: 8, arg1: 0 },
+          /* 10 */ { type: "OR", arg0: 1, arg1: 2 },
+          /* 11 */ { type: "OR", arg0: 10, arg1: 3 },
+          /* 12 */ { type: "AND", arg0: 9, arg1: 11 },
+          /* 13 */ { type: "AND", arg0: 12, arg1: 255 },
+          /* 14 */ { type: "AND", arg0: 13, arg1: 4 },
+          /* 15 */ { type: "AND", arg0: 5, arg1: 6 },
+          /* 16 */ { type: "AND", arg0: 15, arg1: 7 },
+          /* 17 */ { type: "AND", arg0: 14, arg1: 16 },
+        ],
+      };
+      const actual = sdk.circuit.compile(underlyingOracle, input);
+      expect(formatWords(actual)).to.deep.equal(
+        formatWords(sdk.circuit.encodeTrait(underlyingOracle, circuit))
+      );
+    });
+  });
 });
