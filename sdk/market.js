@@ -49,7 +49,7 @@ const OrderAgreement = [
   { type: "address", name: "currencyAddress" },
   { type: "uint256", name: "price" },
   { type: "address", name: "tokenAddress" },
-  { type: "Royalty[]", name: "requiredRoyalt" },
+  { type: "Royalty[]", name: "requiredRoyalties" },
 ];
 const Royalty = [
   { type: "address", name: "recipient" },
@@ -191,9 +191,6 @@ function askStructHash(ask) {
         ask.agreementHash,
         ask.nonce,
         ask.deadline,
-        ask.currencyAddress,
-        ask.price,
-        ask.tokenAddress,
         royaltyArrayStructHash(ask.extraRoyalties),
         ask.tokenId,
         ask.unwrapWeth,
