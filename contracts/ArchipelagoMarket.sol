@@ -35,7 +35,8 @@ contract ArchipelagoMarket is Ownable {
         address indexed seller,
         uint256 price,
         uint256 proceeds,
-        uint256 cost
+        uint256 cost,
+        IERC20 currency
     );
     /// Emitted once for every token that's transferred as part of a trade,
     /// i.e. a Trade event will correspond to one TokenTraded events.
@@ -51,7 +52,8 @@ contract ArchipelagoMarket is Ownable {
         address indexed payer,
         address indexed recipient,
         uint256 micros,
-        uint256 amount
+        uint256 amount,
+        IERC20 currency
     );
 
     mapping(address => mapping(uint256 => bool)) public nonceCancellation;
@@ -349,7 +351,8 @@ contract ArchipelagoMarket is Ownable {
                 asker,
                 royalty.recipient,
                 royalty.micros,
-                amt
+                amt,
+                currency
             );
         }
         // Note that the extra royalties on the ask is basically duplicated
@@ -371,7 +374,8 @@ contract ArchipelagoMarket is Ownable {
                 asker,
                 royalty.recipient,
                 royalty.micros,
-                amt
+                amt,
+                currency
             );
         }
 
@@ -390,7 +394,8 @@ contract ArchipelagoMarket is Ownable {
                 asker,
                 archipelagoTreasuryAddress,
                 archipelagoRoyaltyMicros,
-                amt
+                amt,
+                currency
             );
         }
 
@@ -409,7 +414,8 @@ contract ArchipelagoMarket is Ownable {
                 bidder,
                 royalty.recipient,
                 royalty.micros,
-                amt
+                amt,
+                currency
             );
         }
 
@@ -441,7 +447,7 @@ contract ArchipelagoMarket is Ownable {
             );
         }
 
-        emit Trade(tradeId, bidder, asker, price, proceeds, cost);
+        emit Trade(tradeId, bidder, asker, price, proceeds, cost, currency);
         emit TokenTraded(tradeId, token, tokenId);
     }
 }
