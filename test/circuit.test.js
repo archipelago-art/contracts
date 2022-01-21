@@ -13,9 +13,9 @@ describe("sdk/circuit", () => {
       .filter(Boolean);
   }
 
-  const underlyingOracle = "0x" + "fe".repeat(20);
+  const underlyingOracle = ethers.utils.getAddress("0x" + "fe".repeat(20));
 
-  describe("encodeTrait", () => {
+  describe("encodeTrait/decodeTrait", () => {
     it("encodes an empty circuit", () => {
       const underlyingOracle = ethers.constants.AddressZero;
       const circuit = {
@@ -32,6 +32,10 @@ describe("sdk/circuit", () => {
         "0000000000000000000000000000000000000000000000000000000000000000",
         // no data or args
       ]);
+      expect(sdk.circuit.decodeTrait(trait)).to.deep.equal({
+        underlyingOracle,
+        circuit,
+      });
     });
 
     it("encodes a representative circuit", () => {
@@ -68,6 +72,13 @@ describe("sdk/circuit", () => {
         "5656565656565656565656565656565656565656565656565656565656565656",
         "565600010302050406",
       ]);
+      expect(sdk.circuit.decodeTrait(trait)).to.deep.equal({
+        underlyingOracle,
+        circuit: {
+          baseTraits,
+          ops: ops.slice(0, -1), // no explicit "STOP"
+        },
+      });
     });
 
     it("encodes a circuit with a maximum-length base trait", () => {
@@ -95,6 +106,10 @@ describe("sdk/circuit", () => {
           "0001",
         ].join("");
       expect(formatWords(trait)).to.deep.equal(formatWords(expected));
+      expect(sdk.circuit.decodeTrait(trait)).to.deep.equal({
+        underlyingOracle,
+        circuit,
+      });
     });
 
     it("rejects a circuit with a base trait that is too long", () => {
@@ -125,6 +140,10 @@ describe("sdk/circuit", () => {
         // data, then args [0x00, 0x0f]
         "000102030405060708090a0b0c0d0e0f000f",
       ]);
+      expect(sdk.circuit.decodeTrait(trait)).to.deep.equal({
+        underlyingOracle,
+        circuit,
+      });
     });
 
     it("rejects a circuit with too many base traits", () => {
@@ -160,6 +179,10 @@ describe("sdk/circuit", () => {
             .map((_, i) => i.toString(16).padStart(2, "0")),
         ].join("");
       expect(formatWords(trait)).to.deep.equal(formatWords(expected));
+      expect(sdk.circuit.decodeTrait(trait)).to.deep.equal({
+        underlyingOracle,
+        circuit,
+      });
     });
 
     it("rejects a circuit with too many ops", () => {
@@ -253,9 +276,10 @@ describe("sdk/circuit", () => {
         ],
       };
       const actual = sdk.circuit.compile(underlyingOracle, input);
-      expect(formatWords(actual)).to.deep.equal(
-        formatWords(sdk.circuit.encodeTrait(underlyingOracle, circuit))
-      );
+      expect(sdk.circuit.decodeTrait(actual)).to.deep.equal({
+        underlyingOracle,
+        circuit,
+      });
     });
   });
 });

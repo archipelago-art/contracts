@@ -1,6 +1,7 @@
 const ethers = require("ethers");
 
 const Errors = Object.freeze({
+  OVERRUN_HEADER: "CircuitOracle: header buffer overrun",
   OVERRUN_BASE_TRAIT: "CircuitOracle: base trait buffer overrun",
   OVERRUN_ARG: "CircuitOracle: arg buffer overrun",
 });
@@ -234,9 +235,71 @@ function encodeTrait(underlyingOracle /*: address */, circuit /*: Circuit */) {
   return ethers.utils.hexConcat([staticPart, ...baseTraits, args]);
 }
 
+function decodeTrait(trait /*: bytes */) /*: { underlyingOracle, circuit } */ {
+  if (ethers.utils.hexDataLength(trait) < 96) {
+    throw new Error(Errors.OVERRUN_HEADER);
+  }
+  const header = ethers.utils.defaultAbiCoder.decode(
+    ["address", "uint256", "uint256"],
+    trait
+  );
+  const underlyingOracle = header[0];
+  let traitLengths = header[1].toBigInt();
+  let opsInput = header[2].toBigInt();
+
+  let buf = ethers.utils.arrayify(ethers.utils.hexDataSlice(trait, 96));
+
+  const baseTraits = [];
+  while (true) {
+    // `traitLength` is zero if we're out of traits, else it's one more than
+    // the length of the next trait.
+    let traitLength = Number(traitLengths & 0xffffn);
+    traitLengths >>= 16n;
+    if (traitLength === 0) break;
+    traitLength--;
+
+    if (buf.length < traitLength) throw new Error(Errors.OVERRUN_BASE_TRAIT);
+    baseTraits.push(ethers.utils.hexDataSlice(buf, 0, traitLength));
+    buf = buf.slice(traitLength);
+  }
+
+  const ops = [];
+  function consumeArg() {
+    if (buf.length === 0) throw new Error(Errors.OVERRUN_ARG);
+    const result = buf[0];
+    buf = buf.slice(1);
+    return result;
+  }
+  while (true) {
+    const op = Number(opsInput & 0x03n);
+    opsInput >>= 2n;
+    if (op === OP_STOP) break;
+
+    if (op === OP_NOT) {
+      const arg = consumeArg();
+      ops.push({ type: "NOT", arg });
+    } else if (op === OP_OR) {
+      const arg0 = consumeArg();
+      const arg1 = consumeArg();
+      ops.push({ type: "OR", arg0, arg1 });
+    } else if (op === OP_AND) {
+      const arg0 = consumeArg();
+      const arg1 = consumeArg();
+      ops.push({ type: "AND", arg0, arg1 });
+    } else {
+      // Shouldn't happen, given `ops & 0x03n`.
+      throw new Error("unexpected opcode: " + op);
+    }
+  }
+
+  const circuit = { baseTraits, ops };
+  return { underlyingOracle, circuit };
+}
+
 module.exports = {
   Errors,
   encodeTrait,
+  decodeTrait,
   baseTrait,
   anyOf,
   allOf,
