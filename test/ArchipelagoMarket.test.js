@@ -1245,6 +1245,15 @@ describe("Market", () => {
         fail = market.connect(bidder).setTreasuryAddress(bidder.address);
         expect(fail).to.be.revertedWith("Ownable: caller is not the owner");
       });
+      it("hardcoded royalty may be set to 50 bps", async () => {
+        const { market } = await setup();
+        await market.setArchipelagoRoyaltyRate(5000);
+      });
+      it("hardcoded royalty may not exceed 50 bps", async () => {
+        const { market } = await setup();
+        const fail = market.setArchipelagoRoyaltyRate(5001);
+        expect(fail).to.be.revertedWith("protocol royalty too high");
+      });
     });
 
     describe("failure cases", () => {

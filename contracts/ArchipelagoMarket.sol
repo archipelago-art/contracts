@@ -77,6 +77,12 @@ contract ArchipelagoMarket is Ownable {
     /// (expressed as millionths of each transaction value)
     uint256 archipelagoRoyaltyMicros;
 
+    /// Hardcap the Archipelago royalty rate at 50 basis points.
+    /// Prevents "rug" attacks where the contract owner unexpectedly
+    /// spikes the royalty rate, abusing existing asks. Also, it's a nice
+    /// commitment to our users.
+    uint256 constant MAXIMUM_PROTOCOL_ROYALTY = 5000;
+
     string constant INVALID_ARGS = "Market: invalid args";
 
     string constant ORDER_CANCELLED_OR_EXPIRED =
@@ -111,6 +117,10 @@ contract ArchipelagoMarket is Ownable {
         external
         onlyOwner
     {
+        require(
+            newRoyaltyRate <= MAXIMUM_PROTOCOL_ROYALTY,
+            "protocol royalty too high"
+        );
         archipelagoRoyaltyMicros = newRoyaltyRate;
     }
 
