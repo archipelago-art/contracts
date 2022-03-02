@@ -83,6 +83,8 @@ contract ArchipelagoMarket is Ownable {
     /// commitment to our users.
     uint256 constant MAXIMUM_PROTOCOL_ROYALTY = 5000;
 
+    uint256 constant ONE_MILLION = 1000000;
+
     string constant INVALID_ARGS = "Market: invalid args";
 
     string constant ORDER_CANCELLED_OR_EXPIRED =
@@ -348,20 +350,12 @@ contract ArchipelagoMarket is Ownable {
         }
 
         for (uint256 i = 0; i < agreement.requiredRoyalties.length; i++) {
-            Royalty memory royalty = agreement.requiredRoyalties[i];
-            uint256 amt = (royalty.micros * price) / 1000000;
-            // Proceeds to the seller are decreased by all Ask royalties
-            proceeds -= amt;
-            require(
-                currency.transferFrom(bidder, royalty.recipient, amt),
-                TRANSFER_FAILED
-            );
-            emit RoyaltyPaid(
-                tradeId,
+            proceeds -= _payRoyalty(
+                agreement.requiredRoyalties[i],
+                bidder,
                 asker,
-                royalty.recipient,
-                royalty.micros,
-                amt,
+                price,
+                tradeId,
                 currency
             );
         }
@@ -371,20 +365,12 @@ contract ArchipelagoMarket is Ownable {
         // We're support "extra" asker royalties so that the seller can reward
         // an agent, broker, or advisor, as appropriate.
         for (uint256 i = 0; i < ask.extraRoyalties.length; i++) {
-            Royalty memory royalty = ask.extraRoyalties[i];
-            uint256 amt = (royalty.micros * price) / 1000000;
-            // Proceeds to the seller are decreased by all Ask royalties
-            proceeds -= amt;
-            require(
-                currency.transferFrom(bidder, royalty.recipient, amt),
-                TRANSFER_FAILED
-            );
-            emit RoyaltyPaid(
-                tradeId,
+            proceeds -= _payRoyalty(
+                ask.extraRoyalties[i],
+                bidder,
                 asker,
-                royalty.recipient,
-                royalty.micros,
-                amt,
+                price,
+                tradeId,
                 currency
             );
         }
@@ -410,21 +396,15 @@ contract ArchipelagoMarket is Ownable {
         }
 
         for (uint256 i = 0; i < bid.extraRoyalties.length; i++) {
-            Royalty memory royalty = bid.extraRoyalties[i];
-            uint256 amt = (royalty.micros * price) / 1000000;
-            cost += amt;
-            // Proceeds to the seller are *not* decreased by Bid royalties,
-            // meaning the bidder pays them on top of the bid price.
-            require(
-                currency.transferFrom(bidder, royalty.recipient, amt),
-                TRANSFER_FAILED
-            );
-            emit RoyaltyPaid(
-                tradeId,
+            // Now we handle bid extra royalties.
+            // This time we are increasing the cost (not decreasing the proceeds) and the RoyaltyPaid
+            // event will specify the bidder as the entity paying the royalty.
+            cost += _payRoyalty(
+                bid.extraRoyalties[i],
                 bidder,
-                royalty.recipient,
-                royalty.micros,
-                amt,
+                bidder,
+                price,
+                tradeId,
                 currency
             );
         }
@@ -459,5 +439,29 @@ contract ArchipelagoMarket is Ownable {
 
         emit Trade(tradeId, bidder, asker, price, proceeds, cost, currency);
         emit TokenTraded(tradeId, token, tokenId);
+    }
+
+    function _payRoyalty(
+        Royalty memory royalty,
+        address bidder,
+        address payer,
+        uint256 price,
+        uint256 tradeId,
+        IERC20 currency
+    ) internal returns (uint256) {
+        uint256 amt = (royalty.micros * price) / ONE_MILLION;
+        require(
+            currency.transferFrom(bidder, royalty.recipient, amt),
+            TRANSFER_FAILED
+        );
+        emit RoyaltyPaid(
+            tradeId,
+            payer,
+            royalty.recipient,
+            royalty.micros,
+            amt,
+            currency
+        );
+        return amt;
     }
 }
