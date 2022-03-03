@@ -7,15 +7,7 @@ module.exports = {
     },
     { internalType: "uint256", name: "price", type: "uint256" },
     { internalType: "contract IERC721", name: "tokenAddress", type: "address" },
-    {
-      components: [
-        { internalType: "address", name: "recipient", type: "address" },
-        { internalType: "uint256", name: "micros", type: "uint256" },
-      ],
-      internalType: "struct Royalty[]",
-      name: "requiredRoyalties",
-      type: "tuple[]",
-    },
+    { internalType: "bytes32[]", name: "requiredRoyalties", type: "bytes32[]" },
   ],
   internalType: "struct OrderAgreement",
   name: "agreement",

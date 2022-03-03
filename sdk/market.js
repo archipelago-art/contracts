@@ -32,7 +32,7 @@ const Bid = [
   { type: "bytes32", name: "agreementHash" },
   { type: "uint256", name: "nonce" },
   { type: "uint40", name: "deadline" },
-  { type: "Royalty[]", name: "extraRoyalties" },
+  { type: "bytes32[]", name: "extraRoyalties" },
   { type: "bytes", name: "trait" },
   { type: "address", name: "traitOracle" },
 ];
@@ -40,7 +40,7 @@ const Ask = [
   { type: "bytes32", name: "agreementHash" },
   { type: "uint256", name: "nonce" },
   { type: "uint40", name: "deadline" },
-  { type: "Royalty[]", name: "extraRoyalties" },
+  { type: "bytes32[]", name: "extraRoyalties" },
   { type: "uint256", name: "tokenId" },
   { type: "bool", name: "unwrapWeth" },
   { type: "address", name: "authorizedBidder" },
@@ -49,11 +49,7 @@ const OrderAgreement = [
   { type: "address", name: "currencyAddress" },
   { type: "uint256", name: "price" },
   { type: "address", name: "tokenAddress" },
-  { type: "Royalty[]", name: "requiredRoyalties" },
-];
-const Royalty = [
-  { type: "address", name: "recipient" },
-  { type: "uint256", name: "micros" },
+  { type: "bytes32[]", name: "requiredRoyalties" },
 ];
 
 const hash = Object.freeze({
@@ -64,18 +60,10 @@ const hash = Object.freeze({
 
 const sign712 = Object.freeze({
   bid(signer, domainInfo, msg) {
-    return signer._signTypedData(
-      domainSeparator(domainInfo),
-      { Bid, Royalty },
-      msg
-    );
+    return signer._signTypedData(domainSeparator(domainInfo), { Bid }, msg);
   },
   ask(signer, domainInfo, msg) {
-    return signer._signTypedData(
-      domainSeparator(domainInfo),
-      { Ask, Royalty },
-      msg
-    );
+    return signer._signTypedData(domainSeparator(domainInfo), { Ask }, msg);
   },
 });
 
@@ -83,7 +71,7 @@ const verify712 = Object.freeze({
   bid(signature, domainInfo, msg) {
     return ethers.utils.verifyTypedData(
       domainSeparator(domainInfo),
-      { Bid, Royalty },
+      { Bid },
       msg,
       signature
     );
@@ -91,41 +79,27 @@ const verify712 = Object.freeze({
   ask(signature, domainInfo, msg) {
     return ethers.utils.verifyTypedData(
       domainSeparator(domainInfo),
-      { Ask, Royalty },
+      { Ask },
       msg,
       signature
     );
   },
 });
 
-const TYPENAME_ROYALTY = "Royalty(address recipient,uint256 micros)";
 const TYPENAME_ORDER_AGREEMENT =
-  "OrderAgreement(address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties)";
+  "OrderAgreement(address currencyAddress,uint256 price,address tokenAddress,bytes32[] requiredRoyalties)";
 const TYPENAME_BID =
-  "Bid(bytes32 agreementHash,uint256 nonce,uint40 deadline,Royalty[] extraRoyalties,bytes trait,address traitOracle)";
+  "Bid(bytes32 agreementHash,uint256 nonce,uint40 deadline,bytes32[] extraRoyalties,bytes trait,address traitOracle)";
 const TYPENAME_ASK =
-  "Ask(bytes32 agreementHash,uint256 nonce,uint40 deadline,Royalty[] extraRoyalties,uint256 tokenId,bool unwrapWeth,address authorizedBidder)";
+  "Ask(bytes32 agreementHash,uint256 nonce,uint40 deadline,bytes32[] extraRoyalties,uint256 tokenId,bool unwrapWeth,address authorizedBidder)";
 
-const TYPEHASH_ROYALTY = utf8Hash(TYPENAME_ROYALTY);
-const TYPEHASH_ORDER_AGREEMENT = utf8Hash(
-  TYPENAME_ORDER_AGREEMENT + TYPENAME_ROYALTY
-);
-const TYPEHASH_BID = utf8Hash(TYPENAME_BID + TYPENAME_ROYALTY);
-const TYPEHASH_ASK = utf8Hash(TYPENAME_ASK + TYPENAME_ROYALTY);
-
-function royaltyStructHash(royalty) {
-  return ethers.utils.keccak256(
-    ethers.utils.defaultAbiCoder.encode(
-      ["bytes32", "address", "uint256"],
-      [TYPEHASH_ROYALTY, royalty.recipient, royalty.micros]
-    )
-  );
-}
+const TYPEHASH_ORDER_AGREEMENT = utf8Hash(TYPENAME_ORDER_AGREEMENT);
+const TYPEHASH_BID = utf8Hash(TYPENAME_BID);
+const TYPEHASH_ASK = utf8Hash(TYPENAME_ASK);
 
 function royaltyArrayStructHash(royalties) {
-  const elementHashes = royalties.map(royaltyStructHash);
   return ethers.utils.keccak256(
-    ethers.utils.solidityPack(["bytes32[]"], [elementHashes])
+    ethers.utils.solidityPack(["bytes32[]"], [royalties])
   );
 }
 
@@ -270,6 +244,39 @@ const verify = Object.freeze({
   },
 });
 
+const staticMask = 1n << 31n;
+
+function staticRoyalty(recipient, micros) {
+  recipient = ethers.utils.getAddress(recipient);
+  micros = ethers.BigNumber.from(micros).toBigInt();
+  if (micros < 0n) {
+    throw new Error("negative royalty amount");
+  }
+  if (micros & staticMask) {
+    throw new Error(`micros has MSB set: ${micros}`);
+  }
+  micros |= staticMask;
+  return ethers.utils.solidityPack(
+    ["address", "uint64", "uint32"],
+    [recipient, 0, micros]
+  );
+}
+
+function dynamicRoyalty(oracle, micros, data) {
+  oracle = ethers.utils.getAddress(oracle);
+  micros = ethers.BigNumber.from(micros).toBigInt();
+  if (micros < 0n) {
+    throw new Error("negative royalty amount");
+  }
+  if (micros & staticMask) {
+    throw new Error(`micros has MSB set: ${micros}`);
+  }
+  return ethers.utils.solidityPack(
+    ["address", "uint64", "uint32"],
+    [oracle, data, micros]
+  );
+}
+
 const abi = Object.freeze({
   Ask: require("./_abi/ask"),
   Bid: require("./_abi/bid"),
@@ -286,4 +293,6 @@ module.exports = {
   verify712,
   signLegacy,
   verifyLegacy,
+  staticRoyalty,
+  dynamicRoyalty,
 };
