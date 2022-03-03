@@ -5,12 +5,29 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "./ITraitOracle.sol";
 
-struct Royalty {
-    address recipient;
-    /// Millionths of the sale price that this recipient should get.
-    /// I.e. the royalty will be price * micros * 10^-6
-    uint256 micros;
-}
+/// On Royalty Representations
+///
+/// Royalties take two possible forms. There are "static" and "dynamic"
+/// royalties.
+///
+/// Static royalties consist of a specific recipient address, and a uint32
+/// number of micros of royalty payment. Each micro corresponds to one
+/// millionth of the purchase price.
+///
+/// Dynamic royalties have a royalty oracle address, and a uint32 max number
+/// of micros that the oracle may allocate. The dynamic royalty also includes
+/// a uint64 of arbitrary data that may be passed to the royalty oracle.
+///
+/// Whether a royalty is static or dynamic is encoded in the most significant
+/// bit of the royalty micros value. Thus, while micros are encoded as a
+/// uint32, there are only actually 31 bits available. This only rules out
+/// unreasonably massive royalty values (billions of micros, or 1000x the total
+/// purchase price), so it's not a serious limitation in practice. The sdk
+/// prohibits setting the most significant bit in royalty micros.
+///
+/// Representationally, each royalty is a bytes32 where the first 20 bytes are
+/// the recipient or oracle address, the next 8 bytes are the royalty oracle
+/// calldata, and the final 4 bytes are the micros value.
 
 /// Fields that a bid and ask must agree upon exactly for an order to be
 /// filled.
@@ -28,7 +45,7 @@ struct OrderAgreement {
     /// This is separated from the extra royalties on the ask to prevent token
     /// holders from taking an open bid on the orderbook and filling it without
     /// the conventional seller royalties.
-    Royalty[] requiredRoyalties;
+    bytes32[] requiredRoyalties;
 }
 
 struct Bid {
@@ -42,7 +59,7 @@ struct Bid {
     /// If the extra royalties are added on an Ask, they will be paid by the
     /// seller; extra royalties on a Bid are paid by the buyer (i.e. on top of
     /// the listed sale price).
-    Royalty[] extraRoyalties;
+    bytes32[] extraRoyalties;
     /// This is either: an encoding of the trait data that will be passed to
     /// the trait oracle (if one is provided), or the raw token id for the token
     /// being bid on (if the traitOracle is address zero).
@@ -63,7 +80,7 @@ struct Ask {
     /// If the extra royalties are added on an Ask, they will be paid by the
     /// seller; extra royalties on a Bid are paid by the buyer (i.e. on top of
     /// the listed sale price).
-    Royalty[] extraRoyalties;
+    bytes32[] extraRoyalties;
     /// The token ID listed for sale, under the token contract given by
     /// `orderAgreement.tokenAddress`.
     uint256 tokenId;
@@ -80,23 +97,20 @@ struct Ask {
 
 library MarketMessages {
     using MarketMessages for OrderAgreement;
-    using MarketMessages for Royalty;
-    using MarketMessages for Royalty[];
+    using MarketMessages for bytes32[];
 
     bytes32 internal constant TYPEHASH_BID =
         keccak256(
-            "Bid(bytes32 agreementHash,uint256 nonce,uint40 deadline,Royalty[] extraRoyalties,bytes trait,address traitOracle)Royalty(address recipient,uint256 micros)"
+            "Bid(bytes32 agreementHash,uint256 nonce,uint40 deadline,bytes32[] extraRoyalties,bytes trait,address traitOracle)"
         );
     bytes32 internal constant TYPEHASH_ASK =
         keccak256(
-            "Ask(bytes32 agreementHash,uint256 nonce,uint40 deadline,Royalty[] extraRoyalties,uint256 tokenId,bool unwrapWeth,address authorizedBidder)Royalty(address recipient,uint256 micros)"
+            "Ask(bytes32 agreementHash,uint256 nonce,uint40 deadline,bytes32[] extraRoyalties,uint256 tokenId,bool unwrapWeth,address authorizedBidder)"
         );
     bytes32 internal constant TYPEHASH_ORDER_AGREEMENT =
         keccak256(
-            "OrderAgreement(address currencyAddress,uint256 price,address tokenAddress,Royalty[] requiredRoyalties)Royalty(address recipient,uint256 micros)"
+            "OrderAgreement(address currencyAddress,uint256 price,address tokenAddress,bytes32[] requiredRoyalties)"
         );
-    bytes32 internal constant TYPEHASH_ROYALTY =
-        keccak256("Royalty(address recipient,uint256 micros)");
 
     function structHash(Bid memory _self) internal pure returns (bytes32) {
         return
@@ -146,22 +160,11 @@ library MarketMessages {
             );
     }
 
-    function structHash(Royalty memory _self) internal pure returns (bytes32) {
-        return
-            keccak256(
-                abi.encode(TYPEHASH_ROYALTY, _self.recipient, _self.micros)
-            );
-    }
-
-    function structHash(Royalty[] memory _self)
+    function structHash(bytes32[] memory _self)
         internal
         pure
         returns (bytes32)
     {
-        bytes32[] memory _structHashes = new bytes32[](_self.length);
-        for (uint256 _i = 0; _i < _self.length; _i++) {
-            _structHashes[_i] = _self[_i].structHash();
-        }
-        return keccak256(abi.encodePacked(_structHashes));
+        return keccak256(abi.encodePacked(_self));
     }
 }

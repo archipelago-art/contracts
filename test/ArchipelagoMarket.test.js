@@ -48,6 +48,10 @@ describe("Market", () => {
     return BN.from(hash);
   }
 
+  function staticRoyalty({ recipient, micros }) {
+    return sdk.market.staticRoyalty(recipient, micros);
+  }
+
   async function setup() {
     const signers = await ethers.getSigners();
     const [market, weth, nft, oracle] = await Promise.all([
@@ -594,10 +598,10 @@ describe("Market", () => {
       } = await setup();
       const r0 = signers[3].address;
       const bid = tokenIdBid({
-        extraRoyalties: [{ recipient: r0, micros: 1000000 }],
+        extraRoyalties: [staticRoyalty({ recipient: r0, micros: 1000000 })],
       });
       const ask = newAsk({
-        extraRoyalties: [{ recipient: r0, micros: 500000 }],
+        extraRoyalties: [staticRoyalty({ recipient: r0, micros: 500000 })],
       });
       const agreement = newAgreement();
       const tradeId = computeTradeId(bid, bidder, ask, asker);
@@ -823,7 +827,7 @@ describe("Market", () => {
         } = await setup();
         const r0 = signers[3].address;
         const agreement = newAgreement({
-          requiredRoyalties: [{ recipient: r0, micros: 0 }],
+          requiredRoyalties: [staticRoyalty({ recipient: r0, micros: 0 })],
         });
         const bid = tokenIdBid({ agreement });
         const ask = newAsk({
@@ -846,7 +850,7 @@ describe("Market", () => {
         } = await setup();
         const r0 = signers[3].address;
         const agreement = newAgreement({
-          requiredRoyalties: [{ recipient: r0, micros: 5 }],
+          requiredRoyalties: [staticRoyalty({ recipient: r0, micros: 5 })],
         });
         const bid = tokenIdBid({
           agreement,
@@ -884,8 +888,8 @@ describe("Market", () => {
         const r1 = signers[4].address;
         const agreement = newAgreement({
           requiredRoyalties: [
-            { recipient: r0, micros: 5 },
-            { recipient: r1, micros: 1 },
+            staticRoyalty({ recipient: r0, micros: 5 }),
+            staticRoyalty({ recipient: r1, micros: 1 }),
           ],
         });
         const bid = tokenIdBid({
@@ -946,14 +950,14 @@ describe("Market", () => {
         const r0 = signers[3].address;
         const r1 = signers[4].address;
         const agreement = newAgreement({
-          requiredRoyalties: [{ recipient: r0, micros: 800000 }],
+          requiredRoyalties: [staticRoyalty({ recipient: r0, micros: 800000 })],
         });
         const bid = tokenIdBid({
           agreement,
         });
         const ask = newAsk({
           agreement,
-          extraRoyalties: [{ recipient: r1, micros: 200000 }],
+          extraRoyalties: [staticRoyalty({ recipient: r1, micros: 200000 })],
         });
         await fillOrder(market, agreement, bid, bidder, ask, asker);
         expect(await weth.balanceOf(r0)).to.equal(micro.mul(800000));
@@ -974,14 +978,14 @@ describe("Market", () => {
         const r0 = signers[3].address;
         const r1 = signers[4].address;
         const agreement = newAgreement({
-          requiredRoyalties: [{ recipient: r0, micros: 800000 }],
+          requiredRoyalties: [staticRoyalty({ recipient: r0, micros: 800000 })],
         });
         const bid = tokenIdBid({
           agreement,
         });
         const ask = newAsk({
           agreement,
-          extraRoyalties: [{ recipient: r1, micros: 200001 }],
+          extraRoyalties: [staticRoyalty({ recipient: r1, micros: 200001 })],
         });
         await expect(
           fillOrder(market, agreement, bid, bidder, ask, asker)
@@ -1002,7 +1006,7 @@ describe("Market", () => {
         const roy = micro.mul(10);
         const r0 = signers[3].address;
         const bid = tokenIdBid({
-          extraRoyalties: [{ recipient: r0, micros: 10 }],
+          extraRoyalties: [staticRoyalty({ recipient: r0, micros: 10 })],
         });
         const ask = newAsk();
         const tradeId = computeTradeId(bid, bidder, ask, asker);
@@ -1047,7 +1051,9 @@ describe("Market", () => {
         const r0 = signers[3].address;
         const agreement = newAgreement();
         const bid = tokenIdBid();
-        const ask = newAsk({ extraRoyalties: [{ recipient: r0, micros: 5 }] });
+        const ask = newAsk({
+          extraRoyalties: [staticRoyalty({ recipient: r0, micros: 5 })],
+        });
         const roy = micro.mul(5);
         const tradeId = computeTradeId(bid, bidder, ask, asker);
         await expect(fillOrder(market, agreement, bid, bidder, ask, asker))
@@ -1080,15 +1086,15 @@ describe("Market", () => {
         const r2 = signers[4].address;
         const r3 = signers[5].address;
         const agreement = newAgreement({
-          requiredRoyalties: [{ recipient: r1, micros: 1 }],
+          requiredRoyalties: [staticRoyalty({ recipient: r1, micros: 1 })],
         });
         const bid = tokenIdBid({
           agreement,
-          extraRoyalties: [{ recipient: r2, micros: 2 }],
+          extraRoyalties: [staticRoyalty({ recipient: r2, micros: 2 })],
         });
         const ask = newAsk({
           agreement,
-          extraRoyalties: [{ recipient: r3, micros: 3 }],
+          extraRoyalties: [staticRoyalty({ recipient: r3, micros: 3 })],
         });
         const tradeId = computeTradeId(bid, bidder, ask, asker);
         await expect(fillOrder(market, agreement, bid, bidder, ask, asker))
@@ -1146,7 +1152,7 @@ describe("Market", () => {
           price: exa.mul(2),
         });
         const bid = tokenIdBid({
-          extraRoyalties: [{ recipient: r0, micros: 10 }],
+          extraRoyalties: [staticRoyalty({ recipient: r0, micros: 10 })],
           agreement,
         });
         const ask = newAsk({ agreement });
@@ -1171,8 +1177,8 @@ describe("Market", () => {
         const agreement = newAgreement();
         const bid = tokenIdBid({
           extraRoyalties: [
-            { recipient: r0, micros: 1 },
-            { recipient: r1, micros: 2 },
+            staticRoyalty({ recipient: r0, micros: 1 }),
+            staticRoyalty({ recipient: r1, micros: 2 }),
           ],
         });
         const ask = newAsk();
@@ -1253,6 +1259,44 @@ describe("Market", () => {
         const { market } = await setup();
         const fail = market.setArchipelagoRoyaltyRate(5001);
         expect(fail).to.be.revertedWith("protocol royalty too high");
+      });
+
+      it("static royalties may not have MSB set in micros", async () => {
+        const badMicros = 1n << 31n;
+        const fail = () =>
+          sdk.market.staticRoyalty(ethers.constants.AddressZero, badMicros);
+        expect(fail).to.throw("micros has MSB set");
+      });
+      it("dynamic royalties may not have MSB set in micros", async () => {
+        const badMicros = 1n << 31n;
+        const fail = () =>
+          sdk.market.dynamicRoyalty(ethers.constants.AddressZero, badMicros, 0);
+        expect(fail).to.throw("micros has MSB set");
+      });
+      it("dynamic royalties are not yet supported", async () => {
+        const {
+          market,
+          signers,
+          weth,
+          asker,
+          bidder,
+          tokenIdBid,
+          newAsk,
+          newAgreement,
+        } = await setup();
+        const r0 = signers[3].address;
+        const agreement = newAgreement({
+          requiredRoyalties: [sdk.market.dynamicRoyalty(r0, 5, 0)],
+        });
+        const bid = tokenIdBid({
+          agreement,
+        });
+        const ask = newAsk({
+          agreement,
+        });
+        await expect(
+          fillOrder(market, agreement, bid, bidder, ask, asker)
+        ).to.be.revertedWith("dynamic royalties not yet supported");
       });
     });
 
@@ -1674,8 +1718,8 @@ describe("Market", () => {
         price: exa,
         trait: 0x1234,
         extraRoyalties: [
-          { recipient: signers[3].address, micros: 10 },
-          { recipient: signers[4].address, micros: 100 },
+          staticRoyalty({ recipient: signers[3].address, micros: 10 }),
+          staticRoyalty({ recipient: signers[4].address, micros: 100 }),
         ],
       });
       const hash = await market.bidHash(bid);
@@ -1698,8 +1742,8 @@ describe("Market", () => {
         tokenId: 0x12345678,
         price: exa,
         extraRoyalties: [
-          { recipient: signers[3].address, micros: 10 },
-          { recipient: signers[4].address, micros: 100 },
+          staticRoyalty({ recipient: signers[3].address, micros: 10 }),
+          staticRoyalty({ recipient: signers[4].address, micros: 100 }),
         ],
       });
       const hash = await market.askHash(ask);

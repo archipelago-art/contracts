@@ -415,7 +415,7 @@ TEST_CASES.push(async function* marketFills(props) {
   }
 
   {
-    const r0 = { recipient: signer.address, micros: 10000 };
+    const r0 = sdk.market.staticRoyalty(signer.address, 10000);
     const agreement = newAgreement({ requiredRoyalties: [r0] });
     const bid = newBid({ agreement });
     const ask = newAsk({ agreement });
@@ -434,7 +434,7 @@ TEST_CASES.push(async function* marketFills(props) {
   }
 
   {
-    const r0 = { recipient: signer.address, micros: 10000 };
+    const r0 = sdk.market.staticRoyalty(signer.address, 10000);
     const agreement = newAgreement({ requiredRoyalties: [r0, r0, r0] });
     const bid = newBid({ agreement });
     const ask = newAsk({ agreement });

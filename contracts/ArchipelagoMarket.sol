@@ -442,26 +442,28 @@ contract ArchipelagoMarket is Ownable {
     }
 
     function _payRoyalty(
-        Royalty memory royalty,
+        bytes32 royalty,
         address bidder,
         address payer,
         uint256 price,
         uint256 tradeId,
         IERC20 currency
     ) internal returns (uint256) {
-        uint256 amt = (royalty.micros * price) / ONE_MILLION;
-        require(
-            currency.transferFrom(bidder, royalty.recipient, amt),
-            TRANSFER_FAILED
-        );
-        emit RoyaltyPaid(
-            tradeId,
-            payer,
-            royalty.recipient,
-            royalty.micros,
-            amt,
-            currency
-        );
+        address target = address(bytes20(royalty));
+        uint32 micros = uint32(uint256(royalty));
+        uint32 staticBit = 1 << 31;
+        bool isStatic = (micros & (staticBit)) != 0;
+        micros &= ~staticBit;
+        uint256 amt;
+        if (isStatic) {
+            amt = (micros * price) / ONE_MILLION;
+            require(
+                currency.transferFrom(bidder, target, amt),
+                TRANSFER_FAILED
+            );
+            emit RoyaltyPaid(tradeId, payer, target, micros, amt, currency);
+        }
+        require(isStatic, "dynamic royalties not yet supported");
         return amt;
     }
 }
