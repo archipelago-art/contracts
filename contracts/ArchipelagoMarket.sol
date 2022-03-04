@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./ITraitOracle.sol";
+import "./IRoyaltyOracle.sol";
 import "./IWeth.sol";
 import "./MarketMessages.sol";
 import "./SignatureChecker.sol";
@@ -356,7 +357,9 @@ contract ArchipelagoMarket is Ownable {
                 asker,
                 price,
                 tradeId,
-                currency
+                currency,
+                token,
+                tokenId
             );
         }
         // Note that the extra royalties on the ask is basically duplicated
@@ -371,7 +374,9 @@ contract ArchipelagoMarket is Ownable {
                 asker,
                 price,
                 tradeId,
-                currency
+                currency,
+                token,
+                tokenId
             );
         }
 
@@ -405,7 +410,9 @@ contract ArchipelagoMarket is Ownable {
                 bidder,
                 price,
                 tradeId,
-                currency
+                currency,
+                token,
+                tokenId
             );
         }
 
@@ -441,29 +448,85 @@ contract ArchipelagoMarket is Ownable {
         emit TokenTraded(tradeId, token, tokenId);
     }
 
-    function _payRoyalty(
+    function _computeRoyalty(
         bytes32 royalty,
+        IERC721 tokenContract,
+        uint256 tokenId
+    ) internal view returns (RoyaltyResult[] memory) {
+        address target = address(bytes20(royalty));
+        uint32 micros = uint32(uint256(royalty));
+        uint32 staticBit = 1 << 31;
+        bool isStatic = (micros & (staticBit)) != 0;
+        micros &= ~staticBit;
+        if (isStatic) {
+            RoyaltyResult[] memory results = new RoyaltyResult[](1);
+            results[0].micros = micros;
+            results[0].recipient = target;
+            return results;
+        } else {
+            uint64 data = uint64(uint256(royalty) >> 32);
+            RoyaltyResult[] memory results = IRoyaltyOracle(target).royalties(
+                tokenContract,
+                tokenId,
+                micros,
+                data
+            );
+            uint256 totalMicros = 0;
+            for (uint256 i = 0; i < results.length; i++) {
+                totalMicros += results[i].micros;
+            }
+            require(
+                totalMicros <= micros,
+                "oracle wants to overspend royalty allotment"
+            );
+            return results;
+        }
+    }
+
+    function _payRoyalties(
+        RoyaltyResult[] memory results,
         address bidder,
         address payer,
         uint256 price,
         uint256 tradeId,
         IERC20 currency
     ) internal returns (uint256) {
-        address target = address(bytes20(royalty));
-        uint32 micros = uint32(uint256(royalty));
-        uint32 staticBit = 1 << 31;
-        bool isStatic = (micros & (staticBit)) != 0;
-        micros &= ~staticBit;
-        uint256 amt;
-        if (isStatic) {
-            amt = (micros * price) / ONE_MILLION;
+        uint256 totalAmount;
+        for (uint256 i = 0; i < results.length; i++) {
+            RoyaltyResult memory result = results[i];
+            uint256 amt = (result.micros * price) / ONE_MILLION;
+            totalAmount += amt;
             require(
-                currency.transferFrom(bidder, target, amt),
+                currency.transferFrom(bidder, result.recipient, amt),
                 TRANSFER_FAILED
             );
-            emit RoyaltyPaid(tradeId, payer, target, micros, amt, currency);
+            emit RoyaltyPaid(
+                tradeId,
+                payer,
+                result.recipient,
+                result.micros,
+                amt,
+                currency
+            );
         }
-        require(isStatic, "dynamic royalties not yet supported");
-        return amt;
+        return totalAmount;
+    }
+
+    function _payRoyalty(
+        bytes32 royalty,
+        address bidder,
+        address payer,
+        uint256 price,
+        uint256 tradeId,
+        IERC20 currency,
+        IERC721 tokenContract,
+        uint256 tokenId
+    ) internal returns (uint256) {
+        RoyaltyResult[] memory results = _computeRoyalty(
+            royalty,
+            tokenContract,
+            tokenId
+        );
+        return _payRoyalties(results, bidder, payer, price, tradeId, currency);
     }
 }
