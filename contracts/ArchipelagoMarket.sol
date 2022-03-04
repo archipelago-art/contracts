@@ -486,7 +486,11 @@ contract ArchipelagoMarket is Ownable {
     function _payRoyalties(
         RoyaltyResult[] memory results,
         address bidder,
-        address payer,
+        // `logicalPayer` is either the bidder or the asker, depending on who
+        // semantically is bearing the cost of this royalty. In all cases, the
+        // funds will actually be transferred from the bidder; this only
+        // affects the emitted event.
+        address logicalPayer,
         uint256 price,
         uint256 tradeId,
         IERC20 currency
@@ -502,7 +506,7 @@ contract ArchipelagoMarket is Ownable {
             );
             emit RoyaltyPaid(
                 tradeId,
-                payer,
+                logicalPayer,
                 result.recipient,
                 result.micros,
                 amt,
@@ -515,7 +519,7 @@ contract ArchipelagoMarket is Ownable {
     function _payRoyalty(
         bytes32 royalty,
         address bidder,
-        address payer,
+        address logicalPayer,
         uint256 price,
         uint256 tradeId,
         IERC20 currency,
@@ -527,6 +531,14 @@ contract ArchipelagoMarket is Ownable {
             tokenContract,
             tokenId
         );
-        return _payRoyalties(results, bidder, payer, price, tradeId, currency);
+        return
+            _payRoyalties(
+                results,
+                bidder,
+                logicalPayer,
+                price,
+                tradeId,
+                currency
+            );
     }
 }
