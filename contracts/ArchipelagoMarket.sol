@@ -483,7 +483,7 @@ contract ArchipelagoMarket is Ownable {
         }
     }
 
-    function _payRoyalties(
+    function _payComputedRoyalties(
         RoyaltyResult[] memory results,
         address bidder,
         // `logicalPayer` is either the bidder or the asker, depending on who
@@ -532,7 +532,7 @@ contract ArchipelagoMarket is Ownable {
             tokenId
         );
         return
-            _payRoyalties(
+            _payComputedRoyalties(
                 results,
                 bidder,
                 logicalPayer,
