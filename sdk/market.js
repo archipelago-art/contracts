@@ -246,8 +246,7 @@ const verify = Object.freeze({
 
 const staticMask = 1n << 31n;
 
-function staticRoyalty(recipient, micros) {
-  recipient = ethers.utils.getAddress(recipient);
+function parseUint31Micros(micros) {
   micros = ethers.BigNumber.from(micros).toBigInt();
   if (micros < 0n) {
     throw new Error("negative royalty amount");
@@ -255,6 +254,12 @@ function staticRoyalty(recipient, micros) {
   if (micros & staticMask) {
     throw new Error(`micros has MSB set: ${micros}`);
   }
+  return micros;
+}
+
+function staticRoyalty(recipient, micros) {
+  recipient = ethers.utils.getAddress(recipient);
+  micros = parseUint31Micros(micros);
   micros |= staticMask;
   return ethers.utils.solidityPack(
     ["address", "uint64", "uint32"],
@@ -264,13 +269,7 @@ function staticRoyalty(recipient, micros) {
 
 function dynamicRoyalty(oracle, micros, data) {
   oracle = ethers.utils.getAddress(oracle);
-  micros = ethers.BigNumber.from(micros).toBigInt();
-  if (micros < 0n) {
-    throw new Error("negative royalty amount");
-  }
-  if (micros & staticMask) {
-    throw new Error(`micros has MSB set: ${micros}`);
-  }
+  micros = parseUint31Micros(micros);
   return ethers.utils.solidityPack(
     ["address", "uint64", "uint32"],
     [oracle, data, micros]
