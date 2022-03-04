@@ -13,18 +13,27 @@ describe("Market", () => {
   let TestWeth;
   let TestERC721;
   let TestERC20;
+  let TestRoyaltyOracle;
 
   let clock;
   before(async () => {
-    [Clock, Market, TestWeth, TestERC721, TestTraitOracle, TestERC20] =
-      await Promise.all([
-        ethers.getContractFactory("Clock"),
-        ethers.getContractFactory("ArchipelagoMarket"),
-        ethers.getContractFactory("TestWeth"),
-        ethers.getContractFactory("TestERC721"),
-        ethers.getContractFactory("TestTraitOracle"),
-        ethers.getContractFactory("TestERC20"),
-      ]);
+    [
+      Clock,
+      Market,
+      TestWeth,
+      TestERC721,
+      TestTraitOracle,
+      TestERC20,
+      TestRoyaltyOracle,
+    ] = await Promise.all([
+      ethers.getContractFactory("Clock"),
+      ethers.getContractFactory("ArchipelagoMarket"),
+      ethers.getContractFactory("TestWeth"),
+      ethers.getContractFactory("TestERC721"),
+      ethers.getContractFactory("TestTraitOracle"),
+      ethers.getContractFactory("TestERC20"),
+      ethers.getContractFactory("TestRoyaltyOracle"),
+    ]);
     clock = await Clock.deploy();
     await clock.deployed();
   });
@@ -54,17 +63,19 @@ describe("Market", () => {
 
   async function setup() {
     const signers = await ethers.getSigners();
-    const [market, weth, nft, oracle] = await Promise.all([
+    const [market, weth, nft, oracle, royaltyOracle] = await Promise.all([
       Market.deploy(),
       TestWeth.deploy(),
       TestERC721.deploy(),
       TestTraitOracle.deploy(),
+      TestRoyaltyOracle.deploy(),
     ]);
     await Promise.all([
       market.deployed(),
       weth.deployed(),
       nft.deployed(),
       oracle.deployed(),
+      royaltyOracle.deployed(),
     ]);
     const bidder = signers[1];
     const asker = signers[2];
@@ -166,6 +177,7 @@ describe("Market", () => {
       asker,
       otherSigner,
       oracle,
+      royaltyOracle,
       tokenIdBid,
       traitBid,
       newAsk,
@@ -1273,30 +1285,129 @@ describe("Market", () => {
           sdk.market.dynamicRoyalty(ethers.constants.AddressZero, badMicros, 0);
         expect(fail).to.throw("micros has MSB set");
       });
-      it("dynamic royalties are not yet supported", async () => {
-        const {
-          market,
-          signers,
-          weth,
-          asker,
-          bidder,
-          tokenIdBid,
-          newAsk,
-          newAgreement,
-        } = await setup();
-        const r0 = signers[3].address;
-        const agreement = newAgreement({
-          requiredRoyalties: [sdk.market.dynamicRoyalty(r0, 5, 0)],
+
+      describe("dynamic royalties", () => {
+        async function forRoyalty({ micros, data, addExtras = false }) {
+          const {
+            market,
+            asker,
+            bidder,
+            tokenIdBid,
+            newAsk,
+            newAgreement,
+            royaltyOracle,
+            nft,
+          } = await setup();
+          const roy = sdk.market.dynamicRoyalty(
+            royaltyOracle.address,
+            micros,
+            data
+          );
+          const agreement = newAgreement({
+            requiredRoyalties: [roy],
+          });
+          const tokenId = 8;
+          await nft.mint(asker.address, tokenId);
+          const extras = addExtras ? [roy] : [];
+          const bid = tokenIdBid({
+            agreement,
+            tokenId,
+            extraRoyalties: extras,
+          });
+          const ask = newAsk({ agreement, tokenId, extraRoyalties: extras });
+          const tradeId = computeTradeId(bid, bidder, ask, asker);
+          const p = fillOrder(market, agreement, bid, bidder, ask, asker);
+          return { p, market, bidder, asker, tradeId, agreement, nft, tokenId };
+        }
+
+        it("behaves correctly with one dynamic royalty", async () => {
+          const { p, market, asker, agreement, tradeId } = await forRoyalty({
+            micros: 1,
+            data: 0,
+          });
+          expect(p)
+            .to.emit(market, "RoyaltyPaid")
+            .withArgs(
+              tradeId,
+              asker.address,
+              "0x0000000000000000000000000000000000000001",
+              1,
+              micro,
+              agreement.currencyAddress
+            );
         });
-        const bid = tokenIdBid({
-          agreement,
+        it("handles a case with 0 dynamic royalties", async () => {
+          const { p, market, asker, bidder, agreement, tradeId } =
+            await forRoyalty({
+              micros: 1,
+              data: 9,
+            });
+          expect(p).to.emit(market, "Trade").withArgs(
+            tradeId,
+            bidder.address,
+            asker.address,
+            // price, proceeds, and cost are all identical; no royalties paid
+            agreement.price,
+            agreement.price,
+            agreement.price,
+            agreement.currencyAddress
+          );
         });
-        const ask = newAsk({
-          agreement,
+        it("handles a case with 2 royalties (and pipes tokenId and token contract)", async () => {
+          const { p, market, asker, agreement, tradeId, nft } =
+            await forRoyalty({
+              micros: 2,
+              data: 1,
+            });
+          expect(p)
+            .to.emit(market, "RoyaltyPaid")
+            .withArgs(
+              tradeId,
+              asker.address,
+              // the token contract gets piped through
+              nft.address,
+              1,
+              micro,
+              agreement.currencyAddress
+            )
+            .to.emit(market, "RoyaltyPaid")
+            .withArgs(
+              tradeId,
+              asker.address,
+              // the tokenId gets piped through
+              "0x0000000000000000000000000000000000000008",
+              1,
+              micro,
+              agreement.currencyAddress
+            );
         });
-        await expect(
-          fillOrder(market, agreement, bid, bidder, ask, asker)
-        ).to.be.revertedWith("dynamic royalties not yet supported");
+        it("reverts if the oracle tries to overspend micros allotment", async () => {
+          const { p } = await forRoyalty({
+            micros: 2,
+            data: 2,
+          });
+          expect(p).to.be.revertedWith("overspend royalty allotment");
+        });
+        it("dynamic royalties update price, proceeds, and cost consistently", async () => {
+          const { p, market, asker, bidder, agreement, tradeId } =
+            await forRoyalty({
+              micros: 1,
+              data: 0,
+              addExtras: true,
+            });
+          expect(p).to.emit(market, "Trade").withArgs(
+            tradeId,
+            bidder.address,
+            asker.address,
+            agreement.price,
+            // the proceeds lose two micros, one for the required royalty,
+            // one for the asker's extra royalty
+            agreement.price.sub(micro).sub(micro),
+            // the cost is increased by one micro, for the bidder's extra royalty
+            agreement.price.add(micro),
+            agreement.currencyAddress
+          );
+        });
       });
     });
 
