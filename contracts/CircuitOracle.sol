@@ -63,29 +63,13 @@ contract CircuitOracle is ITraitOracle {
     function hasTrait(
         IERC721 _tokenContract,
         uint256 _tokenId,
-        bytes memory _buf
+        bytes calldata _buf
     ) external view override returns (bool) {
-        // Note: `_buf` is *uniquely owned* and will be destructively consumed
-        // as it is read. `buf` will not always remain word-aligned. Start by
-        // permanently reserving two words of zeroed memory at the initial free
-        // pointer, as defense in depth in case some undocumented `solc`
-        // assumptions cause miscompilations on word-unaligned bytestrings.
-        assembly {
-            let _freePtr := mload(0x40)
-            mstore(_freePtr, 0)
-            mstore(add(_freePtr, 0x20), 0)
-            mstore(0x40, add(_freePtr, 0x40))
-        }
-
         // Decode the static part of the header (the first 96 bytes), then
         // advance to the dynamic part.
         (ITraitOracle _delegate, uint256 _traitLengths, uint256 _ops) = abi
             .decode(_buf, (ITraitOracle, uint256, uint256));
-        // SAFETY: The ABI decoding operation would have reverted if
-        // `_buf.length < 96`, so the subtraction can't underflow. Then,
-        // `_buf[96 : 96 + (_buf.length - 96)]` represents a proper suffix of
-        // `_buf`, so the region is still entirely owned by `_buf`.
-        _buf = unsafeConsume(_buf, 96, uncheckedSub(_buf.length, 96));
+        uint256 _bufIdx = 96; // read-offset into dynamic part of `_buf`
 
         uint256 _mem = 0; // `_mem & (1 << _i)` stores variable `_i`
         uint256 _v = 0; // next variable to assign
@@ -110,40 +94,29 @@ contract CircuitOracle is ITraitOracle {
             // can't underflow.
             _traitLength = uncheckedSub(_traitLength, 1);
 
-            if (_buf.length < _traitLength) revert(ERR_OVERRUN_BASE_TRAIT);
-            // SAFETY: We've just checked that `_buf.length` is at least
-            // `_traitLength`, so this can't underflow.
-            uint256 _newBufLength = uncheckedSub(_buf.length, _traitLength);
-
-            // Temporarily truncate `_buf` to `_traitLength` for external call.
-            //
-            // SAFETY: We've just checked that `_buf.length` is at least
-            // `_traitLength`, so this is only truncating it.
-            unsafeSetLength(_buf, _traitLength);
-            bool _hasTrait = _delegate.hasTrait(_tokenContract, _tokenId, _buf);
-            // Then, un-truncate `_buf` and advance it past this trait.
-            //
-            // SAFETY: `_newBufLength + _traitLength` equals the value of
-            // `_buf.length` before `_buf` was truncated, so this region is still
-            // entirely owned by `_buf`.
-            _buf = unsafeConsume(_buf, _traitLength, _newBufLength);
-
-            // SAFETY: `_v` is at most 144, so incrementing it can't overflow.
+            if (_bufIdx + _traitLength > _buf.length)
+                revert(ERR_OVERRUN_BASE_TRAIT);
+            bool _hasTrait = _delegate.hasTrait(
+                _tokenContract,
+                _tokenId,
+                _buf[_bufIdx:_bufIdx + _traitLength]
+            );
+            _bufIdx += _traitLength;
             _mem |= boolToUint256(_hasTrait) << _v;
+            // SAFETY: `_v` is at most 144, so incrementing it can't overflow.
             _v = uncheckedAdd(_v, 1);
         }
 
         // Evaluate operations. Henceforth, `_buf` represents the full array of
-        // arguments. (It's no longer strictly necessary to destructively
-        // consume from `_buf`, so we return to normal array accesses.)
+        // arguments.
         //
         // NOTE: This loop runs at most 128 times, because it shifts `_ops`
         // right by 2 bits each iteration and stops once that reaches zero.
         //
-        // INVARIANT: `_nextArg` is always at most 256, because it's only
-        // changed by incrementing it by either 1 or 2 per loop iteration.
-        // In particular, it's always safe to increment `_nextArg`.
-        uint256 _nextArg = 0;
+        // NOTE: Before this loop, `_bufIdx <= _buf.length`, and during this
+        // loop, `_bufIdx` advances by at most 2 per iteration. Thus, it always
+        // holds that `_bufIdx <= _buf.length + 256`, so these increments to
+        // `_bufIdx` can't overflow unless `_buf` is order-of 2^256 bytes long.
         while (true) {
             uint256 _op = _ops & 0x03;
             _ops >>= 2;
@@ -152,21 +125,23 @@ contract CircuitOracle is ITraitOracle {
             // This is a unary or binary operation; compute its output.
             bool _output;
             if (_op == OP_NOT) {
-                uint256 _idx0 = _nextArg;
-                // SAFETY: `_nextArg` is at most 256, so this can't overflow.
-                _nextArg = uncheckedAdd(_nextArg, 1);
+                uint256 _idx0 = _bufIdx;
+                // SAFETY: `_bufIdx <= _buf.length + 256`, so this shouldn't
+                // overflow.
+                _bufIdx = uncheckedAdd(_bufIdx, 1);
 
-                if (_buf.length < _nextArg) revert(ERR_OVERRUN_ARG);
+                if (_buf.length < _bufIdx) revert(ERR_OVERRUN_ARG);
                 bool _v0 = (_mem & (1 << uint256(uint8(_buf[_idx0])))) != 0;
                 _output = !_v0;
             } else {
                 // It's a binary operation, either `OP_OR` or `OP_AND`.
-                uint256 _idx0 = _nextArg;
-                // SAFETY: `_nextArg` is at most 256, so these can't overflow.
-                uint256 _idx1 = uncheckedAdd(_nextArg, 1);
-                _nextArg = uncheckedAdd(_nextArg, 2);
+                uint256 _idx0 = _bufIdx;
+                // SAFETY: `_bufIdx <= _buf.length + 256`, so this shouldn't
+                // overflow.
+                uint256 _idx1 = uncheckedAdd(_bufIdx, 1);
+                _bufIdx = uncheckedAdd(_bufIdx, 2);
 
-                if (_buf.length < _nextArg) revert(ERR_OVERRUN_ARG);
+                if (_buf.length < _bufIdx) revert(ERR_OVERRUN_ARG);
                 bool _v0 = (_mem & (1 << uint256(uint8(_buf[_idx0])))) != 0;
                 bool _v1 = (_mem & (1 << uint256(uint8(_buf[_idx1])))) != 0;
                 if (_op == OP_OR) {
@@ -226,51 +201,5 @@ contract CircuitOracle is ITraitOracle {
         assembly {
             _x := _b
         }
-    }
-
-    /// Forces the length of `_b` to `_length` without any checks.
-    ///
-    /// # Safety
-    ///
-    /// Caller must ensure that bytes `0` to `_length` (exclusive) of `_b` are
-    /// exclusively owned by `_b`.
-    function unsafeSetLength(bytes memory _b, uint256 _length) internal pure {
-        assembly {
-            mstore(_b, _length)
-        }
-    }
-
-    /// Destructively advance `_b` by `_offset`, setting its length to
-    /// `_newLength` and returning the new base pointer. The caller should
-    /// store the result of this function back into `_b`:
-    ///
-    ///     _b = unsafeConsume(_b, _offset, _newLength);
-    ///
-    /// This overwrites (up to) 32 bytes of memory previously pointed to by
-    /// `_b` to store the new length value, so `_b` should be exclusively owned
-    /// by the caller.
-    ///
-    /// # Safety
-    ///
-    /// Caller must ensure that bytes `_offset` to `_offset + _newLength`
-    /// (exclusive, where the "+" is not modulo 2^256) of `_b` are exclusively
-    /// owned by `_b`.
-    function unsafeConsume(
-        bytes memory _b,
-        uint256 _offset,
-        uint256 _newLength
-    ) internal pure returns (bytes memory) {
-        // ABI reminder: `_b` points to `32 + _b.length` bytes of allocated
-        // memory. The first 32 bytes are the big-endian representation of
-        // `_b.length`, as a `uint256`. The rest are the raw data.
-        //
-        // So, we advance `_b` by `_offset` bytes, so that `_b + 32` points to
-        // the start of the new data, and then write `_newLength` into `_b`,
-        // stomping whatever data in `_b` may have been there.
-        assembly {
-            _b := add(_b, _offset)
-            mstore(_b, _newLength)
-        }
-        return _b;
     }
 }
