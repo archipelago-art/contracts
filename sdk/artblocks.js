@@ -54,6 +54,7 @@ const SetFeatureInfoMessage = [
   { type: "address", name: "tokenContract" },
   { type: "uint32", name: "projectId" },
   { type: "string", name: "featureName" },
+  { type: "string", name: "traitValue" },
 ];
 const UpdateTraitMessage = [
   { type: "bytes32", name: "traitId" },
@@ -94,7 +95,7 @@ const TYPENAME_TRAIT_MEMBERSHIP_WORD =
 const TYPENAME_SET_PROJECT_INFO =
   "SetProjectInfoMessage(uint32 version,address tokenContract,uint32 projectId,uint32 size,string projectName)";
 const TYPENAME_SET_FEATURE_INFO =
-  "SetFeatureInfoMessage(uint32 version,address tokenContract,uint32 projectId,string featureName)";
+  "SetFeatureInfoMessage(uint32 version,address tokenContract,uint32 projectId,string featureName,string traitValue)";
 const TYPENAME_UPDATE_TRAIT =
   "UpdateTraitMessage(bytes32 traitId,TraitMembershipWord[] words,bytes32 finalization)";
 
@@ -133,13 +134,14 @@ function setProjectInfoStructHash(msg) {
 function setFeatureInfoStructHash(msg) {
   return ethers.utils.keccak256(
     ethers.utils.defaultAbiCoder.encode(
-      ["bytes32", "uint32", "address", "uint32", "bytes32"],
+      ["bytes32", "uint32", "address", "uint32", "bytes32", "bytes32"],
       [
         TYPEHASH_SET_FEATURE_INFO,
         msg.version,
         msg.tokenContract,
         msg.projectId,
         utf8Hash(msg.featureName),
+        utf8Hash(msg.traitValue),
       ]
     )
   );
@@ -215,10 +217,10 @@ function projectTraitId(projectId, version) {
   ]);
 }
 
-function featureTraitId(projectId, featureName, version) {
+function featureTraitId(projectId, featureName, traitValue, version) {
   const blob = ethers.utils.defaultAbiCoder.encode(
-    ["uint256", "uint256", "string", "uint256"],
-    [TraitType.FEATURE, projectId, featureName, version]
+    ["uint256", "uint256", "string", "string", "uint256"],
+    [TraitType.FEATURE, projectId, featureName, traitValue, version]
   );
   const hash = ethers.utils.keccak256(blob);
   return ethers.utils.hexConcat([

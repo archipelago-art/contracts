@@ -34,9 +34,15 @@ TEST_CASES.push(async function* oracleTraitMemberships(props) {
 
   const projectId = 23;
   const projectName = "Archetype";
-  const featureName = "Palette: Paddle";
+  const featureName = "Palette";
+  const traitValue = "Paddle";
   const version = 0;
-  const traitId = sdk.artblocks.featureTraitId(projectId, featureName, version);
+  const traitId = sdk.artblocks.featureTraitId(
+    projectId,
+    featureName,
+    traitValue,
+    version
+  );
   const domain = {
     oracleAddress: oracle.address,
     chainId: await ethers.provider.send("eth_chainId"),
@@ -51,7 +57,7 @@ TEST_CASES.push(async function* oracleTraitMemberships(props) {
   }
 
   {
-    const msg = { projectId, featureName, version, tokenContract };
+    const msg = { projectId, featureName, traitValue, version, tokenContract };
     const sig = await sdk.artblocks.sign712.setFeatureInfo(signer, domain, msg);
     const tx = await oracle.setFeatureInfo(msg, sig, EIP_712);
     yield ["setFeatureInfo", await tx.wait()];
@@ -142,8 +148,9 @@ TEST_CASES.push(async function* marketFills(props) {
   let paddleIds = [467, 36, 45, 3, 70, 237, 449, 491, 135, 54, 250, 314].map(
     (x) => x + baseTokenId
   );
-  const featureName = "Palette: Paddle";
-  const unsetFeatureName = "Palette: Blue Spider";
+  const featureName = "Palette";
+  const traitValue = "Paddle";
+  const unsetTraitValue = "Blue Spider";
   const version = 0;
 
   const projectMsg = {
@@ -163,6 +170,7 @@ TEST_CASES.push(async function* marketFills(props) {
   const featureMsg = {
     projectId,
     featureName,
+    traitValue,
     version,
     tokenContract: token.address,
   };
@@ -174,10 +182,16 @@ TEST_CASES.push(async function* marketFills(props) {
   await oracle.setFeatureInfo(featureMsg, featureSig, EIP_712);
 
   const projectTraitId = sdk.artblocks.projectTraitId(projectId, version);
-  const traitId = sdk.artblocks.featureTraitId(projectId, featureName, version);
+  const traitId = sdk.artblocks.featureTraitId(
+    projectId,
+    featureName,
+    traitValue,
+    version
+  );
   const unsetTraitId = sdk.artblocks.featureTraitId(
     projectId,
-    unsetFeatureName,
+    featureName,
+    unsetTraitValue,
     version
   );
 

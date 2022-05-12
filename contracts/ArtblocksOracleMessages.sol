@@ -16,6 +16,7 @@ struct SetFeatureInfoMessage {
     IERC721 tokenContract;
     uint32 projectId;
     string featureName;
+    string traitValue;
 }
 
 struct UpdateTraitMessage {
@@ -61,7 +62,7 @@ library ArtblocksOracleMessages {
         );
     bytes32 internal constant TYPEHASH_SET_FEATURE_INFO =
         keccak256(
-            "SetFeatureInfoMessage(uint32 version,address tokenContract,uint32 projectId,string featureName)"
+            "SetFeatureInfoMessage(uint32 version,address tokenContract,uint32 projectId,string featureName,string traitValue)"
         );
     bytes32 internal constant TYPEHASH_UPDATE_TRAIT =
         keccak256(
@@ -100,7 +101,8 @@ library ArtblocksOracleMessages {
                     _self.version,
                     _self.tokenContract,
                     _self.projectId,
-                    keccak256(abi.encodePacked(_self.featureName))
+                    keccak256(abi.encodePacked(_self.featureName)),
+                    keccak256(abi.encodePacked(_self.traitValue))
                 )
             );
     }

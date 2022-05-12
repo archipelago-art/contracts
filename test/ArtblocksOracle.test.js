@@ -128,8 +128,8 @@ describe("ArtblocksOracle", () => {
     });
 
     it("for features", async () => {
-      expect(await oracle.featureTraitId(23, "Palette: Paddle", 0)).to.equal(
-        sdk.artblocks.featureTraitId(23, "Palette: Paddle", 0)
+      expect(await oracle.featureTraitId(23, "Palette", "Paddle", 0)).to.equal(
+        sdk.artblocks.featureTraitId(23, "Palette", "Paddle", 0)
       );
     });
   });
@@ -168,7 +168,8 @@ describe("ArtblocksOracle", () => {
       const { oracle, signer } = await setUp();
       const msg = {
         projectId: 23,
-        featureName: "Palette: Paddle",
+        featureName: "Palette",
+        traitValue: "Paddle",
         version: 0,
         tokenContract: TOKEN_1,
       };
@@ -186,16 +187,19 @@ describe("ArtblocksOracle", () => {
       const { oracle, signer } = await setUp();
       const projectId = 23;
       const baseTokenId = projectId * PROJECT_STRIDE;
-      const featureName = "Palette: Paddle";
+      const featureName = "Palette";
+      const traitValue = "Paddle";
       const version = 0;
       const traitId = sdk.artblocks.featureTraitId(
         projectId,
         featureName,
+        traitValue,
         version
       );
       await setFeatureInfo(oracle, signer, {
         projectId,
         featureName,
+        traitValue,
         version,
         tokenContract: TOKEN_1,
       });
@@ -255,23 +259,32 @@ describe("ArtblocksOracle", () => {
       await oracle.deployed();
       await oracle.setOracleSigner(signers[1].address);
       const projectId = 23;
-      const featureName = "Palette: Paddle";
+      const featureName = "Palette";
+      const traitValue = "Paddle";
       const version = 0;
       const traitId = sdk.artblocks.featureTraitId(
         projectId,
         featureName,
+        traitValue,
         version
       );
       const tokenContract = TOKEN_1;
 
-      const msg = { projectId, featureName, version, tokenContract };
+      const msg = {
+        projectId,
+        featureName,
+        traitValue,
+        version,
+        tokenContract,
+      };
       await expect(setFeatureInfo(oracle, signers[1], msg))
         .to.emit(oracle, "FeatureInfoSet")
         .withArgs(
           traitId,
           projectId,
+          `${featureName}: ${traitValue}`,
           featureName,
-          featureName,
+          traitValue,
           version,
           tokenContract
         );
@@ -279,6 +292,7 @@ describe("ArtblocksOracle", () => {
         tokenContract,
         projectId,
         featureName,
+        traitValue,
       ]);
 
       await expect(setFeatureInfo(oracle, signers[1], msg)).to.be.revertedWith(
@@ -342,7 +356,8 @@ describe("ArtblocksOracle", () => {
       await oracle.setOracleSigner(signers[1].address);
       const msg = {
         projectId: 23,
-        featureName: "Palette: Paddle",
+        featureName: "Palette",
+        traitValue: "Paddle",
         version: 0,
         tokenContract: ethers.constants.AddressZero,
       };
@@ -358,6 +373,23 @@ describe("ArtblocksOracle", () => {
       const msg = {
         projectId: 23,
         featureName: "",
+        traitValue: "Paddle",
+        version: 0,
+        tokenContract: TOKEN_1,
+      };
+      await expect(setFeatureInfo(oracle, signers[1], msg)).to.be.revertedWith(
+        Errors.INVALID_ARGUMENT
+      );
+    });
+
+    it("for empty-valued features", async () => {
+      const oracle = await ArtblocksOracle.deploy();
+      await oracle.deployed();
+      await oracle.setOracleSigner(signers[1].address);
+      const msg = {
+        projectId: 23,
+        featureName: "Palette",
+        traitValue: "",
         version: 0,
         tokenContract: TOKEN_1,
       };
@@ -369,12 +401,14 @@ describe("ArtblocksOracle", () => {
 
   describe("setting trait memberships", () => {
     const projectId = 23;
-    const featureName = "Palette: Paddle";
+    const featureName = "Palette";
+    const traitValue = "Paddle";
     const version = 0;
     const baseTokenId = projectId * PROJECT_STRIDE;
     const traitId = sdk.artblocks.featureTraitId(
       projectId,
       featureName,
+      traitValue,
       version
     );
 
@@ -388,7 +422,13 @@ describe("ArtblocksOracle", () => {
 
     it("updates internal state incrementally", async () => {
       const { oracle, signer } = await setUp();
-      const msg = { projectId, featureName, version, tokenContract: TOKEN_1 };
+      const msg = {
+        projectId,
+        featureName,
+        traitValue,
+        version,
+        tokenContract: TOKEN_1,
+      };
       expect(await featureSize(oracle, traitId)).to.equal(0);
       await setFeatureInfo(oracle, signer, msg);
       expect(await featureSize(oracle, traitId)).to.equal(0);
@@ -437,7 +477,13 @@ describe("ArtblocksOracle", () => {
 
     it("reports non-membership for token IDs out of range", async () => {
       const { oracle, signer } = await setUp();
-      const msg1 = { projectId, featureName, version, tokenContract: TOKEN_1 };
+      const msg1 = {
+        projectId,
+        featureName,
+        traitValue,
+        version,
+        tokenContract: TOKEN_1,
+      };
       await setFeatureInfo(oracle, signer, msg1);
       const msg2 = { traitId, tokenIds: [baseTokenId + 250] };
       await updateTrait(oracle, signer, msg2);
@@ -453,7 +499,13 @@ describe("ArtblocksOracle", () => {
 
     it("reports non-membership for tokens from the wrong token contract", async () => {
       const { oracle, signer } = await setUp();
-      const msg1 = { projectId, featureName, version, tokenContract: TOKEN_1 };
+      const msg1 = {
+        projectId,
+        featureName,
+        traitValue,
+        version,
+        tokenContract: TOKEN_1,
+      };
       await setFeatureInfo(oracle, signer, msg1);
       const msg2 = { traitId, tokenIds: [baseTokenId + 250] };
       await updateTrait(oracle, signer, msg2);
@@ -468,7 +520,13 @@ describe("ArtblocksOracle", () => {
 
     it("keeps track of members that were added multiple times", async () => {
       const { oracle, signer } = await setUp();
-      const msg = { projectId, featureName, version, tokenContract: TOKEN_1 };
+      const msg = {
+        projectId,
+        featureName,
+        traitValue,
+        version,
+        tokenContract: TOKEN_1,
+      };
       await setFeatureInfo(oracle, signer, msg);
 
       let traitLog = null;
@@ -513,6 +571,7 @@ describe("ArtblocksOracle", () => {
       const traitId = sdk.artblocks.featureTraitId(
         projectId,
         featureName,
+        traitValue,
         version
       );
 
@@ -529,9 +588,16 @@ describe("ArtblocksOracle", () => {
       const traitId = sdk.artblocks.featureTraitId(
         projectId,
         featureName,
+        traitValue,
         version
       );
-      const msg = { projectId, featureName, version, tokenContract: TOKEN_1 };
+      const msg = {
+        projectId,
+        featureName,
+        traitValue,
+        version,
+        tokenContract: TOKEN_1,
+      };
       await setFeatureInfo(oracle, signer, msg);
 
       const tokenIds = [0, 1];
@@ -547,7 +613,13 @@ describe("ArtblocksOracle", () => {
 
     it("rejects signatures from unauthorized accounts", async () => {
       const { oracle, signer, nonSigner } = await setUp();
-      const msg = { projectId, featureName, version, tokenContract: TOKEN_1 };
+      const msg = {
+        projectId,
+        featureName,
+        traitValue,
+        version,
+        tokenContract: TOKEN_1,
+      };
       await setFeatureInfo(oracle, signer, msg);
 
       const msg1 = { traitId, tokenIds: [1, 2, 1] };
@@ -558,7 +630,13 @@ describe("ArtblocksOracle", () => {
 
     it("rejects signatures for other valid messages", async () => {
       const { oracle, signer } = await setUp();
-      const msg = { projectId, featureName, version, tokenContract: TOKEN_1 };
+      const msg = {
+        projectId,
+        featureName,
+        traitValue,
+        version,
+        tokenContract: TOKEN_1,
+      };
       await setFeatureInfo(oracle, signer, msg);
 
       const msg1 = sdk.artblocks.updateTraitMessage({
@@ -582,12 +660,14 @@ describe("ArtblocksOracle", () => {
 
   describe("finalizing traits", async () => {
     const projectId = 23;
-    const featureName = "Palette: Paddle";
+    const featureName = "Palette";
+    const traitValue = "Paddle";
     const version = 0;
     const baseTokenId = projectId * PROJECT_STRIDE;
     const traitId = sdk.artblocks.featureTraitId(
       projectId,
       featureName,
+      traitValue,
       version
     );
 
@@ -599,6 +679,7 @@ describe("ArtblocksOracle", () => {
       await setFeatureInfo(oracle, signer, {
         projectId,
         featureName,
+        traitValue,
         version,
         tokenContract: TOKEN_1,
       });

@@ -43,8 +43,10 @@ struct FeatureInfo {
     /// for the "Palette: Paddle" trait on Archetypes, this value is `23`,
     /// which is the ID of the Archetype project.
     uint32 projectId;
-    /// The human-readable name of this feature, like "Palette: Paddle".
-    string name;
+    /// The string name of the feature, like "Palette".
+    string featureName;
+    /// The value of the trait within the feature, like "Paddle".
+    string traitValue;
 }
 
 /// The current state of a feature trait, updated as more memberships and
@@ -82,8 +84,10 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
     event FeatureInfoSet(
         bytes32 indexed traitId,
         uint32 indexed projectId,
-        string indexed name,
-        string fullName,
+        // `nameAndValue` is `featureName + ": " + traitValue`, for indexing.
+        string indexed nameAndValue,
+        string featureName,
+        string traitValue,
         uint32 version,
         IERC721 tokenContract
     );
@@ -220,11 +224,13 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
             ERR_INVALID_ARGUMENT
         );
         require(!_stringEmpty(_msg.featureName), ERR_INVALID_ARGUMENT);
+        require(!_stringEmpty(_msg.traitValue), ERR_INVALID_ARGUMENT);
 
         // Feature must not already exist.
         bytes32 _traitId = featureTraitId(
             _msg.projectId,
             _msg.featureName,
+            _msg.traitValue,
             _msg.version
         );
         require(
@@ -234,14 +240,16 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
 
         featureTraitInfo[_traitId] = FeatureInfo({
             projectId: _msg.projectId,
-            name: _msg.featureName,
+            featureName: _msg.featureName,
+            traitValue: _msg.traitValue,
             tokenContract: _msg.tokenContract
         });
         emit FeatureInfoSet({
             traitId: _traitId,
             projectId: _msg.projectId,
-            name: _msg.featureName,
-            fullName: _msg.featureName,
+            nameAndValue: string(abi.encodePacked(_msg.featureName, ": ", _msg.traitValue)),
+            featureName: _msg.featureName,
+            traitValue: _msg.traitValue,
             version: _msg.version,
             tokenContract: _msg.tokenContract
         });
@@ -385,12 +393,14 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
     function featureTraitId(
         uint32 _projectId,
         string memory _featureName,
+        string memory _traitValue,
         uint32 _version
     ) public pure returns (bytes32) {
         bytes memory _blob = abi.encode(
             TraitType.FEATURE,
             _projectId,
             _featureName,
+            _traitValue,
             _version
         );
         uint256 _hash = uint256(keccak256(_blob));
