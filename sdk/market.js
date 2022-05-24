@@ -279,6 +279,7 @@ function dynamicRoyalty(oracle, micros, data) {
 const abi = Object.freeze({
   Ask: require("./_abi/ask"),
   Bid: require("./_abi/bid"),
+  OrderAgreement: require("./_abi/orderAgreement"),
 });
 
 module.exports = {
