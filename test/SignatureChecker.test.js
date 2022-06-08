@@ -82,9 +82,8 @@ describe("SignatureChecker", () => {
   }
 
   it("rejects unsigned messages", async () => {
-    // Setting `_kind` to `NO_SIGNATURE` should fail unconditionally, even if
-    // the other arguments might constitute a valid signature of a different
-    // kind.
+    // Setting `_kind` to `EXTERNAL` should fail unconditionally, even if the
+    // other arguments might constitute a valid signature of a different kind.
     const signer = (await ethers.getSigners())[0];
     const prism = makePrism();
     const signature = await signer._signTypedData(
@@ -97,7 +96,7 @@ describe("SignatureChecker", () => {
         RAW_DOMAIN_SEPARATOR,
         prismStructHash(prism),
         signature,
-        SignatureKind.NO_SIGNATURE
+        SignatureKind.EXTERNAL
       )
     ).to.be.revertedWith("SignatureChecker: no signature given");
   });

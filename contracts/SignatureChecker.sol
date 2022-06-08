@@ -4,10 +4,12 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 enum SignatureKind {
-    /// An unsigned message. "Signatures" with this kind will always be
-    /// rejected; this enum variant exists to let callers handle other types of
-    /// authorization.
-    NO_SIGNATURE,
+    /// A message for which authorization is handled specially by the verifying
+    /// contract. Signatures with this kind will always be rejected by
+    /// `SignatureChecker.recover`; this enum variant exists to let callers
+    /// handle other types of authorization, such as pre-authorization in
+    /// contract storage or association with `msg.sender`.
+    EXTERNAL,
     /// A message that starts with "\x19Ethereum Signed Message[...]", as
     /// implemented by the `personal_sign` JSON-RPC method.
     ETHEREUM_SIGNED_MESSAGE,

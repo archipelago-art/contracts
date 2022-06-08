@@ -239,7 +239,7 @@ describe("Market", () => {
   ) {
     let bidSignature, askSignature;
     switch (signatureKinds.bidder) {
-      case SignatureKind.NO_SIGNATURE:
+      case SignatureKind.EXTERNAL:
         bidSignature = ethers.utils.defaultAbiCoder.encode(
           ["address"],
           [signatureKinds.bidderAddress]
@@ -257,7 +257,7 @@ describe("Market", () => {
         );
     }
     switch (signatureKinds.asker) {
-      case SignatureKind.NO_SIGNATURE:
+      case SignatureKind.EXTERNAL:
         askSignature = ethers.utils.defaultAbiCoder.encode(
           ["address"],
           [signatureKinds.askerAddress]
@@ -442,8 +442,8 @@ describe("Market", () => {
           await market.connect(bidder).setOnChainBidApproval(bid, true);
           await market.connect(asker).setOnChainAskApproval(ask, true);
           return {
-            bidder: SignatureKind.NO_SIGNATURE,
-            asker: SignatureKind.NO_SIGNATURE,
+            bidder: SignatureKind.EXTERNAL,
+            asker: SignatureKind.EXTERNAL,
             bidderAddress: bidder.address,
             askerAddress: asker.address,
           };
@@ -460,7 +460,7 @@ describe("Market", () => {
         await expect(
           fillOrder(market, newAgreement(), bid, bidder, ask, asker, {
             bidder: SignatureKind.EIP_712,
-            asker: SignatureKind.NO_SIGNATURE,
+            asker: SignatureKind.EXTERNAL,
             askerAddress: asker.address,
           })
         ).to.be.revertedWith("Market: on-chain approval missing");
@@ -483,7 +483,7 @@ describe("Market", () => {
         await expect(
           fillOrder(market, newAgreement(), bid, bidder, ask, asker, {
             bidder: SignatureKind.EIP_712,
-            asker: SignatureKind.NO_SIGNATURE,
+            asker: SignatureKind.EXTERNAL,
             askerAddress: asker.address,
           })
         ).to.be.revertedWith("Market: on-chain approval missing");

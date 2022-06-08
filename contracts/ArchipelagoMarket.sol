@@ -145,7 +145,7 @@ contract ArchipelagoMarket is Ownable {
         bytes memory signature,
         SignatureKind signatureKind
     ) internal view returns (address) {
-        if (signatureKind != SignatureKind.NO_SIGNATURE) {
+        if (signatureKind != SignatureKind.EXTERNAL) {
             return
                 SignatureChecker.recover(
                     domainSeparator,
