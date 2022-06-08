@@ -156,7 +156,7 @@ contract ArchipelagoMarket is Ownable {
         }
         address signer = abi.decode(signature, (address));
         require(
-            onChainApprovals[signer][structHash],
+            signer == msg.sender || onChainApprovals[signer][structHash],
             "Market: on-chain approval missing"
         );
         return signer;

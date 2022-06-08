@@ -374,9 +374,10 @@ describe("Market", () => {
         const ask = newAsk();
 
         const signatureSetupData = { ...setupData, bid, ask };
-        const signatureKinds = await setUpSignatures(signatureSetupData);
+        const { fillOrderSigner = market.signer, ...signatureKinds } =
+          await setUpSignatures(signatureSetupData);
         await fillOrder(
-          market,
+          market.connect(fillOrderSigner),
           newAgreement(),
           bid,
           bidder,
@@ -449,8 +450,29 @@ describe("Market", () => {
           };
         });
       });
-
-      it("rejects if asker/bidder is not approved in contract storage", async () => {
+      it("supports bid approved implicitly by `fillOrder` caller", async () => {
+        await expectSuccess(async ({ market, bid, bidder, ask, asker }) => {
+          await market.connect(asker).setOnChainAskApproval(ask, true);
+          return {
+            fillOrderSigner: bidder,
+            bidder: SignatureKind.EXTERNAL,
+            bidderAddress: bidder.address,
+            asker: SignatureKind.EIP_712,
+          };
+        });
+      });
+      it("supports ask approved implicitly by `fillOrder` caller", async () => {
+        await expectSuccess(async ({ market, bid, bidder, ask, asker }) => {
+          await market.connect(bidder).setOnChainBidApproval(bid, true);
+          return {
+            fillOrderSigner: asker,
+            bidder: SignatureKind.ETHEREUM_SIGNED_MESSAGE,
+            asker: SignatureKind.EXTERNAL,
+            askerAddress: asker.address,
+          };
+        });
+      });
+      it("rejects if asker/bidder is neither caller nor approved in contract storage", async () => {
         const { market, asker, bidder, tokenIdBid, newAsk, newAgreement } =
           await setup();
         const bid = tokenIdBid();
