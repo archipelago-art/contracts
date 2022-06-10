@@ -1759,9 +1759,9 @@ describe("Market", () => {
       const bid = tokenIdBid();
       const ask = newAsk();
       await market.connect(bidder).cancelNonces([bid.nonce]);
-      expect(
-        await market.nonceCancellation(bidder.address, bid.nonce)
-      ).to.equal(true);
+      expect(await market.nonceCancelled(bidder.address, bid.nonce)).to.equal(
+        true
+      );
       await expect(
         fillOrder(market, newAgreement(), bid, bidder, ask, asker)
       ).to.be.revertedWith("cancelled");
@@ -1781,7 +1781,7 @@ describe("Market", () => {
       const bid = tokenIdBid();
       const ask = newAsk();
       await market.connect(asker).cancelNonces([ask.nonce]);
-      expect(await market.nonceCancellation(asker.address, ask.nonce)).to.equal(
+      expect(await market.nonceCancelled(asker.address, ask.nonce)).to.equal(
         true
       );
       await expect(
@@ -1792,12 +1792,8 @@ describe("Market", () => {
       const { market, signers } = await setup();
       const operator = signers[0];
       await market.cancelNonces([420, 69]);
-      expect(await market.nonceCancellation(operator.address, 420)).to.equal(
-        true
-      );
-      expect(await market.nonceCancellation(operator.address, 69)).to.equal(
-        true
-      );
+      expect(await market.nonceCancelled(operator.address, 420)).to.equal(true);
+      expect(await market.nonceCancelled(operator.address, 69)).to.equal(true);
     });
     it("fills result in cancellation of any other bids/asks with same nonce", async () => {
       const {
@@ -1814,10 +1810,10 @@ describe("Market", () => {
       const bid = tokenIdBid();
       const ask = newAsk();
       await fillOrder(market, newAgreement(), bid, bidder, ask, asker);
-      expect(
-        await market.nonceCancellation(bidder.address, bid.nonce)
-      ).to.equal(true);
-      expect(await market.nonceCancellation(asker.address, ask.nonce)).to.equal(
+      expect(await market.nonceCancelled(bidder.address, bid.nonce)).to.equal(
+        true
+      );
+      expect(await market.nonceCancelled(asker.address, ask.nonce)).to.equal(
         true
       );
     });
@@ -1848,15 +1844,15 @@ describe("Market", () => {
       });
       const hash = await market.bidHash(bid);
       const addr = bidder.address;
-      expect(await market.onChainApprovals(addr, hash)).to.equal(false);
+      expect(await market.onChainApproval(addr, hash)).to.equal(false);
       await expect(
         market.connect(bidder).setOnChainBidApproval(bid, true)
       ).to.emit(market, "BidApproval");
-      expect(await market.onChainApprovals(addr, hash)).to.equal(true);
+      expect(await market.onChainApproval(addr, hash)).to.equal(true);
       await expect(
         market.connect(bidder).setOnChainBidApproval(bid, false)
       ).to.emit(market, "BidApproval");
-      expect(await market.onChainApprovals(addr, hash)).to.equal(false);
+      expect(await market.onChainApproval(addr, hash)).to.equal(false);
     });
     it("properly hash asks", async () => {
       const { market, signers, asker, newAsk, newAgreement } = await setup();
@@ -1872,15 +1868,15 @@ describe("Market", () => {
       });
       const hash = await market.askHash(ask);
       const addr = asker.address;
-      expect(await market.onChainApprovals(addr, hash)).to.equal(false);
+      expect(await market.onChainApproval(addr, hash)).to.equal(false);
       await expect(
         market.connect(asker).setOnChainAskApproval(ask, true)
       ).to.emit(market, "AskApproval");
-      expect(await market.onChainApprovals(addr, hash)).to.equal(true);
+      expect(await market.onChainApproval(addr, hash)).to.equal(true);
       await expect(
         market.connect(asker).setOnChainAskApproval(ask, false)
       ).to.emit(market, "AskApproval");
-      expect(await market.onChainApprovals(addr, hash)).to.equal(false);
+      expect(await market.onChainApproval(addr, hash)).to.equal(false);
     });
   });
   describe("emergency shutdown", () => {

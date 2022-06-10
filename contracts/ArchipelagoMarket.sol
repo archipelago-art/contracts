@@ -56,14 +56,14 @@ contract ArchipelagoMarket is Ownable {
         IERC20 currency
     );
 
-    mapping(address => mapping(uint256 => bool)) public nonceCancellation;
+    mapping(address => mapping(uint256 => bool)) public nonceCancelled;
 
-    /// `onChainApprovals[address][structHash]` is `true` if `address` has
+    /// `onChainApproval[address][structHash]` is `true` if `address` has
     /// provided on-chain approval of a message with hash `structHash`.
     ///
     /// These approvals are not bounded by a domain separator; the contract
     /// storage itself is the signing domain.
-    mapping(address => mapping(bytes32 => bool)) public onChainApprovals;
+    mapping(address => mapping(bytes32 => bool)) public onChainApproval;
 
     /// Whether the market is in emergencyShutdown mode (in which case, no trades
     /// can be made).
@@ -158,7 +158,7 @@ contract ArchipelagoMarket is Ownable {
         }
         address signer = abi.decode(signature, (address));
         require(
-            onChainApprovals[signer][structHash],
+            onChainApproval[signer][structHash],
             "Market: on-chain approval missing"
         );
         return signer;
@@ -166,25 +166,25 @@ contract ArchipelagoMarket is Ownable {
 
     function setOnChainBidApproval(Bid memory bid, bool approved) external {
         bytes32 hash = bid.structHash();
-        onChainApprovals[msg.sender][hash] = approved;
+        onChainApproval[msg.sender][hash] = approved;
         emit BidApproval(msg.sender, hash, approved, bid);
     }
 
     function setOnChainAskApproval(Ask memory ask, bool approved) external {
         bytes32 hash = ask.structHash();
-        onChainApprovals[msg.sender][hash] = approved;
+        onChainApproval[msg.sender][hash] = approved;
         emit AskApproval(msg.sender, hash, approved, ask);
     }
 
     /// Computes the EIP-712 struct hash of the given bid. The resulting hash
-    /// can be passed to `onChainApprovals(address, bytes32)` to check whether
+    /// can be passed to `onChainApproval(address, bytes32)` to check whether
     /// a given account has signed this bid.
     function bidHash(Bid memory bid) external pure returns (bytes32) {
         return bid.structHash();
     }
 
     /// Computes the EIP-712 struct hash of the given ask. The resulting hash
-    /// can be passed to `onChainApprovals(address, bytes32)` to check whether
+    /// can be passed to `onChainApproval(address, bytes32)` to check whether
     /// a given account has signed this ask.
     function askHash(Ask memory ask) external pure returns (bytes32) {
         return ask.structHash();
@@ -204,7 +204,7 @@ contract ArchipelagoMarket is Ownable {
     function cancelNonces(uint256[] calldata nonces) external {
         for (uint256 i; i < nonces.length; i++) {
             uint256 nonce = nonces[i];
-            nonceCancellation[msg.sender][nonce] = true;
+            nonceCancelled[msg.sender][nonce] = true;
             emit NonceCancellation(msg.sender, nonce);
         }
     }
@@ -319,20 +319,14 @@ contract ArchipelagoMarket is Ownable {
         require(block.timestamp <= bid.deadline, ORDER_CANCELLED_OR_EXPIRED);
         require(block.timestamp <= ask.deadline, ORDER_CANCELLED_OR_EXPIRED);
 
-        require(
-            !nonceCancellation[bidder][bid.nonce],
-            ORDER_CANCELLED_OR_EXPIRED
-        );
-        require(
-            !nonceCancellation[asker][ask.nonce],
-            ORDER_CANCELLED_OR_EXPIRED
-        );
+        require(!nonceCancelled[bidder][bid.nonce], ORDER_CANCELLED_OR_EXPIRED);
+        require(!nonceCancelled[asker][ask.nonce], ORDER_CANCELLED_OR_EXPIRED);
 
         // Bids and asks are cancelled on execution, to prevent replays. Cancel
         // upfront so that external calls (`transferFrom`, `safeTransferFrom`,
         // the ERC-721 receive hook) only observe the cancelled state.
-        nonceCancellation[bidder][bid.nonce] = true;
-        nonceCancellation[asker][ask.nonce] = true;
+        nonceCancelled[bidder][bid.nonce] = true;
+        nonceCancelled[asker][ask.nonce] = true;
         emit NonceCancellation(bidder, bid.nonce);
         emit NonceCancellation(asker, ask.nonce);
 
