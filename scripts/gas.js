@@ -26,6 +26,15 @@ TEST_CASES.push(async function* circuitOracleDeploy(props) {
   yield ["CircuitOracle deploy", await oracle.deployTransaction.wait()];
 });
 
+TEST_CASES.push(async function* royaltyOracleDeploy(props) {
+  const oracle = await props.factories.ArtblocksRoyaltyOracle.deploy();
+  await oracle.deployed();
+  yield [
+    "ArtblocksRoyaltyOracle deploy",
+    await oracle.deployTransaction.wait(),
+  ];
+});
+
 TEST_CASES.push(async function* oracleTraitMemberships(props) {
   const oracle = await props.factories.ArtblocksOracle.deploy();
   await oracle.deployed();
@@ -495,6 +504,7 @@ async function main() {
   }
   const [
     ArtblocksOracle,
+    ArtblocksRoyaltyOracle,
     ArchipelagoMarket,
     CircuitOracle,
     TestTraitOracle,
@@ -502,6 +512,7 @@ async function main() {
     TestERC721,
   ] = await Promise.all([
     ethers.getContractFactory("ArtblocksOracle"),
+    ethers.getContractFactory("ArtblocksRoyaltyOracle"),
     ethers.getContractFactory("ArchipelagoMarket"),
     ethers.getContractFactory("CircuitOracle"),
     ethers.getContractFactory("TestTraitOracle"),
@@ -515,6 +526,7 @@ async function main() {
       const gen = testCase({
         factories: {
           ArtblocksOracle,
+          ArtblocksRoyaltyOracle,
           ArchipelagoMarket,
           CircuitOracle,
           TestTraitOracle,
