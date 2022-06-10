@@ -48,13 +48,12 @@ describe("Market", () => {
   }
 
   function computeTradeId(bid, bidder, ask, asker) {
-    const hash = ethers.utils.keccak256(
+    return ethers.utils.keccak256(
       ethers.utils.defaultAbiCoder.encode(
         ["address", "uint256", "address", "uint256"],
         [bidder.address, bid.nonce, asker.address, ask.nonce]
       )
     );
-    return BN.from(hash);
   }
 
   function staticRoyalty({ recipient, micros }) {

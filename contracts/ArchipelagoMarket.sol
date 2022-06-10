@@ -31,7 +31,7 @@ contract ArchipelagoMarket is Ownable {
     );
 
     event Trade(
-        uint256 indexed tradeId,
+        bytes32 indexed tradeId,
         address indexed buyer,
         address indexed seller,
         uint256 price,
@@ -43,13 +43,13 @@ contract ArchipelagoMarket is Ownable {
     /// i.e. a Trade event will correspond to one TokenTraded events.
     /// It's part of a separate event so that we can index more fields.
     event TokenTraded(
-        uint256 indexed tradeId,
+        bytes32 indexed tradeId,
         IERC721 indexed tokenAddress,
         uint256 indexed tokenId
     );
 
     event RoyaltyPaid(
-        uint256 indexed tradeId,
+        bytes32 indexed tradeId,
         address indexed payer,
         address indexed recipient,
         uint256 micros,
@@ -334,8 +334,8 @@ contract ArchipelagoMarket is Ownable {
         emit NonceCancellation(bidder, bid.nonce);
         emit NonceCancellation(asker, ask.nonce);
 
-        uint256 tradeId = uint256(
-            keccak256(abi.encode(bidder, bid.nonce, asker, ask.nonce))
+        bytes32 tradeId = keccak256(
+            abi.encode(bidder, bid.nonce, asker, ask.nonce)
         );
         // amount paid to seller, after subtracting asker royalties
         uint256 proceeds = price;
@@ -494,7 +494,7 @@ contract ArchipelagoMarket is Ownable {
         // affects the emitted event.
         address logicalPayer,
         uint256 price,
-        uint256 tradeId,
+        bytes32 tradeId,
         IERC20 currency
     ) internal returns (uint256) {
         uint256 totalAmount;
@@ -523,7 +523,7 @@ contract ArchipelagoMarket is Ownable {
         address bidder,
         address logicalPayer,
         uint256 price,
-        uint256 tradeId,
+        bytes32 tradeId,
         IERC20 currency,
         IERC721 tokenContract,
         uint256 tokenId
