@@ -1239,15 +1239,15 @@ describe("Market", () => {
           newAgreement,
         } = await setup();
         expect(await market.archipelagoRoyaltyMicros()).to.equal(0);
-        await market.setArchipelagoRoyaltyRate(5);
+        await market.setArchipelagoRoyaltyMicros(5);
         expect(await market.archipelagoRoyaltyMicros()).to.equal(5);
         const roy = micro.mul(5);
         const r0 = signers[3].address;
-        expect(await market.archipelagoTreasuryAddress()).to.equal(
+        expect(await market.archipelagoRoyaltyAddress()).to.equal(
           ethers.constants.AddressZero
         );
-        await market.setTreasuryAddress(r0);
-        expect(await market.archipelagoTreasuryAddress()).to.equal(r0);
+        await market.setArchipelagoRoyaltyAddress(r0);
+        expect(await market.archipelagoRoyaltyAddress()).to.equal(r0);
         const agreement = newAgreement();
         const bid = tokenIdBid();
         const ask = newAsk();
@@ -1269,18 +1269,20 @@ describe("Market", () => {
       it("only owner may change royalty recipient and rate", async () => {
         const { market, asker, bidder, tokenIdBid, newAsk, signers } =
           await setup();
-        let fail = market.connect(bidder).setArchipelagoRoyaltyRate(3);
+        let fail = market.connect(bidder).setArchipelagoRoyaltyMicros(3);
         expect(fail).to.be.revertedWith("Ownable: caller is not the owner");
-        fail = market.connect(bidder).setTreasuryAddress(bidder.address);
+        fail = market
+          .connect(bidder)
+          .setArchipelagoRoyaltyAddress(bidder.address);
         expect(fail).to.be.revertedWith("Ownable: caller is not the owner");
       });
       it("hardcoded royalty may be set to 50 bps", async () => {
         const { market } = await setup();
-        await market.setArchipelagoRoyaltyRate(5000);
+        await market.setArchipelagoRoyaltyMicros(5000);
       });
       it("hardcoded royalty may not exceed 50 bps", async () => {
         const { market } = await setup();
-        const fail = market.setArchipelagoRoyaltyRate(5001);
+        const fail = market.setArchipelagoRoyaltyMicros(5001);
         expect(fail).to.be.revertedWith("protocol royalty too high");
       });
 

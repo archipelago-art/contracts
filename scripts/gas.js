@@ -124,8 +124,8 @@ TEST_CASES.push(async function* marketFills(props) {
   const exa = BN.from("10").pow(18);
   const chainId = await ethers.provider.send("eth_chainId");
   const market = await props.factories.ArchipelagoMarket.deploy();
-  await market.setArchipelagoRoyaltyRate(5000);
-  await market.setTreasuryAddress(signer.address);
+  await market.setArchipelagoRoyaltyMicros(5000);
+  await market.setArchipelagoRoyaltyAddress(signer.address);
 
   const weth = await props.factories.TestWeth.deploy();
   const token = await props.factories.TestERC721.deploy();

@@ -71,7 +71,7 @@ contract ArchipelagoMarket is Ownable {
 
     /// Address of the Archipelago protocol treasury (to which hardcoded
     /// royalties accrue)
-    address public archipelagoTreasuryAddress;
+    address public archipelagoRoyaltyAddress;
 
     /// Royalty rate that accrues to the Archipelago protocol treasury
     /// (expressed as millionths of each transaction value)
@@ -81,7 +81,7 @@ contract ArchipelagoMarket is Ownable {
     /// Prevents "rug" attacks where the contract owner unexpectedly
     /// spikes the royalty rate, abusing existing asks. Also, it's a nice
     /// commitment to our users.
-    uint256 constant MAXIMUM_PROTOCOL_ROYALTY = 5000;
+    uint256 constant MAX_ARCHIPELAGO_ROYALTY_MICROS = 5000;
 
     uint256 constant ONE_MILLION = 1000000;
 
@@ -111,19 +111,22 @@ contract ArchipelagoMarket is Ownable {
         emergencyShutdown = isShutdown;
     }
 
-    function setTreasuryAddress(address newTreasuryAddress) external onlyOwner {
-        archipelagoTreasuryAddress = newTreasuryAddress;
+    function setArchipelagoRoyaltyAddress(address newRoyaltyAddress)
+        external
+        onlyOwner
+    {
+        archipelagoRoyaltyAddress = newRoyaltyAddress;
     }
 
-    function setArchipelagoRoyaltyRate(uint256 newRoyaltyRate)
+    function setArchipelagoRoyaltyMicros(uint256 newRoyaltyMicros)
         external
         onlyOwner
     {
         require(
-            newRoyaltyRate <= MAXIMUM_PROTOCOL_ROYALTY,
+            newRoyaltyMicros <= MAX_ARCHIPELAGO_ROYALTY_MICROS,
             "protocol royalty too high"
         );
-        archipelagoRoyaltyMicros = newRoyaltyRate;
+        archipelagoRoyaltyMicros = newRoyaltyMicros;
     }
 
     function computeDomainSeparator() internal view returns (bytes32) {
@@ -384,17 +387,17 @@ contract ArchipelagoMarket is Ownable {
         // Finally, we pay the hardcoded protocol royalty. It also comes from
         // the asker, so it's in the same style as the required royalties and
         // asker's extra royalties.
-        if (archipelagoTreasuryAddress != address(0)) {
+        if (archipelagoRoyaltyAddress != address(0)) {
             uint256 amt = (archipelagoRoyaltyMicros * price) / 1000000;
             proceeds -= amt;
             require(
-                currency.transferFrom(bidder, archipelagoTreasuryAddress, amt),
+                currency.transferFrom(bidder, archipelagoRoyaltyAddress, amt),
                 TRANSFER_FAILED
             );
             emit RoyaltyPayment(
                 tradeId,
                 asker,
-                archipelagoTreasuryAddress,
+                archipelagoRoyaltyAddress,
                 archipelagoRoyaltyMicros,
                 amt,
                 currency
