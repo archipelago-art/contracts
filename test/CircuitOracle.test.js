@@ -237,7 +237,7 @@ describe("CircuitOracle", () => {
       const middle = "0x" + "00".repeat(0xfffe - 2 * nonce.length);
       return ethers.utils.hexConcat([pre, middle, suf]);
     }
-    const longSet = maxLengthTrait("orange_roughie");
+    const longSet = maxLengthTrait("orange_roughy");
     expect(ethers.utils.hexDataLength(longSet)).to.equal(0xfffe);
     const longUnset = maxLengthTrait("banana_smoothie");
     expect(ethers.utils.hexDataLength(longUnset)).to.equal(0xfffe);
