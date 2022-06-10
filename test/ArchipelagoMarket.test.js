@@ -1238,10 +1238,16 @@ describe("Market", () => {
           weth,
           newAgreement,
         } = await setup();
+        expect(await market.archipelagoRoyaltyMicros()).to.equal(0);
         await market.setArchipelagoRoyaltyRate(5);
+        expect(await market.archipelagoRoyaltyMicros()).to.equal(5);
         const roy = micro.mul(5);
         const r0 = signers[3].address;
+        expect(await market.archipelagoTreasuryAddress()).to.equal(
+          ethers.constants.AddressZero
+        );
         await market.setTreasuryAddress(r0);
+        expect(await market.archipelagoTreasuryAddress()).to.equal(r0);
         const agreement = newAgreement();
         const bid = tokenIdBid();
         const ask = newAsk();
@@ -1890,7 +1896,9 @@ describe("Market", () => {
       } = await setup();
       const bid = tokenIdBid();
       const ask = newAsk();
+      expect(await market.emergencyShutdown()).to.equal(false);
       await market.setEmergencyShutdown(true);
+      expect(await market.emergencyShutdown()).to.equal(true);
       const fail = fillOrder(market, newAgreement(), bid, bidder, ask, asker);
       expect(fail).to.be.revertedWith("Market is shut down");
     });
@@ -1904,8 +1912,11 @@ describe("Market", () => {
         await setup();
       const bid = tokenIdBid();
       const ask = newAsk();
+      expect(await market.emergencyShutdown()).to.equal(false);
       await market.setEmergencyShutdown(true);
+      expect(await market.emergencyShutdown()).to.equal(true);
       await market.setEmergencyShutdown(false);
+      expect(await market.emergencyShutdown()).to.equal(false);
       await fillOrder(market, newAgreement(), bid, bidder, ask, asker);
     });
   });

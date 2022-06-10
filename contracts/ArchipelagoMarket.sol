@@ -67,15 +67,15 @@ contract ArchipelagoMarket is Ownable {
 
     /// Whether the market is in emergencyShutdown mode (in which case, no trades
     /// can be made).
-    bool emergencyShutdown;
+    bool public emergencyShutdown;
 
     /// Address of the Archipelago protocol treasury (to which hardcoded
     /// royalties accrue)
-    address archipelagoTreasuryAddress;
+    address public archipelagoTreasuryAddress;
 
     /// Royalty rate that accrues to the Archipelago protocol treasury
     /// (expressed as millionths of each transaction value)
-    uint256 archipelagoRoyaltyMicros;
+    uint256 public archipelagoRoyaltyMicros;
 
     /// Hardcap the Archipelago royalty rate at 50 basis points.
     /// Prevents "rug" attacks where the contract owner unexpectedly
