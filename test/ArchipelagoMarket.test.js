@@ -629,7 +629,7 @@ describe("Market", () => {
           agreement.price.mul(2),
           agreement.currencyAddress
         )
-        .to.emit(market, "TokenTraded")
+        .to.emit(market, "TokenTrade")
         .withArgs(tradeId, agreement.tokenAddress, bid.trait)
         .to.emit(market, "NonceCancellation")
         .withArgs(bidder.address, bid.nonce)
@@ -878,7 +878,7 @@ describe("Market", () => {
         const roy = micro.mul(5);
         const tradeId = computeTradeId(bid, bidder, ask, asker);
         await expect(fillOrder(market, agreement, bid, bidder, ask, asker))
-          .to.emit(market, "RoyaltyPaid")
+          .to.emit(market, "RoyaltyPayment")
           .withArgs(
             tradeId,
             asker.address,
@@ -929,7 +929,7 @@ describe("Market", () => {
             exa,
             agreement.currencyAddress
           )
-          .to.emit(market, "RoyaltyPaid")
+          .to.emit(market, "RoyaltyPayment")
           .withArgs(
             tradeId,
             asker.address,
@@ -938,7 +938,7 @@ describe("Market", () => {
             roy,
             agreement.currencyAddress
           )
-          .to.emit(market, "RoyaltyPaid")
+          .to.emit(market, "RoyaltyPayment")
           .withArgs(
             tradeId,
             asker.address,
@@ -1040,7 +1040,7 @@ describe("Market", () => {
             cost,
             agreement.currencyAddress
           )
-          .to.emit(market, "RoyaltyPaid")
+          .to.emit(market, "RoyaltyPayment")
           .withArgs(
             tradeId,
             bidder.address,
@@ -1074,7 +1074,7 @@ describe("Market", () => {
         const roy = micro.mul(5);
         const tradeId = computeTradeId(bid, bidder, ask, asker);
         await expect(fillOrder(market, agreement, bid, bidder, ask, asker))
-          .to.emit(market, "RoyaltyPaid")
+          .to.emit(market, "RoyaltyPayment")
           .withArgs(
             tradeId,
             asker.address,
@@ -1115,7 +1115,7 @@ describe("Market", () => {
         });
         const tradeId = computeTradeId(bid, bidder, ask, asker);
         await expect(fillOrder(market, agreement, bid, bidder, ask, asker))
-          .to.emit(market, "RoyaltyPaid")
+          .to.emit(market, "RoyaltyPayment")
           .withArgs(
             tradeId,
             asker.address,
@@ -1124,7 +1124,7 @@ describe("Market", () => {
             micro,
             agreement.currencyAddress
           )
-          .to.emit(market, "RoyaltyPaid")
+          .to.emit(market, "RoyaltyPayment")
           .withArgs(
             tradeId,
             bidder.address,
@@ -1133,7 +1133,7 @@ describe("Market", () => {
             micro.mul(2),
             agreement.currencyAddress
           )
-          .to.emit(market, "RoyaltyPaid")
+          .to.emit(market, "RoyaltyPayment")
           .withArgs(
             tradeId,
             asker.address,
@@ -1201,7 +1201,7 @@ describe("Market", () => {
         const ask = newAsk();
         const tradeId = computeTradeId(bid, bidder, ask, asker);
         await expect(fillOrder(market, agreement, bid, bidder, ask, asker))
-          .to.emit(market, "RoyaltyPaid")
+          .to.emit(market, "RoyaltyPayment")
           .withArgs(
             tradeId,
             bidder.address,
@@ -1210,7 +1210,7 @@ describe("Market", () => {
             micro,
             agreement.currencyAddress
           )
-          .to.emit(market, "RoyaltyPaid")
+          .to.emit(market, "RoyaltyPayment")
           .withArgs(
             tradeId,
             bidder.address,
@@ -1247,7 +1247,7 @@ describe("Market", () => {
         const ask = newAsk();
         const tradeId = computeTradeId(bid, bidder, ask, asker);
         await expect(fillOrder(market, agreement, bid, bidder, ask, asker))
-          .to.emit(market, "RoyaltyPaid")
+          .to.emit(market, "RoyaltyPayment")
           .withArgs(
             tradeId,
             asker.address,
@@ -1331,7 +1331,7 @@ describe("Market", () => {
             data: 0,
           });
           expect(p)
-            .to.emit(market, "RoyaltyPaid")
+            .to.emit(market, "RoyaltyPayment")
             .withArgs(
               tradeId,
               asker.address,
@@ -1365,7 +1365,7 @@ describe("Market", () => {
               data: 1,
             });
           expect(p)
-            .to.emit(market, "RoyaltyPaid")
+            .to.emit(market, "RoyaltyPayment")
             .withArgs(
               tradeId,
               asker.address,
@@ -1375,7 +1375,7 @@ describe("Market", () => {
               micro,
               agreement.currencyAddress
             )
-            .to.emit(market, "RoyaltyPaid")
+            .to.emit(market, "RoyaltyPayment")
             .withArgs(
               tradeId,
               asker.address,

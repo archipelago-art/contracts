@@ -39,16 +39,15 @@ contract ArchipelagoMarket is Ownable {
         uint256 cost,
         IERC20 currency
     );
-    /// Emitted once for every token that's transferred as part of a trade,
-    /// i.e. a Trade event will correspond to one TokenTraded events.
-    /// It's part of a separate event so that we can index more fields.
-    event TokenTraded(
+    /// Emitted in one-to-one correspondence with `Trade` events. This is a
+    /// separate event just so that we can index more fields.
+    event TokenTrade(
         bytes32 indexed tradeId,
         IERC721 indexed tokenAddress,
         uint256 indexed tokenId
     );
 
-    event RoyaltyPaid(
+    event RoyaltyPayment(
         bytes32 indexed tradeId,
         address indexed payer,
         address indexed recipient,
@@ -392,7 +391,7 @@ contract ArchipelagoMarket is Ownable {
                 currency.transferFrom(bidder, archipelagoTreasuryAddress, amt),
                 TRANSFER_FAILED
             );
-            emit RoyaltyPaid(
+            emit RoyaltyPayment(
                 tradeId,
                 asker,
                 archipelagoTreasuryAddress,
@@ -404,8 +403,9 @@ contract ArchipelagoMarket is Ownable {
 
         for (uint256 i = 0; i < bid.extraRoyalties.length; i++) {
             // Now we handle bid extra royalties.
-            // This time we are increasing the cost (not decreasing the proceeds) and the RoyaltyPaid
-            // event will specify the bidder as the entity paying the royalty.
+            // This time we are increasing the cost (not decreasing the
+            // proceeds) and the RoyaltyPayment event will specify the bidder
+            // as the entity paying the royalty.
             cost += _payRoyalty(
                 bid.extraRoyalties[i],
                 bidder,
@@ -447,7 +447,7 @@ contract ArchipelagoMarket is Ownable {
         }
 
         emit Trade(tradeId, bidder, asker, price, proceeds, cost, currency);
-        emit TokenTraded(tradeId, token, tokenId);
+        emit TokenTrade(tradeId, token, tokenId);
     }
 
     function _computeRoyalty(
@@ -506,7 +506,7 @@ contract ArchipelagoMarket is Ownable {
                 currency.transferFrom(bidder, result.recipient, amt),
                 TRANSFER_FAILED
             );
-            emit RoyaltyPaid(
+            emit RoyaltyPayment(
                 tradeId,
                 logicalPayer,
                 result.recipient,
