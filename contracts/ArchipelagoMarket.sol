@@ -85,13 +85,11 @@ contract ArchipelagoMarket is Ownable {
 
     uint256 constant ONE_MILLION = 1000000;
 
-    string constant INVALID_ARGS = "Market: invalid args";
-
     string constant ORDER_CANCELLED_OR_EXPIRED =
         "Market: order cancelled or expired";
 
     string constant AGREEMENT_MISMATCH =
-        "Market: bid or ask's agreement hash doesn't match order agreement";
+        "Market: bid/ask agreement hash doesn't match order agreement";
 
     string constant TRANSFER_FAILED = "Market: transfer failed";
 
@@ -124,7 +122,7 @@ contract ArchipelagoMarket is Ownable {
     {
         require(
             newRoyaltyMicros <= MAX_ARCHIPELAGO_ROYALTY_MICROS,
-            "protocol royalty too high"
+            "Market: protocol royalty too high"
         );
         archipelagoRoyaltyMicros = newRoyaltyMicros;
     }
@@ -288,7 +286,7 @@ contract ArchipelagoMarket is Ownable {
             askSignature,
             askSignatureKind
         );
-        require(msg.sender == bidder, "only bidder may fill with ETH");
+        require(msg.sender == bidder, "Market: only bidder may fill with ETH");
         IWeth currency = IWeth(address(agreement.currencyAddress));
         currency.deposit{value: msg.value}();
         require(currency.transfer(bidder, msg.value), TRANSFER_FAILED);
@@ -302,7 +300,7 @@ contract ArchipelagoMarket is Ownable {
         Ask memory ask,
         address asker
     ) internal {
-        require(!emergencyShutdown, "Market is shut down");
+        require(!emergencyShutdown, "Market: shut down");
 
         IERC721 token = agreement.tokenAddress;
         uint256 price = agreement.price;
@@ -313,7 +311,7 @@ contract ArchipelagoMarket is Ownable {
         require(
             ask.authorizedBidder == address(0) ||
                 ask.authorizedBidder == bidder,
-            "bidder is not authorized"
+            "Market: bidder is not authorized"
         );
 
         require(block.timestamp <= bid.deadline, ORDER_CANCELLED_OR_EXPIRED);
@@ -340,11 +338,11 @@ contract ArchipelagoMarket is Ownable {
 
         if (address(bid.traitOracle) == address(0)) {
             uint256 expectedTokenId = uint256(bytes32(bid.trait));
-            require(expectedTokenId == tokenId, "tokenid mismatch");
+            require(expectedTokenId == tokenId, "Market: token ID mismatch");
         } else {
             require(
                 bid.traitOracle.hasTrait(token, tokenId, bid.trait),
-                "missing trait"
+                "Market: missing trait"
             );
         }
 
@@ -424,7 +422,7 @@ contract ArchipelagoMarket is Ownable {
         } else if (token.isApprovedForAll(tokenOwner, asker)) {
             ownerOrApproved = true;
         }
-        require(ownerOrApproved, "asker is not owner or approved");
+        require(ownerOrApproved, "Market: asker is not owner or approved");
         token.safeTransferFrom(tokenOwner, bidder, tokenId);
         if (ask.unwrapWeth) {
             require(
@@ -476,7 +474,7 @@ contract ArchipelagoMarket is Ownable {
             }
             require(
                 totalMicros <= micros,
-                "oracle wants to overspend royalty allotment"
+                "Market: oracle would overspend royalty allotment"
             );
             return results;
         }
