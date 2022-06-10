@@ -331,6 +331,8 @@ contract ArchipelagoMarket is Ownable {
         // the ERC-721 receive hook) only observe the cancelled state.
         nonceCancellation[bidder][bid.nonce] = true;
         nonceCancellation[asker][ask.nonce] = true;
+        emit NonceCancellation(bidder, bid.nonce);
+        emit NonceCancellation(asker, ask.nonce);
 
         uint256 tradeId = uint256(
             keccak256(abi.encode(bidder, bid.nonce, asker, ask.nonce))

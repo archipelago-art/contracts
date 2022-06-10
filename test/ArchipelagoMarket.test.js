@@ -610,9 +610,11 @@ describe("Market", () => {
       } = await setup();
       const r0 = signers[3].address;
       const bid = tokenIdBid({
+        nonce: 123,
         extraRoyalties: [staticRoyalty({ recipient: r0, micros: 1000000 })],
       });
       const ask = newAsk({
+        nonce: 456,
         extraRoyalties: [staticRoyalty({ recipient: r0, micros: 500000 })],
       });
       const agreement = newAgreement();
@@ -629,7 +631,11 @@ describe("Market", () => {
           agreement.currencyAddress
         )
         .to.emit(market, "TokenTraded")
-        .withArgs(tradeId, agreement.tokenAddress, bid.trait);
+        .withArgs(tradeId, agreement.tokenAddress, bid.trait)
+        .to.emit(market, "NonceCancellation")
+        .withArgs(bidder.address, bid.nonce)
+        .to.emit(market, "NonceCancellation")
+        .withArgs(asker.address, ask.nonce);
     });
 
     describe("order filling in ETH", () => {
