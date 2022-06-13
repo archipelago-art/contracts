@@ -1,0 +1,33 @@
+#!/bin/sh
+set -eu
+
+usage() {
+    printf '%s\n' \
+        'usage: summarize-abi <json-file>' \
+        '    where <json-file> is like artifacts/contracts/Foo.sol/Foo.json' \
+        ;
+}
+
+main() {
+    if [ $# -ne 1 ]; then
+        usage >&2
+        return 1
+    fi
+    if ! command -v jq >/dev/null 2>/dev/null; then
+        printf >&2 '%s\n' 'fatal: missing `jq`; please install it'
+        return 1
+    fi
+    jq -r '
+        def fmt_ty:
+            map("\(.internalType) \(if .name == "" then "_" else .name end)")
+            | join(", ");
+        def fmt_fn:
+            "\(.name)(\(.inputs | fmt_ty)) -> (\(.outputs | fmt_ty))";
+        .abi
+        | map(select(.type == "function"))
+        | group_by(.stateMutability)[]
+        | .[0].stateMutability, "\t\(.[] | fmt_fn)", ""
+    ' "$1"
+}
+
+main "$@"
