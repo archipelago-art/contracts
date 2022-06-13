@@ -4,11 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 interface ITraitOracle {
-    /// Queries whether the given NFT has the given trait. The NFT is specified
-    /// by token ID only; the token contract is assumed to be known already.
-    /// For instance, a trait oracle could be designed for a specific token
-    /// contract, or it could call a method on `msg.sender` to determine what
-    /// contract to use.
+    /// Queries whether the given ERC-721 token has the given trait.
     ///
     /// The interpretation of the trait bytestring may be domain-specific and
     /// is at the discretion of the trait oracle. For example, an oracle might
