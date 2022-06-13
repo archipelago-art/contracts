@@ -3,6 +3,36 @@ pragma solidity ^0.8.0;
 
 import "./ITraitOracle.sol";
 
+/// A trait oracle for combining the results of other trait oracles by using
+/// logical AND, OR, and NOT operations. For example, given a trait oracle that
+/// supports the traits "Size: Small", "Size: Large", and "Color: Red", you can
+/// define a trait representing "(Size: Small OR Large) AND (Color: Red)" with
+/// the circuit oracle.
+///
+/// A circuit oracle trait has three components:
+///
+///   - the address of an "underlying trait oracle" to query;
+///   - the "base traits" to query on the underlying trait oracle; and
+///   - a Boolean circuit describing how to combine the results of querying the
+///     underlying trait oracle for each base trait.
+///
+/// In the "(Size: Small OR Large) AND Color: Red" example above: the
+/// underlying trait oracle would be the trait oracle that supports the traits
+/// "Size: Small", etc.; the base traits would be "Size: Small", "Size: Large",
+/// and "Color: Red"; and the circuit would be "(x0 || x1) && x2".
+///
+/// There are some restrictions on the kinds of traits supported by this
+/// circuit oracle:
+///
+///   - Each base trait must be associated with the same underlying trait
+///     oracle.
+///   - There can be at most 16 base traits.
+///   - Each base trait must be at most 65534 bytes long.
+///   - The circuit for combining the base traits must be expressible in at
+///     most 128 two-input AND, two-input OR, and one-input NOT gates.
+///
+/// For precise details about the encoding of traits used by the circuit
+/// oracle, see the docs on `hasTrait`.
 contract CircuitOracle is ITraitOracle {
     uint256 internal constant OP_STOP = 0x00;
     uint256 internal constant OP_NOT = 0x01;
