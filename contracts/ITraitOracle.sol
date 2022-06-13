@@ -10,12 +10,12 @@ interface ITraitOracle {
     /// contract, or it could call a method on `msg.sender` to determine what
     /// contract to use.
     ///
-    /// The interpretation of trait IDs may be domain-specific and is at the
-    /// discretion of the trait oracle. For example, an oracle might choose to
-    /// encode traits called "Normal" and "Rare" as `0` and `1` respectively,
-    /// or as `uint256(keccak256("Normal"))` and `uint256(keccak256("Rare"))`,
-    /// or as something else. The trait oracle may expose other domain-specific
-    /// methods to describe these traits.
+    /// The interpretation of the trait bytestring may be domain-specific and
+    /// is at the discretion of the trait oracle. For example, an oracle might
+    /// choose to encode traits called "Normal" and "Rare" as `"\x00"` and
+    /// `"\x01"` respectively, or as `bytes(keccak256("Normal"))` and
+    /// `bytes(keccak256("Rare"))`, or as something else. The trait oracle may
+    /// expose other domain-specific methods to describe these traits.
     function hasTrait(
         IERC721 _tokenContract,
         uint256 _tokenId,
