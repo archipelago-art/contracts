@@ -19,6 +19,7 @@ function inputOfMethod(contract, name) {
 }
 
 module.exports = [
+  { filename: "archipelagoMarket.js", data: ArchipelagoMarket.abi },
   { filename: "ask.js", data: inputOfMethod(ArchipelagoMarket, "askHash") },
   { filename: "bid.js", data: inputOfMethod(ArchipelagoMarket, "bidHash") },
   {
