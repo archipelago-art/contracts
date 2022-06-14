@@ -59,6 +59,11 @@ TEST_CASES.push(async function* oracleTraitMemberships(props) {
   const tokenContract = "0xa7d8d9ef8d8ce8992df33d8b8cf4aebabd5bd270";
 
   {
+    const tx = await oracle.multicall([]);
+    yield ["empty multicall", await tx.wait()];
+  }
+
+  {
     const msg = { version, tokenContract, projectId, size: 600, projectName };
     const sig = await sdk.artblocks.sign712.setProjectInfo(signer, domain, msg);
     const tx = await oracle.setProjectInfo(msg, sig, EIP_712);
@@ -90,8 +95,22 @@ TEST_CASES.push(async function* oracleTraitMemberships(props) {
   {
     const msg = sdk.artblocks.updateTraitMessage({ traitId, tokenIds });
     const sig = await sdk.artblocks.sign712.updateTrait(signer, domain, msg);
-    const tx1 = await oracle.updateTrait(msg, sig, EIP_712);
-    yield [`updateTrait: Paddle (${tokenIds.length})`, await tx1.wait()];
+    const tx1Gas = await oracle.estimateGas.updateTrait(msg, sig, EIP_712);
+    yield [`updateTrait: Paddle (${tokenIds.length})`, tx1Gas];
+    const multicallMsg = {
+      kind: sdk.artblocks.MulticallMessageKind.UPDATE_TRAIT,
+      encodedMsg: ethers.utils.defaultAbiCoder.encode(
+        [sdk.artblocks.abi.UpdateTraitMessage],
+        [msg]
+      ),
+      signature: sig,
+      signatureKind: EIP_712,
+    };
+    const tx1Multicall = await oracle.multicall([multicallMsg]);
+    yield [
+      `updateTrait: Paddle (${tokenIds.length}) via multicall`,
+      await tx1Multicall.wait(),
+    ];
     const tx2 = await oracle.updateTrait(msg, sig, EIP_712);
     yield ["updateTrait: Paddle again (no-op)", await tx2.wait()];
   }
