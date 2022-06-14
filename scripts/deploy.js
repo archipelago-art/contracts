@@ -4,14 +4,26 @@ async function deployContract(contractFactoryName, ...args) {
   const factory = await hre.ethers.getContractFactory(contractFactoryName);
   const [signer] = await hre.ethers.getSigners();
 
+  const chainId = await signer.getChainId();
   const from = await signer.getAddress();
   const nonce = await signer.getTransactionCount();
-  console.log("Chain ID: " + (await signer.getChainId()));
+  console.log("Chain ID: " + chainId);
   console.log("Deployer: " + from);
   console.log("Nonce: " + nonce);
   console.log(
     "Contract address: " + hre.ethers.utils.getContractAddress({ from, nonce })
   );
+  console.log();
+
+  const balance = await signer.getBalance();
+  const deploymentTx = factory.getDeployTransaction(...args);
+  const estimatedGas = await signer.estimateGas(deploymentTx);
+  const estimatedGasPrice = await signer.getGasPrice();
+  console.log(
+    "Deployer balance: %s ETH",
+    hre.ethers.utils.formatEther(balance)
+  );
+  console.log("Estimated gas: " + describeGas(estimatedGas, estimatedGasPrice));
   console.log();
 
   const argsPretty = args.map((x) => JSON.stringify(x)).join(", ");
@@ -27,12 +39,13 @@ async function deployContract(contractFactoryName, ...args) {
     rx.blockHash
   );
   console.log("Actual contract address: " + rx.contractAddress);
-  console.log(
-    "Gas used: %s gas @ effective price %s gwei/gas => %s ETH",
-    String(rx.gasUsed),
-    hre.ethers.utils.formatUnits(rx.effectiveGasPrice, "gwei"),
-    hre.ethers.utils.formatEther(rx.gasUsed.mul(rx.effectiveGasPrice))
-  );
+  console.log("Gas used: " + describeGas(rx.gasUsed, rx.effectiveGasPrice));
+}
+
+function describeGas(gas, price) {
+  const priceStr = `${hre.ethers.utils.formatUnits(price, "gwei")} gwei/gas`;
+  const totalStr = `${hre.ethers.utils.formatEther(gas.mul(price))} ETH`;
+  return `${gas} gas @ ${priceStr} ~> ${totalStr}`;
 }
 
 module.exports = deployContract;
