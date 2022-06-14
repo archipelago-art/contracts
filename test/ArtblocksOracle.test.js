@@ -973,6 +973,118 @@ describe("ArtblocksOracle", () => {
     });
   });
 
+  describe("multicall", async () => {
+    it("adds a project, adds features, and updates features all in one call", async () => {
+      const signer = signers[1];
+      const oracle = await ArtblocksOracle.deploy();
+      await oracle.deployed();
+      await oracle.setOracleSigner(signer.address);
+
+      const version = 0;
+      const projectId = 23;
+      const projectName = "Archetype";
+      const size = 600;
+      const tokenContract = TOKEN_1;
+      const featureName = "Palette";
+      const traitValue = "Paddle";
+      const featureTraitId = sdk.artblocks.featureTraitId(
+        projectId,
+        featureName,
+        traitValue,
+        version
+      );
+
+      const baseTokenId = projectId * PROJECT_STRIDE;
+      const tokenIndex1 = 250;
+      const tokenIndex2 = 314;
+      const tokenIndexNonmember = 378;
+
+      const domain = await domainInfo(oracle.address);
+
+      const multicallMessages = [];
+      function encodeOne(abi, msg) {
+        return ethers.utils.defaultAbiCoder.encode([abi], [msg]);
+      }
+
+      {
+        const msg = {
+          projectId,
+          version,
+          projectName,
+          size,
+          tokenContract,
+        };
+        const sig = await sdk.artblocks.sign712.setProjectInfo(
+          signer,
+          domain,
+          msg
+        );
+        multicallMessages.push({
+          kind: sdk.artblocks.MulticallMessageKind.SET_PROJECT_INFO,
+          encodedMsg: encodeOne(sdk.artblocks.abi.SetProjectInfoMessage, msg),
+          signature: sig,
+          signatureKind: SignatureKind.EIP_712,
+        });
+      }
+
+      {
+        const msg = {
+          projectId,
+          featureName,
+          traitValue,
+          version,
+          tokenContract,
+        };
+        const sig = await sdk.artblocks.sign712.setFeatureInfo(
+          signer,
+          domain,
+          msg
+        );
+        multicallMessages.push({
+          kind: sdk.artblocks.MulticallMessageKind.SET_FEATURE_INFO,
+          encodedMsg: encodeOne(sdk.artblocks.abi.SetFeatureInfoMessage, msg),
+          signature: sig,
+          signatureKind: SignatureKind.EIP_712,
+        });
+      }
+
+      const logs = [];
+      for (const tokenIndex of [tokenIndex1, tokenIndex2]) {
+        const msg = sdk.artblocks.updateTraitMessage({
+          traitId: featureTraitId,
+          tokenIds: [tokenIndex],
+        });
+        const sig = await sdk.artblocks.signLegacy.updateTrait(
+          signer,
+          domain,
+          msg
+        );
+        multicallMessages.push({
+          kind: sdk.artblocks.MulticallMessageKind.UPDATE_TRAIT,
+          encodedMsg: encodeOne(sdk.artblocks.abi.UpdateTraitMessage, msg),
+          signature: sig,
+          signatureKind: SignatureKind.ETHEREUM_SIGNED_MESSAGE,
+        });
+        logs.push(sdk.artblocks.updateTraitLog(logs[logs.length - 1], [msg]));
+      }
+      expect(await oracle.multicall(multicallMessages))
+        .to.emit(oracle, "ProjectInfoSet")
+        .to.emit(oracle, "FeatureInfoSet")
+        .to.emit(oracle, "TraitUpdated")
+        .withArgs(featureTraitId, 1, 0, logs[0])
+        .to.emit(oracle, "TraitUpdated")
+        .withArgs(featureTraitId, 2, 0, logs[1]);
+
+      const actual = await Promise.all(
+        [tokenIndex1, tokenIndex2, tokenIndexNonmember].map((tokenIndex) => {
+          const tokenId = baseTokenId + tokenIndex;
+          return oracle.hasTrait(TOKEN_1, tokenId, featureTraitId);
+        })
+      );
+      expect(actual).to.deep.equal([true, true, false]);
+    });
+  });
+
   describe("unknown membership testing", () => {
     it("reverts on a trait with unknown discriminant", async () => {
       const oracle = await ArtblocksOracle.deploy();

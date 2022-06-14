@@ -7,6 +7,12 @@ const TraitType = Object.freeze({
   FEATURE: 1,
 });
 
+const MulticallMessageKind = Object.freeze({
+  SET_PROJECT_INFO: 0,
+  SET_FEATURE_INFO: 1,
+  UPDATE_TRAIT: 2,
+});
+
 const Errors = Object.freeze({
   ALREADY_EXISTS: "ArtblocksOracle: ALREADY_EXISTS",
   IMMUTABLE: "ArtblocksOracle: IMMUTABLE",
@@ -274,6 +280,7 @@ const abi = Object.freeze({
 
 module.exports = {
   TraitType,
+  MulticallMessageKind,
   Errors,
   PROJECT_STRIDE,
   abi,

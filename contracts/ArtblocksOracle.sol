@@ -66,6 +66,19 @@ struct FeatureMetadata {
     bytes24 log;
 }
 
+enum MulticallMessageKind {
+    SET_PROJECT_INFO,
+    SET_FEATURE_INFO,
+    UPDATE_TRAIT
+}
+
+struct MulticallMessage {
+    MulticallMessageKind kind;
+    bytes encodedMsg;
+    bytes signature;
+    SignatureKind signatureKind;
+}
+
 contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
     using ArtblocksOracleMessages for SetProjectInfoMessage;
     using ArtblocksOracleMessages for SetFeatureInfoMessage;
@@ -180,7 +193,7 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         SetProjectInfoMessage memory _msg,
         bytes memory _signature,
         SignatureKind _signatureKind
-    ) external {
+    ) public {
         _requireOracleSignature(_msg.structHash(), _signature, _signatureKind);
 
         // Input fields must be non-empty (but project ID may be 0).
@@ -215,7 +228,7 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         SetFeatureInfoMessage memory _msg,
         bytes memory _signature,
         SignatureKind _signatureKind
-    ) external {
+    ) public {
         _requireOracleSignature(_msg.structHash(), _signature, _signatureKind);
 
         // Input fields must be non-empty (but project ID may be 0).
@@ -247,7 +260,9 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         emit FeatureInfoSet({
             traitId: _traitId,
             projectId: _msg.projectId,
-            nameAndValue: string(abi.encodePacked(_msg.featureName, ": ", _msg.traitValue)),
+            nameAndValue: string(
+                abi.encodePacked(_msg.featureName, ": ", _msg.traitValue)
+            ),
             featureName: _msg.featureName,
             traitValue: _msg.traitValue,
             version: _msg.version,
@@ -259,7 +274,7 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         UpdateTraitMessage memory _msg,
         bytes memory _signature,
         SignatureKind _signatureKind
-    ) external {
+    ) public {
         bytes32 _structHash = _msg.structHash();
         _requireOracleSignature(_structHash, _signature, _signatureKind);
 
@@ -450,5 +465,32 @@ contract ArtblocksOracle is IERC165, ITraitOracle, Ownable {
         // (This subtraction doesn't underflow because the shift produces a
         // nonzero value, given the bounds on `_numFinalizedSinceStartOfWord`.)
         return (1 << _numFinalizedSinceStartOfWord) - 1;
+    }
+
+    function multicall(MulticallMessage[] calldata _inputs) external {
+        for (uint256 _i = 0; _i < _inputs.length; _i++) {
+            MulticallMessage calldata _input = _inputs[_i];
+            if (_input.kind == MulticallMessageKind.UPDATE_TRAIT) {
+                UpdateTraitMessage memory _msg = abi.decode(
+                    _input.encodedMsg,
+                    (UpdateTraitMessage)
+                );
+                updateTrait(_msg, _input.signature, _input.signatureKind);
+            } else if (_input.kind == MulticallMessageKind.SET_FEATURE_INFO) {
+                SetFeatureInfoMessage memory _msg = abi.decode(
+                    _input.encodedMsg,
+                    (SetFeatureInfoMessage)
+                );
+                setFeatureInfo(_msg, _input.signature, _input.signatureKind);
+            } else if (_input.kind == MulticallMessageKind.SET_PROJECT_INFO) {
+                SetProjectInfoMessage memory _msg = abi.decode(
+                    _input.encodedMsg,
+                    (SetProjectInfoMessage)
+                );
+                setProjectInfo(_msg, _input.signature, _input.signatureKind);
+            } else {
+                revert(ERR_INVALID_ARGUMENT);
+            }
+        }
     }
 }
