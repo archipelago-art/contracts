@@ -266,10 +266,17 @@ function updateTraitMessage(baseMsg) {
   return msg;
 }
 
+const abi = Object.freeze({
+  SetProjectInfoMessage: require("./_abi/setProjectInfoMessage.js"),
+  SetFeatureInfoMessage: require("./_abi/setFeatureInfoMessage.js"),
+  UpdateTraitMessage: require("./_abi/updateTraitMessage.js"),
+});
+
 module.exports = {
   TraitType,
   Errors,
   PROJECT_STRIDE,
+  abi,
   domainSeparator,
   sign712,
   signLegacy,
