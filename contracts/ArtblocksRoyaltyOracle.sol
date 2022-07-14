@@ -52,9 +52,7 @@ contract ArtblocksRoyaltyOracle is IRoyaltyOracle {
         uint32 _micros,
         uint64 _data
     ) external view returns (RoyaltyResult[] memory) {
-        IArtblocksRoyaltyDataSource _dataSource = IArtblocksRoyaltyDataSource(
-            address(_tokenContract)
-        );
+        address _dataSource = address(_tokenContract);
 
         if (uint256(_data) > uint256(_micros))
             revert(ERR_PLATFORM_ROYALTY_TOO_HIGH);
@@ -134,12 +132,15 @@ contract ArtblocksRoyaltyOracle is IRoyaltyOracle {
 
     /// Infallibly gets the Art Blocks payee address, which may be null if the
     /// external call fails.
-    function _getArtblocksAddress(IArtblocksRoyaltyDataSource _dataSource)
+    function _getArtblocksAddress(address _dataSource)
         internal
         view
+        virtual
         returns (address)
     {
-        try _dataSource.artblocksAddress() returns (address _artblocksAddress) {
+        try
+            IArtblocksRoyaltyDataSource(_dataSource).artblocksAddress()
+        returns (address _artblocksAddress) {
             return _artblocksAddress;
         } catch {
             return address(0);
@@ -148,12 +149,10 @@ contract ArtblocksRoyaltyOracle is IRoyaltyOracle {
 
     /// Infallibly gets the royalty data for a token, which may be null if the
     /// external call fails.
-    function _getRoyaltyData(
-        IArtblocksRoyaltyDataSource _dataSource,
-        uint256 _tokenId
-    )
+    function _getRoyaltyData(address _dataSource, uint256 _tokenId)
         internal
         view
+        virtual
         returns (
             address artistAddress,
             address additionalPayee,
@@ -161,7 +160,9 @@ contract ArtblocksRoyaltyOracle is IRoyaltyOracle {
             uint256 royaltyFeeByID
         )
     {
-        try _dataSource.getRoyaltyData(_tokenId) returns (
+        try
+            IArtblocksRoyaltyDataSource(_dataSource).getRoyaltyData(_tokenId)
+        returns (
             address _artistAddress,
             address _additionalPayee,
             uint256 _additionalPayeePercentage,
